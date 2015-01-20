@@ -2,6 +2,34 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 import hiero.ui
 
+def visibleShotAtTime(sequence, t):
+  """visibleShotAtTime(sequence, t) -> Returns the visible TrackItem in a Sequence (sequence) at a specified frame (time).
+  @param: sequence - a core.Sequence
+  @param: t - an integer (frame no.) at which to return the current TrackItem
+  returns: hiero.core.TrackItem"""
+  
+  shot = sequence.trackItemAt(t)
+  if shot == None:
+    return shot
+    
+  elif shot.isMediaPresent() and shot.isEnabled():
+    return shot
+  
+  else:
+    # If we're here, the Media is offline or disabled... work out what's visible on other tracks...
+    badTrack = shot.parent()
+    vTracks = list(sequence.videoTracks())
+    vTracks.remove(badTrack)
+    for track in reversed(vTracks):
+      trackItems = track.items()
+      for shotCandidate in trackItems:
+        if shotCandidate.timelineIn() <= t and shotCandidate.timelineOut() >= time:
+          if shotCandidate.isMediaPresent() and shotCandidate.isEnabled():
+            shot = shotCandidate
+            break
+  
+  return shot
+
 class ClipInfoWindow(QWidget):
     def __init__(self, *args):
         QWidget.__init__(self, *args)
@@ -36,6 +64,9 @@ class ClipInfoWindow(QWidget):
         self.table_view.setShowGrid(False)
         self.table_view.verticalHeader().setVisible(False)
         self.table_view.horizontalHeader().setVisible(False)
+        self.table_view.verticalScrollBar().setDisabled(True);
+        self.table_view.horizontalScrollBar().setDisabled(True);
+        self.table_view.setSelectionMode(QAbstractItemView.NoSelection)
 
         self.table_view.setStyleSheet("QTableView::item { border-width:0px; border-right: 1px solid gray; }")
 
@@ -43,12 +74,21 @@ class ClipInfoWindow(QWidget):
         self.table_view.setSortingEnabled(False)
         layout = QVBoxLayout(self)
         layout.addWidget(self.table_view)
-        self.setMinimumSize(320, 240)        
+        sizeGrip = QSizeGrip(self)
+        sizeGrip.setStyleSheet("QSizeGrip { height:12px; }")
+        layout.addWidget(sizeGrip, 0, Qt.AlignBottom | Qt.AlignRight);
+        self.setMinimumSize(160, 160)        
         self.setLayout(layout)
+
+        hiero.core.events.registerInterest("kPlaybackClipChanged", self.clipChanged)
+        hiero.core.events.registerInterest("kPlaybackStarted", self.clipChanged)
+        hiero.core.events.registerInterest("kPlaybackStopped", self.clipChanged)
+
+    def clipChanged(self, event):
+    	self.updateTableView()
 
     def showAt(self, pos):
         # BUILD DATA WHEN SHOWN - is this the best time to do this?
-        self.__buildDataForCurrentClip()
         self.updateTableView()
         self.move(pos.x()-self.width()/2, pos.y()-self.height()/2)
         self.show()
@@ -59,9 +99,18 @@ class ClipInfoWindow(QWidget):
             self.close()
 
     def updateTableView(self):
+    	self.__buildDataForCurrentClip()
         self.table_model = MyTableModel(self, self.infoDict)
         self.table_view.setModel(self.table_model)
         self.table_view.resizeColumnsToContents()
+
+    def formatStringFromSeq(self, seq):
+    	seq = seq.format()
+    	height = seq.height()
+    	width = seq.width()
+    	pixel_aspect = seq.pixelAspect()
+    	formatString = "%i x %i, %f" % (width, height, pixel_aspect)
+    	return formatString
 
     def __buildDataForCurrentClip(self):
         cv = hiero.ui.currentViewer()
@@ -70,18 +119,23 @@ class ClipInfoWindow(QWidget):
         if not seq:
             return
         elif isinstance(seq, hiero.core.Clip):
-            self.infoDict += [{"label": "Clip", "value": seq.name(), "enabled":True}]
-            self.infoDict += [{"label": "Duration", "value": seq.duration(), "enabled":True}]
-            self.infoDict += [{"label": "Filename", "value": seq.mediaSource().fileinfos()[0].filename(), "enabled":True}]
+            self.infoDict += [{"label": "name", "value": seq.name(), "enabled":True}]
+            self.infoDict += [{"label": "format", "value": self.formatStringFromSeq(seq), "enabled":True}] 
+            self.infoDict += [{"label": "duration", "value": seq.duration(), "enabled":True}]
+            self.infoDict += [{"label": "fps", "value": str(seq.framerate()), "enabled":True}]
+            self.infoDict += [{"label": "filename", "value": seq.mediaSource().fileinfos()[0].filename(), "enabled":True}]
         elif isinstance(seq, hiero.core.Sequence):
-            self.infoDict += [{"label": "Sequence", "value": seq.name(), "enabled":True}]
-            self.infoDict += [{"label": "Duration", "value": seq.duration(), "enabled":True}]
+			currentShot = visibleShotAtTime(seq, cv.time())
+			self.infoDict += [{"label": "name", "value": seq.name(), "enabled":True}]
+			self.infoDict += [{"label": "shot", "value": currentShot.name(), "enabled":True}]
+			self.infoDict += [{"label": "fps", "value": str(seq.framerate()), "enabled":True}]
+			self.infoDict += [{"label": "duration", "value": seq.duration(), "enabled":True}]
 
     def paintEvent(self, event):
         # get current window size
         s = self.size()
         qp = QPainter()
-        qp.setRenderHint(QPainter.Antialiasing, True)
+        #qp.setRenderHint(QPainter.Antialiasing, True)
         qp.begin(self)
         qp.setBrush( self.palette().window() )
         qp.setPen(Qt.black)
