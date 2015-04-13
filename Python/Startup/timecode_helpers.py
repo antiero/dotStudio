@@ -162,17 +162,17 @@ class TimecodeMenu:
       self._timecodeMenu = QtGui.QMenu("Timecode")
 
       # These actions in the viewer are a special case, because they drill down in to what is currrenly being
-      self._resetOriginalTCAction = createMenuAction("Reset TC to EDL/Conform", self.resetTC)
       self._copyTCAction = createMenuAction("Copy TC", self.copyTC)
       self._pasteTCAction = createMenuAction("Paste TC", self.pasteTC)
       self._pasteTCSpecialAction = createMenuAction("Paste TC Special...", self.pasteTCSpecial)
       self._setSrcInToFirstFrameOfClipAction = createMenuAction("Set srcIn to 1st frame of Clip", self.setSrcInToFirstFrameOfClip)
-      
-      self._timecodeMenu.addAction(self._resetOriginalTCAction)
+      self._resetOriginalTCAction = createMenuAction("Set srcIn to Original EDL TC", self.resetTC)
+
       self._timecodeMenu.addAction(self._copyTCAction)
       self._timecodeMenu.addAction(self._pasteTCAction)
       self._timecodeMenu.addAction(self._pasteTCSpecialAction)
       self._timecodeMenu.addAction(self._setSrcInToFirstFrameOfClipAction)
+      self._timecodeMenu.addAction(self._resetOriginalTCAction)      
 
       hiero.core.events.registerInterest("kShowContextMenu/kSpreadsheet", self.eventHandler)
       hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
@@ -188,28 +188,18 @@ class TimecodeMenu:
     shotSelection = self.getShotSelectionForActiveView()
     for shot in shotSelection:
       M = shot.metadata()
-      if M.hasKey('foundry.edl.dstIn'):
-        try:
-          shot.setTimelineIn(M.value('foundry.edl.dstIn'))
-        except:
-          print "Could not set 'foundry.edl.dstIn'"
-
-      if M.hasKey('foundry.edl.dstOut'):
-        try:
-          shot.setTimelineIn(M.value('foundry.edl.dstOut'))
-        except:
-          print "Could not set 'foundry.edl.dstOut'"
       if M.hasKey('foundry.edl.srcIn'):
-        try:
-          shot.setTimelineIn(M.value('foundry.edl.srcIn'))
-        except:
-          print "Could not set 'foundry.edl.srcIn'"
+        originalSrcIn = int(M.value('foundry.edl.srcIn'))
+        sourceClip = shot.source()
+        clipSourceIn = originalSrcIn - sourceClip.timecodeStart()
+        shot.setSourceIn(clipSourceIn)
+        shot.setSourceOut(clipSourceIn + (shot.duration()-1))
 
-      if M.hasKey('foundry.edl.srcOut'):
+        print "original src In is %i, will be changed to %i" % (originalSrcIn, clipSourceIn)
         try:
-          shot.setTimelineIn(M.value('foundry.edl.srcOut'))
+          shot.setSourceIn(clipSourceIn)
         except:
-          print "Could not set 'foundry.edl.srcOut'"          
+          print "Could not set 'foundry.edl.srcIn'"       
 
   def setSrcInToFirstFrameOfClip(self):
     """Sets the Shot's srcIn to be the first available frame of the Clip"""
