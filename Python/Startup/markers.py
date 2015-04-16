@@ -6,9 +6,15 @@ from PySide import QtGui
 from PySide.QtCore import Qt, QAbstractTableModel
 
 class MarkersTableModel(QAbstractTableModel):
-  def __init__(self, parent, infoDict, *args):
+  def __init__(self, parent, infoDict, header):
     QAbstractTableModel.__init__(self, parent, *args)
     self.infoDict = infoDict
+    self.header = header
+
+  def headerData(self, col, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.header[col]
+        return None    
 
   def rowCount(self, parent):
     return len(self.infoDict)
@@ -50,7 +56,7 @@ class MarkersTableModel(QAbstractTableModel):
             return Qt.AlignLeft | Qt.AlignVCenter
 
     else:
-        return 
+        return
 
 class MarkersPanel(QtGui.QWidget):
   """A dockable Markers Panel that displays frame Markers for the Current Sequence"""
@@ -69,7 +75,7 @@ class MarkersPanel(QtGui.QWidget):
                        "Note": "",
                        }]
 
-    self.table_model = MarkersTableModel(self, self.infoDict)
+    self.table_model = MarkersTableModel(self, self.infoDict, self.infoDict.keys())
     self.table_view = QtGui.QTableView()
     self.table_view.setModel(self.table_model)
 
@@ -80,10 +86,10 @@ class MarkersPanel(QtGui.QWidget):
     self.table_view.resizeRowsToContents()
 
     # set font
-    self.table_view.setShowGrid(True)
-    self.table_view.verticalHeader().setVisible(True)
-    self.table_view.horizontalHeader().setVisible(False)
-    self.table_view.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
+    #self.table_view.setShowGrid(True)
+    #self.table_view.verticalHeader().setVisible(True)
+    #self.table_view.horizontalHeader().setVisible(True)
+    #self.table_view.setSelectionMode(QtGui.QAbstractItemView.NoSelection)
 
     layout = QtGui.QVBoxLayout(self)
     layout.addWidget(self.table_view)
