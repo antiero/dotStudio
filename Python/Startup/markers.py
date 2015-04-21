@@ -17,6 +17,30 @@ gStatusTags = {'Approved':'icons:status/TagApproved.png',
   'Omitted':'icons:status/TagOmitted.png',
   'Final':'icons:status/TagFinal.png'}
 
+class Proxy01(QtGui.QSortFilterProxyModel):
+    def __init__(self):
+        super(Proxy01, self).__init__()
+        self.filterString = ""
+        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+
+    def setKeyword(self, arg):
+        if arg: self.filterString=str(arg)
+        self.reset()
+
+    def filterAcceptsRow(self, row, parent):
+        if self.filterString == "":
+            return True #Shortcut for common case      
+        
+        model = self.sourceModel()
+        test = str(model.infoDict[row].values()).lower()
+
+        #print "self.filterString is %s, Model is %s, test values are: %s" % (self.filterString, str(model), str(test))
+
+        if self.filterString.lower() in test:
+            return True
+        else:
+            return False
+
 class MarkerSelectionComboDelegate(QtGui.QItemDelegate):
     """
     A delegate that places a fully QComboBox with Tag icons in every
@@ -98,17 +122,20 @@ class MarkersTableModel(QAbstractTableModel):
         label = self.infoDict[index.row()]["Name"]
         timecode = self.infoDict[index.row()]["Timecode"]
         note = self.infoDict[index.row()]["Note"]
+        duration = self.infoDict[index.row()]["Duration"]
 
         if index.column() == 2:
             return label
         elif index.column() == 3:
             return timecode
         elif index.column() == 4:
+            return duration
+        elif index.column() == 5:
             return note
 
     elif role == Qt.EditRole:
         # We will update the note column
-        if index.column() == 4:
+        if index.column() == 5:
             return
 
     elif role == Qt.TextAlignmentRole:
@@ -123,7 +150,7 @@ class MarkersTableModel(QAbstractTableModel):
       #flags = super(self.__class__,self).flags(index)
 
       # This ensures that only the status and note columns are editable
-      if index.column() == 4:
+      if index.column() == 5:
           return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
       else:
           return Qt.ItemIsEnabled | Qt.ItemIsSelectable
@@ -136,7 +163,7 @@ class MarkersTableModel(QAbstractTableModel):
       col = index.column()
       if col == 1:
         print "setData", index.row(), index.column(), value
-      elif col == 4: 
+      elif col == 5: 
         tag = self.infoDict[index.row()]["Tag"]
         tag.setNote(str(value))
         self.infoDict[index.row()]["Note"] = tag.note()
@@ -166,11 +193,18 @@ class MarkersPanel(QtGui.QWidget):
 
     self.timecodeDisplayMode  = hiero.core.Timecode().kDisplayTimecode
     self.infoDict = []
-    self.headerKeys = ["", "Marker", "Name", "Timecode", "Note"]
+    self.headerKeys = ["", "Marker", "Name", "Timecode", "Duration", "Dialogue"]
     self.table_model = MarkersTableModel(self, self.infoDict, self.headerKeys)
+
+    self.proxy1=Proxy01()
+    self.proxy1.setSourceModel(self.table_model)
+    self.proxy1.setDynamicSortFilter(True)
+
     self.table_view = QtGui.QTableView()
     self.table_view.setSortingEnabled(True)
-    self.table_view.setModel(self.table_model)
+
+    #tableviewA.setModel(self.proxy)
+    self.table_view.setModel(self.proxy1)
     verticalHeader = self.table_view.verticalHeader()
     verticalHeader.setResizeMode(QtGui.QHeaderView.Fixed)
     verticalHeader.setDefaultSectionSize(60);    
@@ -188,15 +222,22 @@ class MarkersPanel(QtGui.QWidget):
 
     layout = QtGui.QVBoxLayout(self)
     self.searchLineEdit = QtGui.QLineEdit()
+    self.searchLineEdit.textChanged.connect(self.proxy1.setKeyword)
+
     self.searchLineEdit.setStyleSheet("QLineEdit { border: 1px solid black; }")
     self.searchLineEdit.setPlaceholderText("Filter")
     layout.addWidget(self.searchLineEdit)
     layout.addWidget(self.table_view)
 
-    #self.clearSelectedMarkersButton = QtGui.QPushButton("Clear Selected")
-    #self.clearAllMarkersButton = QPushButton("Clear All")
-    #self.clearAllMarkersButton.clicked.connect(MarkerActions()._clearAllMarkersAction)
-    #layout.addWidget(self.clearAllMarkersButton)
+    self.clearSelectedMarkersButton = QtGui.QPushButton("Clear Selected")
+    self.clearAllMarkersButton = QtGui.QPushButton("Clear All")
+    self.clearAllMarkersButton.clicked.connect(hiero.ui.clearAllTimelineMarkers)
+    self.clearSelectedMarkersButton.clicked.connect(self.clearTagsForSelectedRows)
+
+    self.buttonLayout = QtGui.QHBoxLayout()
+    self.buttonLayout.addWidget(self.clearAllMarkersButton)
+    self.buttonLayout.addWidget(self.clearSelectedMarkersButton)
+    layout.addLayout(self.buttonLayout)
 
     self.setMinimumSize(480, 160)
     self.setLayout(layout)
@@ -206,14 +247,29 @@ class MarkersPanel(QtGui.QWidget):
     self.updateTableView()
 
 
-  def clearSelectedMarkers(self):
+  def clearTagsForSelectedRows(self):
     selectionModel = self.table_view.selectionModel()
 
     hasSelection  = selectionModel.hasSelection()
     if hasSelection:
-      selectedRows = selectionModel.selectedRows()
-      print "Selected Marker indices will be deleted: %s" % str(selectedRows)
+      selectedIndexes = selectionModel.selectedIndexes()
+      selection = selectionModel.selection()
+      mappedModelIndices = [] 
+      for modelIndex in selectedIndexes:
+        mappedModelIndices += [self.proxy1.mapToSource(modelIndex)]
 
+      dataForDeletion = []
+      for index in mappedModelIndices:
+        dataForDeletion += [self.table_model.infoDict[ index.row() ]]
+
+      for data in dataForDeletion:
+        sequence = data['Sequence']
+        try:
+          sequence.removeTag(data['Tag'])
+        except:
+          pass
+
+    self.updateTableView()
 
   def showEvent(self, event):
       super(MarkersPanel, self).showEvent(event)
@@ -221,7 +277,12 @@ class MarkersPanel(QtGui.QWidget):
 
   def movePlayheadToMarker(self, modelIndex):
     # Now access the Tag from the row and move playhead to its in time..
-    inTime = self.table_model.infoDict[modelIndex.row()]['In']
+
+    # We may be filtered, so need to map the index to the Source index
+    mappedModelIndex = self.proxy1.mapToSource(modelIndex)
+
+    inTime = self.table_model.infoDict[ mappedModelIndex.row() ]['In']
+
     cv = hiero.ui.currentViewer()
     cv.setTime(int(inTime))
 
@@ -240,7 +301,8 @@ class MarkersPanel(QtGui.QWidget):
   def updateTableView(self):
     self.__buildDataForCurrentSequence()
     self.table_model = MarkersTableModel(self, self.infoDict, self.headerKeys)
-    self.table_view.setModel(self.table_model)
+    self.proxy1.setSourceModel(self.table_model)
+    #self.table_view.setModel(self.proxy1)
     self.table_view.resizeColumnsToContents()
 
   def formatStringFromSeq(self, seq):
@@ -278,7 +340,9 @@ class MarkersPanel(QtGui.QWidget):
                              "Out": outTime,
                              "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
                              "Note": tag.note(),
+                             "Duration": (outTime-inTime)+1,
                              "Marker": str(tag.icon()),
+                             "Sequence": seq,
                              "Thumbnail": str(tag.icon())
                              }]
 
@@ -326,13 +390,14 @@ class MarkerActions(object):
     hiero.ui.markersPanel.updateTableView()
 
   def clearAllMarkers(self):
+    """Clears all Tags from the active Sequence"""
     activeSequence = hiero.ui.activeSequence()
-    if not activeSequence:
-      return
 
-    activeView = hiero.ui.activeView()
-    if not activeView:
-      return
+    if not activeSequence:
+      cv = hiero.ui.currentViewer()
+      activeSequence = cv.player().sequence()
+      if not activeSequence:
+        return
 
     tags = activeSequence.tags()
     if len(tags)<1:
@@ -347,12 +412,12 @@ class MarkerActions(object):
   
   def clearMarkersInActiveRange(self):
     activeSequence = hiero.ui.activeSequence()
-    if not activeSequence:
-      return
 
-    activeView = hiero.ui.activeView()
-    if not activeView:
-      return
+    if not activeSequence:
+      cv = hiero.ui.currentViewer()
+      activeSequence = cv.player().sequence()
+      if not activeSequence:
+        return
 
     try:
       inTime = activeSequence.inTime()
@@ -384,10 +449,13 @@ class MarkerActions(object):
         insertMenuAction( self._clearAllMarkersAction, a.menu())
         insertMenuAction( self._clearMarkersInOutAction, a.menu())
 
+markerActions = MarkerActions()
+hiero.ui.clearAllTimelineMarkers = markerActions.clearAllMarkers
+hiero.ui.clearMarkersInActiveRange = markerActions.clearMarkersInActiveRange
+
 hiero.ui.markersPanel = MarkersPanel()
 hiero.ui.markersPanel.__doc__ = "The Markers panel object. Call hiero.ui.markersPanel.updateTableView() to refresh the panel."
 registerPanel( "uk.co.thefoundry.markers", hiero.ui.markersPanel )
-markerActions = MarkerActions()
 
 wm = hiero.ui.windowManager()
 wm.addWindow( hiero.ui.markersPanel )
