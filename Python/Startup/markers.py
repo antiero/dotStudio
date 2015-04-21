@@ -228,7 +228,7 @@ class MarkersPanel(QtGui.QWidget):
     self.buttonLayout = QtGui.QHBoxLayout()
     self.searchLineEdit = QtGui.QLineEdit()
     self.searchLineEdit.textChanged.connect(self.proxy1.setKeyword)
-    self.searchLineEdit.setStyleSheet("QLineEdit { border: 1px solid black; }")
+    self.searchLineEdit.setStyleSheet("QLineEdit { border: 0.5px solid black; border-radius: 9px; padding: 1 6px; }")
     self.searchLineEdit.setPlaceholderText("Filter")
     self.clearSelectedMarkersButton = QtGui.QPushButton("Clear Selected")
     self.clearAllMarkersButton = QtGui.QPushButton("Clear All")
@@ -240,7 +240,7 @@ class MarkersPanel(QtGui.QWidget):
     self.buttonLayout.addWidget(self.clearSelectedMarkersButton)
     self.buttonLayout.addWidget(self.searchLineEdit)
 
-    layout.addLayout(self.buttonLayout)    
+    layout.addLayout(self.buttonLayout)
     layout.addWidget(self.table_view)
 
     self.setMinimumSize(480, 160)
@@ -249,7 +249,6 @@ class MarkersPanel(QtGui.QWidget):
     hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
     hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
     self.updateTableView()
-
 
   def clearTagsForSelectedRows(self):
     selectionModel = self.table_view.selectionModel()
@@ -304,9 +303,8 @@ class MarkersPanel(QtGui.QWidget):
 
   def updateTableView(self):
     self.__buildDataForCurrentSequence()
-    self.table_model = MarkersTableModel(self, self.infoDict, self.headerKeys)
+    self.table_model.infoDict = self.infoDict
     self.proxy1.setSourceModel(self.table_model)
-    #self.table_view.setModel(self.proxy1)
     self.table_view.resizeColumnsToContents()
 
   def formatStringFromSeq(self, seq):
@@ -325,14 +323,14 @@ class MarkersPanel(QtGui.QWidget):
       elif isinstance(seq, hiero.core.Sequence):
         # We need a list of Tags, sorted by the inTime...
         tags = list(seq.tags())
-
+        fps = seq.framerate()
         sortedTags = sorted(tags, key=lambda k: k.inTime())
         for tag in sortedTags:
           inTime = tag.inTime()
           outTime = tag.inTime()
           tc = hiero.core.Timecode()
-          inTimecode = tc.timeToString(inTime,25, self.timecodeDisplayMode)
-          outTimecode = tc.timeToString(outTime,25, self.timecodeDisplayMode)
+          inTimecode = tc.timeToString(inTime, fps, self.timecodeDisplayMode)
+          outTimecode = tc.timeToString(outTime, fps, self.timecodeDisplayMode)
 
           if self.timecodeDisplayMode == tc.kDisplayTimecode:
             timecodeString = "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode))
