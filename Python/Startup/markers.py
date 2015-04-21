@@ -24,11 +24,15 @@ class Proxy01(QtGui.QSortFilterProxyModel):
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
 
     def setKeyword(self, arg):
-        if arg: self.filterString=str(arg)
-        self.reset()
+        if arg: 
+          self.filterString=str(arg)
+        else:
+          self.filterString= ""
+
+        self.invalidate()
 
     def filterAcceptsRow(self, row, parent):
-        if self.filterString == "":
+        if self.filterString == "" or len(self.filterString)==0:
             return True #Shortcut for common case      
         
         model = self.sourceModel()
@@ -198,7 +202,7 @@ class MarkersPanel(QtGui.QWidget):
 
     self.proxy1=Proxy01()
     self.proxy1.setSourceModel(self.table_model)
-    self.proxy1.setDynamicSortFilter(True)
+    #self.proxy1.setDynamicSortFilter(True)
 
     self.table_view = QtGui.QTableView()
     self.table_view.setSortingEnabled(True)
@@ -221,23 +225,23 @@ class MarkersPanel(QtGui.QWidget):
     self.table_view.doubleClicked.connect(self.movePlayheadToMarker)
 
     layout = QtGui.QVBoxLayout(self)
+    self.buttonLayout = QtGui.QHBoxLayout()
     self.searchLineEdit = QtGui.QLineEdit()
     self.searchLineEdit.textChanged.connect(self.proxy1.setKeyword)
-
     self.searchLineEdit.setStyleSheet("QLineEdit { border: 1px solid black; }")
     self.searchLineEdit.setPlaceholderText("Filter")
-    layout.addWidget(self.searchLineEdit)
-    layout.addWidget(self.table_view)
-
     self.clearSelectedMarkersButton = QtGui.QPushButton("Clear Selected")
     self.clearAllMarkersButton = QtGui.QPushButton("Clear All")
+    self.clearAllMarkersButton.setFixedWidth(80)
+    self.clearSelectedMarkersButton.setFixedWidth(100)
     self.clearAllMarkersButton.clicked.connect(hiero.ui.clearAllTimelineMarkers)
     self.clearSelectedMarkersButton.clicked.connect(self.clearTagsForSelectedRows)
-
-    self.buttonLayout = QtGui.QHBoxLayout()
     self.buttonLayout.addWidget(self.clearAllMarkersButton)
     self.buttonLayout.addWidget(self.clearSelectedMarkersButton)
-    layout.addLayout(self.buttonLayout)
+    self.buttonLayout.addWidget(self.searchLineEdit)
+
+    layout.addLayout(self.buttonLayout)    
+    layout.addWidget(self.table_view)
 
     self.setMinimumSize(480, 160)
     self.setLayout(layout)
