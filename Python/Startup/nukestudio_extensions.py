@@ -166,8 +166,10 @@ def seq_annotations(self):
 
 def clip_annotations(self):
   """hiero.core.Clip.annotations -> returns the Annotations for a Clip"""
+  annotations = []
   subTrackItems = flatten(self.subTrackItems())
-  return subTrackItems
+  annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
+  return annotations
 
 # Punch methods into nuke's main namespace
 try:
