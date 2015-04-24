@@ -175,6 +175,14 @@ def clip_annotations(self):
   annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
   return annotations
 
+def annotation_notes(self):
+  """
+  hiero.core.Annotation.notes -> Returns all text notes of an Annotation
+  """
+  elements = self.elements()
+  notes = [item.text() for item in elements if isinstance(item, hiero.core.AnnotationText)]
+  return notes
+
 # Punch methods into nuke and hiero namespaces
 try:
   import hiero.core
@@ -184,6 +192,8 @@ try:
   nuke.selectedItems = _selectedItems
   nuke.selectedTracks = _selectedTracks
   hiero.core.Sequence.annotations = seq_annotations
-  hiero.core.Clip.annotations = clip_annotations  
+  hiero.core.Clip.annotations = clip_annotations
+  hiero.core.Annotation.notes = annotation_notes
+
 except ImportError:
   print "Unable to add Nuke Studio extensions"
