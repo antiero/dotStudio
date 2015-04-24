@@ -1,4 +1,4 @@
-# nukestudio_extensions.py - convenience methods added to 'nuke' module for accessing Nuke Studio timeline items.
+# nukestudio_extensions.py - convenience methods for accessing items in Nuke Studio
 # Install for Nuke Studio by copying to ~/.nuke/Python/Startup
 from compiler.ast import flatten
 
@@ -155,7 +155,9 @@ def _selectedTracks(filter=None):
   return tracks
 
 def seq_annotations(self):
-  """hiero.core.Sequence.annotations -> returns the Annotations for a Sequence"""
+  """
+  hiero.core.Sequence.annotations -> returns the Annotations for a Sequence
+  """
   tracks = self.videoTracks()
   annotations = []
   for track in tracks:
@@ -165,13 +167,15 @@ def seq_annotations(self):
   return annotations
 
 def clip_annotations(self):
-  """hiero.core.Clip.annotations -> returns the Annotations for a Clip"""
+  """
+  hiero.core.Clip.annotations -> returns the Annotations for a Clip
+  """
   annotations = []
   subTrackItems = flatten(self.subTrackItems())
   annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
   return annotations
 
-# Punch methods into nuke's main namespace
+# Punch methods into nuke and hiero namespaces
 try:
   import hiero.core
   import hiero.ui
