@@ -192,7 +192,8 @@ class MarkersPanel(QtGui.QWidget):
   """A dockable Markers Panel that displays frame Markers for the Current Sequence"""
   def __init__(self):
     QtGui.QWidget.__init__( self )
-    self.setWindowTitle( "Markers" )
+    self.setWindowTitle( "Markers" ) 
+    self.setObjectName( "uk.co.thefoundry.markers.1" )
     self.setWindowIcon( QtGui.QIcon("icons:Tag.png") )
 
     self.timecodeDisplayMode  = hiero.core.Timecode().kDisplayTimecode
@@ -222,7 +223,7 @@ class MarkersPanel(QtGui.QWidget):
 
     #self.table_view.setItemDelegateForColumn(1, MarkerSelectionComboDelegate(self.table_view))
 
-    self.table_view.doubleClicked.connect(self.movePlayheadToMarker)
+    self.table_view.clicked.connect(self.movePlayheadToMarker)
 
     layout = QtGui.QVBoxLayout(self)
     self.buttonLayout = QtGui.QHBoxLayout()
@@ -457,7 +458,7 @@ hiero.ui.clearMarkersInActiveRange = markerActions.clearMarkersInActiveRange
 
 hiero.ui.markersPanel = MarkersPanel()
 hiero.ui.markersPanel.__doc__ = "The Markers panel object. Call hiero.ui.markersPanel.updateTableView() to refresh the panel."
-registerPanel( "uk.co.thefoundry.markers", hiero.ui.markersPanel )
+registerPanel( "uk.co.thefoundry.markers.1", hiero.ui.markersPanel )
 
 wm = hiero.ui.windowManager()
 wm.addWindow( hiero.ui.markersPanel )
