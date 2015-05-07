@@ -323,15 +323,23 @@ class MarkersPanel(QtGui.QWidget):
           return
       elif isinstance(seq, hiero.core.Sequence):
         # We need a list of Tags, sorted by the inTime...
+        timecodeStart = seq.timecodeStart()
         tags = list(seq.tags())
         fps = seq.framerate()
         sortedTags = sorted(tags, key=lambda k: k.inTime())
         for tag in sortedTags:
+          tagMeta = tag.metadata()
           inTime = tag.inTime()
           outTime = tag.inTime()
+
+          try:
+            tagDuration = int(tagMeta.value('tag.duration'))
+          except:
+            tagDuration = (outTime-inTime)
+
           tc = hiero.core.Timecode()
-          inTimecode = tc.timeToString(inTime, fps, self.timecodeDisplayMode)
-          outTimecode = tc.timeToString(outTime, fps, self.timecodeDisplayMode)
+          inTimecode = tc.timeToString(inTime + timecodeStart, fps, self.timecodeDisplayMode)
+          outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
 
           if self.timecodeDisplayMode == tc.kDisplayTimecode:
             timecodeString = "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode))
@@ -343,7 +351,7 @@ class MarkersPanel(QtGui.QWidget):
                              "Out": outTime,
                              "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
                              "Note": tag.note(),
-                             "Duration": (outTime-inTime)+1,
+                             "Duration": tagDuration,
                              "Marker": str(tag.icon()),
                              "Sequence": seq,
                              "Thumbnail": str(tag.icon())
