@@ -88,7 +88,7 @@ class fcpxml_wrapper(object):
 
     def getAssetByRefID(self, id):
         for asset in self.assets:
-            if asset.id = id:
+            if asset.id == id:
                 return asset        
 
     def makeClipWrapper(self, clipElement, isSequenceClip = True):
@@ -118,7 +118,8 @@ class fcpxml_wrapper(object):
         # -------------------------------------------------------------
         # -------------------------------------------------------------
         # -------------------------------------------------------------
-        start = clipElement.get('start')
+        #start = clipElement.get('start')
+        start = clipElement.get('offset')
         if not start:
             start = "1"
             printd("  START: " + str(start))
@@ -136,7 +137,7 @@ class fcpxml_wrapper(object):
 
         # Get the video Track for the Clip, referencing the asset by ref (ref = asset[id])
         video_track = video_track_wrapper()
-        videoElement = clipElement.get("video")
+        videoElement = clipElement.find("video")
         video_track.name = videoElement.get("name")
         offsetString = videoElement.get("offset")
         video_track.offset = get_duration(offsetString)
@@ -145,11 +146,12 @@ class fcpxml_wrapper(object):
         video_track.ref = videoElement.get("ref")
         video_track.role = videoElement.get("role")
 
-        clip.video_track = video_track
+        clip_found.video_track = video_track
 
-        clip.video_asset = self.getAssetByRefID( clip.video_track.ref )
+        clip_found.video_asset = self.getAssetByRefID( clip_found.video_track.ref )
 
         printd("  END: " + str(clip_found.end_frame))
+        printd("file: %s" % clip_found.video_asset.filepath)
 
         return clip_found       
 

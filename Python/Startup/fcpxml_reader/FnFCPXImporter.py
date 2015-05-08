@@ -16,6 +16,18 @@ class BinViewDropHandler:
   def isSequenceFile(self, f, extension = '.fcpxml'):
     return f.lower().endswith( extension )
 
+  def createSequence(self, project):
+    """Returns a sequence from an fcpxml project"""
+    sequences = project.sequences
+    for sequence in sequences:
+      sequenceName = sequence.parentProject.name
+      hiero.core.Sequence(sequenceName)
+      sequenceClips = sequence.clips
+      for clip in sequenceClips:
+        print clip
+
+    return sequences
+
   def dropHandler(self, event):
     
     # get the mime data
