@@ -16,17 +16,19 @@ class BinViewDropHandler:
   def isSequenceFile(self, f, extension = '.fcpxml'):
     return f.lower().endswith( extension )
 
-  def createSequence(self, project):
-    """Returns a sequence from an fcpxml project"""
-    sequences = project.sequences
-    for sequence in sequences:
-      sequenceName = sequence.parentProject.name
-      hiero.core.Sequence(sequenceName)
-      sequenceClips = sequence.clips
-      for clip in sequenceClips:
-        print clip
+  def createSequence(self, sequenceWrapper):
+    """Returns a hiero.core.Sequence from an fcpxml sequence_wrapper"""
+    sequenceName = sequenceWrapper.parentProject.name
+    sequence = hiero.core.Sequence(sequenceName)
+    sequenceClips = sequenceWrapper.clips
+    for clip in sequenceClips:
+      print "Sequence Clip:" + str(clip)
+      if clip.asset:
+        print "Clip Asset:" + str(clip.asset)
+        clipItem = hiero.core.Clip(clip.asset.filepath)
+        sequence.addClip(clipItem, clip.start_frame)
 
-    return sequences
+    return sequence
 
   def dropHandler(self, event):
     
@@ -52,6 +54,8 @@ class BinViewDropHandler:
     root = proj.clipsBin()
     assetsBin = hiero.core.Bin("assets")
     root.addItem(assetsBin)
+    sequencesBin = hiero.core.Bin("sequences")
+    root.addItem(sequencesBin)
     print 'GOT THESE' + str(sequenceFiles)
     for seq in sequenceFiles:
       wrapper = fcpxml_wrapper(seq)
@@ -59,6 +63,14 @@ class BinViewDropHandler:
       for clip in clipPaths:
         C = hiero.core.Clip(clip.filepath)
         assetsBin.addItem(hiero.core.BinItem(C))
+
+
+      projects = wrapper.projects
+      for project in projects:
+        sequences = project.sequences
+        for sequence in sequences:
+          newSequence = self.createSequence(sequence)
+          sequencesBin.addItem(hiero.core.BinItem(newSequence))
       
   def unregister(self):
     unregisterInterest((EventType.kDrop, EventType.kBin), self.dropHandler)

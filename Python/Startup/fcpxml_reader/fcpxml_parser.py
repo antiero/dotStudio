@@ -127,7 +127,7 @@ class fcpxml_wrapper(object):
             start_sec = get_duration(start)
             sec_per = ((start_sec*clip_found.percentage)/100)
             clip_found.start_frame = int(sec_per*self.framerate)
-            printd("  START: " + str(clip_found.start_frame))
+            printd("SEQ CLIP START: " + str(clip_found.start_frame))
 
         #clip_found.filename = os.path.abspath(clip_found.src)
         duration = clipElement.get('duration')
@@ -136,22 +136,38 @@ class fcpxml_wrapper(object):
         clip_found.end_frame = int(full_duration_per*self.framerate)
 
         # Get the video Track for the Clip, referencing the asset by ref (ref = asset[id])
-        video_track = video_track_wrapper()
-        videoElement = clipElement.find("video")
-        video_track.name = videoElement.get("name")
-        offsetString = videoElement.get("offset")
-        video_track.offset = get_duration(offsetString)
-        durationString = videoElement.get("duration")
-        video_track.duration = get_duration(durationString)
-        video_track.ref = videoElement.get("ref")
-        video_track.role = videoElement.get("role")
+        
+        videoElement = clipElement.find("video") # Should maybe be a findall?
+        if videoElement:
+            printd("Got videoElement")
+            video_track = video_track_wrapper()
+            video_track.name = videoElement.get("name")
+            offsetString = videoElement.get("offset")
+            video_track.offset = get_duration(offsetString)
+            durationString = videoElement.get("duration")
+            video_track.duration = get_duration(durationString)
+            video_track.ref = videoElement.get("ref")
+            video_track.role = videoElement.get("role")
+            clip_found.video_track = video_track
+            clip_found.asset = self.getAssetByRefID( clip_found.video_track.ref )
 
-        clip_found.video_track = video_track
-
-        clip_found.video_asset = self.getAssetByRefID( clip_found.video_track.ref )
+        audioElement = clipElement.find("audio") # Should maybe be a findall?
+        if audioElement:
+            printd("Got audioElement")
+            audio_track = audio_track_wrapper()
+            audio_track.name = audioElement.get("name")
+            offsetString = audioElement.get("offset")
+            audio_track.offset = get_duration(offsetString)
+            durationString = audioElement.get("duration")
+            audio_track.duration = get_duration(durationString)
+            audio_track.ref = audioElement.get("ref")
+            audio_track.role = audioElement.get("role")
+            clip_found.audio_track = audio_track
+            clip_found.asset = self.getAssetByRefID( clip_found.audio_track.ref )
 
         printd("  END: " + str(clip_found.end_frame))
-        printd("file: %s" % clip_found.video_asset.filepath)
+        if clip_found.asset:
+            printd("file: %s" % clip_found.asset.filepath)
 
         return clip_found       
 
@@ -415,7 +431,7 @@ class clip_wrapper(object):
         self.format = None
         self.video_track = []
         self.audio_track = []
-        self.video_asset = None # This will be an asset_wrapper object, in order to get to the MediaSource
+        self.asset = None # This will be an asset_wrapper object, in order to get to the MediaSource
         self.start_frame = None
         self.end_frame = None
         self.duration = None
