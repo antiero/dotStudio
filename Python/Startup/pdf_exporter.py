@@ -1,9 +1,10 @@
 # Prints the thumbnails of a Sequence to PDF.
 from PySide import QtGui, QtCore
-
+from xml.sax.saxutils       import escape, unescape
 import sys
 import time
 import hiero.ui
+import urllib
 #import shutil # Should clear up tmp png files, or work out how to use image data without writing to file
 
 class PDFMaker(object):
@@ -94,15 +95,20 @@ class PDFMaker(object):
 
         table = cursor.insertTable(len(trackItems), 4 ) #max(len(d) for d in trackItems))        
         for trackItem in trackItems:
-                cursor.insertText(unicode(trackItem.parentTrack().name()))
+                
+                trackName = trackItem.parentTrack().name()
+                validTrackName = unescape(unicode(urllib.unquote_plus(escape(trackName)).decode('utf8')) )
+                cursor.insertText(validTrackName)
                 cursor.movePosition(QtGui.QTextCursor.NextCell)
-                cursor.insertText(unicode(trackItem.name()))
+                trackItemName = trackItem.name()    
+                validTrackItemName = unescape(unicode(urllib.unquote_plus(escape(trackItemName)).decode('utf8')) )
+                cursor.insertText(validTrackItemName)
                 cursor.movePosition(QtGui.QTextCursor.NextCell)
                 imageFormat = QtGui.QTextImageFormat()
                 inFrame = int(trackItem.sourceIn())+int(0.1*(float(trackItem.sourceOut())-float(trackItem.sourceIn())))
                 outFrame = int(trackItem.sourceIn())+int(0.9*(float(trackItem.sourceOut())-float(trackItem.sourceIn())))
 
-                image = trackItem.thumbnail(inFrame).scaledToHeight(72)
+                image = trackItem.thumbnail(inFrame).scaledToHeight(72, mode = QtCore.Qt.SmoothTransformation)
                 fileName = '/tmp/t_%i%s_%i.png' % (int(time.time()), trackItem.name(), inFrame)
                 r = image.save(fileName)
                 doc.addResource(QtGui.QTextDocument.ImageResource, QtCore.QUrl("file://%s" % fileName), image)
@@ -111,7 +117,7 @@ class PDFMaker(object):
                 cursor.movePosition(QtGui.QTextCursor.NextCell)
 
                 imageFormat = QtGui.QTextImageFormat()
-                image = trackItem.thumbnail(outFrame).scaledToHeight(72)
+                image = trackItem.thumbnail(outFrame).scaledToHeight(72, mode = QtCore.Qt.SmoothTransformation)
                 fileName = '/tmp/t_%i%s_%i.png' % (int(time.time()), trackItem.name(), outFrame)
                 r = image.save(fileName)
                 doc.addResource(QtGui.QTextDocument.ImageResource, QtCore.QUrl("file://%s" % fileName), image)
