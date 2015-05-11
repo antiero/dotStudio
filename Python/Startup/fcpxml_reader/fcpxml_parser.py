@@ -1,5 +1,5 @@
 from __future__ import division
-from xml.etree.ElementTree import parse
+from xml.etree.ElementTree import parse, Element
 import os, urlparse
 
 debug = True
@@ -138,7 +138,8 @@ class fcpxml_wrapper(object):
         # Get the video Track for the Clip, referencing the asset by ref (ref = asset[id])
         
         videoElement = clipElement.find("video") # Should maybe be a findall?
-        if videoElement:
+
+        if isinstance(videoElement, Element):
             printd("Got videoElement")
             video_track = video_track_wrapper()
             video_track.name = videoElement.get("name")
@@ -152,7 +153,7 @@ class fcpxml_wrapper(object):
             clip_found.asset = self.getAssetByRefID( clip_found.video_track.ref )
 
         audioElement = clipElement.find("audio") # Should maybe be a findall?
-        if audioElement:
+        if isinstance(audioElement, Element):
             printd("Got audioElement")
             audio_track = audio_track_wrapper()
             audio_track.name = audioElement.get("name")
@@ -195,42 +196,42 @@ class fcpxml_wrapper(object):
 
                 # TO-DO: Just tidy this up in a loop with list of needed attributes
                 asset_found.id = current_asset.get('id')
-                printd("Asset ID: %s " % str(asset_found.id))
+                #printd("Asset ID: %s " % str(asset_found.id))
 
                 asset_found.name = current_asset.get('name')
-                printd("Asset Name: %s " % str(asset_found.name))
+                #printd("Asset Name: %s " % str(asset_found.name))
 
                 asset_found.uid = current_asset.get('uid')
-                printd("Asset UID: %s " % str(asset_found.uid))
+                #printd("Asset UID: %s " % str(asset_found.uid))
 
                 asset_found.src = current_asset.get('src')
-                printd("Asset src: %s " % str(asset_found.src))
+                #printd("Asset src: %s " % str(asset_found.src))
 
                 url = urlparse.urlparse(asset_found.src)
                 asset_found.filepath = os.path.abspath(os.path.join(url.netloc, url.path))
-                printd("Asset filepath: %s " % str(asset_found.filepath))
+                #printd("Asset filepath: %s " % str(asset_found.filepath))
 
                 asset_found.has_video = current_asset.get('hasVideo')
-                printd("Asset hasVideo: %s " % str(asset_found.has_video))
+                #printd("Asset hasVideo: %s " % str(asset_found.has_video))
 
                 asset_found.format = current_asset.get('format')
-                printd("Asset format: %s " % str(asset_found.format))
+                #printd("Asset format: %s " % str(asset_found.format))
 
                 asset_found.has_audio = current_asset.get('hasAudio')
-                printd("Asset hasAudio: %s " % str(asset_found.has_audio))
+                #printd("Asset hasAudio: %s " % str(asset_found.has_audio))
 
                 asset_found.audio_sources = current_asset.get('audioSources')
-                printd("Asset audioSources: %s " % str(asset_found.audio_sources))
+                #printd("Asset audioSources: %s " % str(asset_found.audio_sources))
 
                 asset_found.audio_channels = current_asset.get('audioChannels')
-                printd("Asset audioChannels: %s " % str(asset_found.audio_channels))
+                #printd("Asset audioChannels: %s " % str(asset_found.audio_channels))
 
                 asset_found.audio_rate = current_asset.get('audioRate')
-                printd("Asset audioRate: %s " % str(asset_found.audio_rate))
+                #printd("Asset audioRate: %s " % str(asset_found.audio_rate))
 
                 # Need to store this in a dict properly
                 asset_found.metadata = current_asset.find('metadata')
-                printd("Asset metadata: %s " % str(asset_found.metadata))
+                #printd("Asset metadata: %s " % str(asset_found.metadata))
 
                 # Get asset retime percentages
                 timeMaps = current_asset.findall('timeMap')
@@ -318,16 +319,17 @@ class fcpxml_wrapper(object):
                 current_sequence.timecode_format = sequenceElement.get("tcFormat")
                 current_sequence.audio_layout = sequenceElement.get("audioLayout")
                 current_sequence.audio_rate = sequenceElement.get("audioRate")
-                current_sequence.name = sequenceElement.get("name")
+                current_sequence.name = current_project.name
+                
 
                 spine = sequenceElement.find('spine')
                 noteElements = sequenceElement.findall('note')
 
                 # TO-DO: Need to just get the Text from these notes
-                current_sequence.notes = noteElements
+                #current_sequence.notes = noteElements
 
-                sequenceClipElements = (spine.findall('ref-clip') or spine.findall('clip') or
-                         spine.findall('video'))
+                sequenceClipElements = spine.findall('clip')
+                printd("Current 'Sequence' (project) name is %s\n" % current_sequence.name)
                 printd("  sequenceClipElements: " + str(sequenceClipElements))
 
                 for sequenceClipElement in sequenceClipElements:

@@ -3,6 +3,8 @@ import hiero.ui
 from hiero.core.events import registerInterest, unregisterInterest, EventType
 import os
 
+hiero.core.currentFCPEdit = []
+
 class BinViewDropHandler:
   kTextMimeType = "text/plain"
   
@@ -71,6 +73,8 @@ class BinViewDropHandler:
         for sequence in sequences:
           newSequence = self.createSequence(sequence)
           sequencesBin.addItem(hiero.core.BinItem(newSequence))
+
+    hiero.core.currentFCPEdit = wrapper
       
   def unregister(self):
     unregisterInterest((EventType.kDrop, EventType.kBin), self.dropHandler)
