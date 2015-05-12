@@ -22,6 +22,7 @@ class BinViewDropHandler:
     """Returns a hiero.core.Sequence from an fcpxml sequence_wrapper"""
     sequenceName = sequenceWrapper.parentProject.name
     sequence = hiero.core.Sequence(sequenceName)
+    sequence.setFramerate(sequenceWrapper.frame_rate)
     sequenceClips = sequenceWrapper.clips
     for clip in sequenceClips:
       print "Sequence Clip:" + str(clip)
@@ -50,6 +51,9 @@ class BinViewDropHandler:
 
       elif self.isSequenceFile(url):
         sequenceFiles+=[url]
+
+    if len(sequenceFiles)==0:
+      return
 
     # Now we should have a list of Sequences. We should now import them
     proj = hiero.core.projects()[-1]
