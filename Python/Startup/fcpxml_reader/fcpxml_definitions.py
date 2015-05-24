@@ -43,7 +43,7 @@ class format_wrapper(object):
         self.id = None # r1
         self.width = None
         self.height = None
-        self.frame_rate = None # 25
+        self.framerate = None # 25
         self.frame_duration = None # 25
 
 class asset_wrapper(object):
@@ -106,7 +106,7 @@ class sequence_wrapper(object):
     def __init__(self):
         self.parentProject = None
         self.format = None        
-        self.frame_rate = None
+        self.framerate = None
         self.width = None
         self.height = None
         self.timecode_start = None
@@ -133,12 +133,20 @@ class clip_wrapper(object):
         self.percentage = None
         self.timecode_format = None
         self.format = None
+        self.framerate = None
         self.video_track = []
         self.audio_track = []
         self.asset = None # This will be an asset_wrapper object, in order to get to the MediaSource
         self.start_frame = None
         self.end_frame = None
         self.duration = None
+
+        self.lane = 0 # The lane is akin to a Video track, an integer offset from 0, being the default video track
+
+        # Clips are not treated specially like TrackItems in NS.
+        # Debating whether to include a trackitem_wrapper, with a clip_wrapper as source
+        self.timeline_in = None
+        self.timeline_out = None
 
 class video_track_wrapper(object):
     """A video track defines a track of video, including duration, timeline offset  
