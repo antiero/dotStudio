@@ -6,7 +6,6 @@ from hiero.ui import findMenuAction, registerAction, registerPanel, insertMenuAc
 from PySide import QtGui
 from PySide.QtCore import Qt, QAbstractTableModel, QSize, SIGNAL
 
-
 gStatusTags = {'Approved':'icons:status/TagApproved.png',
   'Unapproved':'icons:status/TagUnapproved.png',
   'Ready To Start':'icons:status/TagReadyToStart.png',
@@ -17,9 +16,31 @@ gStatusTags = {'Approved':'icons:status/TagApproved.png',
   'Omitted':'icons:status/TagOmitted.png',
   'Final':'icons:status/TagFinal.png'}
 
-class Proxy01(QtGui.QSortFilterProxyModel):
+from compiler.ast import flatten
+
+def seq_annotations(self):
+  """hiero.core.Sequence.annotations -> returns the Annotations for a Sequence"""
+  tracks = self.videoTracks()
+  annotations = []
+  for track in tracks:
+    subTrackItems = flatten(track.subTrackItems())
+    annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
+
+  return annotations
+
+def clip_annotations(self):
+  """hiero.core.Clip.annotations -> returns the Annotations for a Clip"""
+  annotations = []
+  subTrackItems = flatten(self.subTrackItems())
+  annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
+  return annotations
+
+hiero.core.Sequence.annotations = seq_annotations
+hiero.core.Clip.annotations = clip_annotations
+
+class MarkerSortFilterProxyModel(QtGui.QSortFilterProxyModel):
     def __init__(self):
-        super(Proxy01, self).__init__()
+        super(MarkerSortFilterProxyModel, self).__init__()
         self.filterString = ""
         self.setFilterCaseSensitivity(Qt.CaseInsensitive)
 
@@ -33,57 +54,15 @@ class Proxy01(QtGui.QSortFilterProxyModel):
 
     def filterAcceptsRow(self, row, parent):
         if self.filterString == "" or len(self.filterString)==0:
-            return True #Shortcut for common case      
+            return True
         
         model = self.sourceModel()
         test = str(model.infoDict[row].values()).lower()
 
-        #print "self.filterString is %s, Model is %s, test values are: %s" % (self.filterString, str(model), str(test))
-
         if self.filterString.lower() in test:
             return True
         else:
-            return False
-
-class MarkerSelectionComboDelegate(QtGui.QItemDelegate):
-    """
-    A delegate that places a fully QComboBox with Tag icons in every
-    cell of the column to which it's applied
-    """
-    def __init__(self, parent):
-
-        QtGui.QItemDelegate.__init__(self, parent)
-
-    def createEditor(self, painter, option, index):
-
-        combo = QtGui.QComboBox(self.parent())
-        #self.connect(combo, SIGNAL("currentIndexChanged(int)"), self.parent().currentIndexChanged)
-
-        global gStatusTags
-        for key in gStatusTags.keys():
-         combo.addItem(QtGui.QIcon(gStatusTags[key]), key)
-
-        if not self.parent().indexWidget(index):
-            self.parent().setIndexWidget(
-                index, 
-                combo
-            )
-
-        self.connect(combo, SIGNAL("currentIndexChanged(int)"), 
-                 self, SIGNAL("currentIndexChanged()"))
-
-        return combo
-
-    def setEditorData(self, editor, index):
-      editor.blockSignals(True)
-      #editor.setCurrentIndex(int(index.model().data(index)))
-      editor.blockSignals(False)
-
-    def setModelData(self, editor, model, index):
-      model.setData(index, editor.currentIndex())
-
-    #def currentIndexChanged(self):
-    #    self.commitData.emit(self.sender())                
+            return False            
 
 class MarkersTableModel(QAbstractTableModel):
   def __init__(self, parent, infoDict, header, *args):
@@ -105,12 +84,15 @@ class MarkersTableModel(QAbstractTableModel):
     if not seq:
       return None
 
-    tag = self.infoDict[index.row()]["Tag"]
+    item = self.infoDict[index.row()]["Item"]
 
     if role == Qt.DecorationRole:
       if index.column() == 0:
         try:
-          imageView = seq.thumbnail(tag.inTime())
+          if isinstance(item, hiero.core.Tag):
+            imageView = seq.thumbnail(item.inTime())
+          elif isinstance(item, hiero.core.Annotation):
+            imageView = seq.thumbnail(item.timelineIn())
           pixmap = QtGui.QPixmap.fromImage(imageView.scaledToWidth(100))
         except:
           icon = QtGui.QIcon("icons:VideoOnlyWarning.png")
@@ -118,7 +100,7 @@ class MarkersTableModel(QAbstractTableModel):
         return pixmap
 
       elif index.column() == 1:
-        icon = QtGui.QIcon(tag.icon())
+        icon = QtGui.QIcon(self.infoDict[index.row()]["Thumbnail"])
         pixmap = icon.pixmap(icon.actualSize(QSize(32, 32)))
         return pixmap
 
@@ -143,15 +125,19 @@ class MarkersTableModel(QAbstractTableModel):
             return
 
     elif role == Qt.TextAlignmentRole:
-        if index.column() == 0:
-            return Qt.AlignHCenter | Qt.AlignVCenter
-        elif index.column() == 1:
-            return Qt.AlignHCenter | Qt.AlignVCenter
+
+        if index.column() == 3:
+            return Qt.AlignLeft | Qt.AlignVCenter
+
+        if index.column() == 5:
+            return Qt.AlignJustify | Qt.AlignVCenter
+
+        return Qt.AlignHCenter | Qt.AlignVCenter
+ 
     else:
         return
 
   def flags(self, index):
-      #flags = super(self.__class__,self).flags(index)
 
       # This ensures that only the status and note columns are editable
       if index.column() == 5:
@@ -168,7 +154,7 @@ class MarkersTableModel(QAbstractTableModel):
       if col == 1:
         print "setData", index.row(), index.column(), value
       elif col == 5: 
-        tag = self.infoDict[index.row()]["Tag"]
+        tag = self.infoDict[index.row()]["Item"]
         tag.setNote(str(value))
         self.infoDict[index.row()]["Note"] = tag.note()
         self.emit(SIGNAL('dataChanged()'))
@@ -190,6 +176,11 @@ class MarkersTableModel(QAbstractTableModel):
 
 class MarkersPanel(QtGui.QWidget):
   """A dockable Markers Panel that displays frame Markers for the Current Sequence"""
+
+  kModeTags = "Tags"
+  kModeAnnotations = "Annotations"
+  kModeAnnotationsAndTags = "Annotations + Tags"
+
   def __init__(self):
     QtGui.QWidget.__init__( self )
     self.setWindowTitle( "Markers" ) 
@@ -197,46 +188,46 @@ class MarkersPanel(QtGui.QWidget):
     self.setWindowIcon( QtGui.QIcon("icons:Tag.png") )
 
     self.timecodeDisplayMode  = hiero.core.Timecode().kDisplayTimecode
+
+    # The mode to display data - either Tags, Annotations, or Annotations + Tags
+    self._dataDisplayMode  = self.kModeTags
     self.infoDict = []
-    self.headerKeys = ["", "Marker", "Name", "Timecode", "Duration", "Dialogue"]
+    self.headerKeys = ["", "Marker", "Name", "Timecode", "Duration", "Note"]
     self.table_model = MarkersTableModel(self, self.infoDict, self.headerKeys)
 
-    self.proxy1=Proxy01()
-    self.proxy1.setSourceModel(self.table_model)
-    #self.proxy1.setDynamicSortFilter(True)
+    self.markerSortFilterProxyModel=MarkerSortFilterProxyModel()
+    self.markerSortFilterProxyModel.setSourceModel(self.table_model)
 
     self.table_view = QtGui.QTableView()
     self.table_view.setSortingEnabled(True)
-
-    #tableviewA.setModel(self.proxy)
-    self.table_view.setModel(self.proxy1)
+    self.table_view.setModel(self.markerSortFilterProxyModel)
     verticalHeader = self.table_view.verticalHeader()
-    verticalHeader.setResizeMode(QtGui.QHeaderView.Fixed)
-    verticalHeader.setDefaultSectionSize(60);    
-    self.table_view.resizeColumnsToContents()
-    self.table_view.resizeRowsToContents()
-    self.table_view.setColumnWidth(0, 48)
-    self.table_view.setColumnWidth(1, 32)
+    verticalHeader.setResizeMode(QtGui.QHeaderView.ResizeToContents)    
     self.table_view.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
     self.table_view.setShowGrid(True)
     self.table_view.verticalHeader().setVisible(False)
-
-    #self.table_view.setItemDelegateForColumn(1, MarkerSelectionComboDelegate(self.table_view))
-
     self.table_view.clicked.connect(self.movePlayheadToMarker)
 
     layout = QtGui.QVBoxLayout(self)
     self.buttonLayout = QtGui.QHBoxLayout()
     self.searchLineEdit = QtGui.QLineEdit()
-    self.searchLineEdit.textChanged.connect(self.proxy1.setKeyword)
+    self.searchLineEdit.textChanged.connect(self.markerSortFilterProxyModel.setKeyword)
     self.searchLineEdit.setStyleSheet("QLineEdit { border: 0.5px solid black; border-radius: 9px; padding: 1 6px; }")
     self.searchLineEdit.setPlaceholderText("Filter")
+
+
+    # A dropdown to display either Tags or Annotations
+    self.displayModeComboBox = QtGui.QComboBox(self)
+    self.displayModeComboBox.addItems([self.kModeTags, self.kModeAnnotations, self.kModeAnnotationsAndTags])
+    self.displayModeComboBox.currentIndexChanged.connect(self.displayModeChanged)
+
     self.clearSelectedMarkersButton = QtGui.QPushButton("Clear Selected")
     self.clearAllMarkersButton = QtGui.QPushButton("Clear All")
     self.clearAllMarkersButton.setFixedWidth(80)
     self.clearSelectedMarkersButton.setFixedWidth(100)
     self.clearAllMarkersButton.clicked.connect(hiero.ui.clearAllTimelineMarkers)
     self.clearSelectedMarkersButton.clicked.connect(self.clearTagsForSelectedRows)
+    self.buttonLayout.addWidget(self.displayModeComboBox)
     self.buttonLayout.addWidget(self.clearAllMarkersButton)
     self.buttonLayout.addWidget(self.clearSelectedMarkersButton)
     self.buttonLayout.addWidget(self.searchLineEdit)
@@ -246,10 +237,21 @@ class MarkersPanel(QtGui.QWidget):
 
     self.setMinimumSize(480, 160)
     self.setLayout(layout)
-    hiero.core.events.registerInterest("kContextChanged", self._updateTableViewEvent)
+    
+    hiero.core.events.registerInterest("kPlaybackClipChanged", self._updateTableViewEvent)
     hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
     hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
     self.updateTableView()
+    self.table_view.resizeColumnsToContents()
+    self.table_view.setColumnWidth(0, 100)    
+    self.table_view.setColumnWidth(1, 48)
+    self.table_view.setColumnWidth(4, 64)
+    self.table_view.setColumnWidth(5, 320)
+
+  def displayModeChanged(self):
+    self._dataDisplayMode = self.displayModeComboBox.currentText()
+    self.updateTableView()
+    #print "Display Mode changed to: " + str(self._dataDisplayMode)
 
   def clearTagsForSelectedRows(self):
     selectionModel = self.table_view.selectionModel()
@@ -260,7 +262,7 @@ class MarkersPanel(QtGui.QWidget):
       selection = selectionModel.selection()
       mappedModelIndices = [] 
       for modelIndex in selectedIndexes:
-        mappedModelIndices += [self.proxy1.mapToSource(modelIndex)]
+        mappedModelIndices += [self.markerSortFilterProxyModel.mapToSource(modelIndex)]
 
       dataForDeletion = []
       for index in mappedModelIndices:
@@ -283,7 +285,7 @@ class MarkersPanel(QtGui.QWidget):
     # Now access the Tag from the row and move playhead to its in time..
 
     # We may be filtered, so need to map the index to the Source index
-    mappedModelIndex = self.proxy1.mapToSource(modelIndex)
+    mappedModelIndex = self.markerSortFilterProxyModel.mapToSource(modelIndex)
 
     inTime = self.table_model.infoDict[ mappedModelIndex.row() ]['In']
 
@@ -305,8 +307,8 @@ class MarkersPanel(QtGui.QWidget):
   def updateTableView(self):
     self.__buildDataForCurrentSequence()
     self.table_model.infoDict = self.infoDict
-    self.proxy1.setSourceModel(self.table_model)
-    self.table_view.resizeColumnsToContents()
+    self.markerSortFilterProxyModel.setSourceModel(self.table_model)
+    #self.table_view.resizeColumnsToContents()
 
   def formatStringFromSeq(self, seq):
     seq = seq.format()
@@ -316,6 +318,75 @@ class MarkersPanel(QtGui.QWidget):
     formatString = "%i x %i, %f" % (width, height, pixel_aspect)
     return formatString
 
+  def __getTagsDictForSequence(self, seq):
+    timecodeStart = seq.timecodeStart()
+    tags = list(seq.tags())
+    fps = seq.framerate()
+    sortedTags = sorted(tags, key=lambda k: k.inTime())
+    tagDict = []
+    for tag in sortedTags:
+      tagMeta = tag.metadata()
+      inTime = tag.inTime()
+      outTime = tag.outTime() # tag.inTime()
+      try:
+        duration = int(tagMeta.value('tag.duration'))
+      except:
+        duration = (outTime-inTime)
+
+      tc = hiero.core.Timecode()
+      inTimecode = tc.timeToString(inTime + timecodeStart, fps, self.timecodeDisplayMode)
+      outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
+
+      if self.timecodeDisplayMode == tc.kDisplayTimecode:
+        timecodeString = "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode))
+      else:
+        timecodeString = "In: %i\nOut: %i" % (inTime, outTime)
+      tagDict += [{"Item": tag, 
+                         "Name": tag.name(), 
+                         "In": inTime, 
+                         "Out": outTime,
+                         "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
+                         "Note": tag.note(),
+                         "Duration": duration,
+                         "Marker": str(tag.icon()),
+                         "Sequence": seq,
+                         "Thumbnail": str(tag.icon())
+                         }]
+    return tagDict
+
+  def __getAnnoationsDictForSequence(self, seq):
+    timecodeStart = seq.timecodeStart()
+    annotations = seq.annotations()
+    fps = seq.framerate()
+    sortedAnnotations = sorted(annotations, key=lambda k: k.timelineIn())
+    annotationsDict = []
+    for annotation in sortedAnnotations:
+      inTime = annotation.timelineIn()
+      outTime = annotation.timelineOut()
+      duration = (outTime-inTime)
+      notes = annotation.notes()
+
+      tc = hiero.core.Timecode()
+      inTimecode = tc.timeToString(inTime + timecodeStart, fps, self.timecodeDisplayMode)
+      outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
+
+      if self.timecodeDisplayMode == tc.kDisplayTimecode:
+        timecodeString = "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode))
+      else:
+        timecodeString = "In: %i\nOut: %i" % (inTime, outTime)
+      annotationsDict += [{"Item": annotation, 
+                         "Name": annotation.parent().name(), 
+                         "In": inTime, 
+                         "Out": outTime,
+                         "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
+                         "Note": " , ".join(notes),
+                         "Duration": duration,
+                         "Marker": "icons:TagComment.png",
+                         "Sequence": seq,
+                         "Thumbnail": "icons:TagComment.png"
+                         }]
+    return annotationsDict
+
   def __buildDataForCurrentSequence(self):
       seq = hiero.ui.activeSequence()
       self.infoDict = []
@@ -323,39 +394,14 @@ class MarkersPanel(QtGui.QWidget):
           return
       elif isinstance(seq, hiero.core.Sequence):
         # We need a list of Tags, sorted by the inTime...
-        timecodeStart = seq.timecodeStart()
-        tags = list(seq.tags())
-        fps = seq.framerate()
-        sortedTags = sorted(tags, key=lambda k: k.inTime())
-        for tag in sortedTags:
-          tagMeta = tag.metadata()
-          inTime = tag.inTime()
-          outTime = tag.inTime()
+        if self._dataDisplayMode in (self.kModeTags, self.kModeAnnotationsAndTags):
+          self.infoDict += self.__getTagsDictForSequence(seq)
+        if self._dataDisplayMode in (self.kModeAnnotations, self.kModeAnnotationsAndTags):
+          self.infoDict += self.__getAnnoationsDictForSequence(seq)
 
-          try:
-            tagDuration = int(tagMeta.value('tag.duration'))
-          except:
-            tagDuration = (outTime-inTime)
-
-          tc = hiero.core.Timecode()
-          inTimecode = tc.timeToString(inTime + timecodeStart, fps, self.timecodeDisplayMode)
-          outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
-
-          if self.timecodeDisplayMode == tc.kDisplayTimecode:
-            timecodeString = "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode))
-          else:
-            timecodeString = "In: %i\nOut: %i" % (inTime, outTime)
-          self.infoDict += [{"Tag": tag, 
-                             "Name": tag.name(), 
-                             "In": inTime, 
-                             "Out": outTime,
-                             "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
-                             "Note": tag.note(),
-                             "Duration": tagDuration,
-                             "Marker": str(tag.icon()),
-                             "Sequence": seq,
-                             "Thumbnail": str(tag.icon())
-                             }]
+      # Now sort these based on inTime
+      sortedDict = sorted(self.infoDict, key=lambda k: k["In"]) 
+      self.infoDict = sortedDict
 
 class MarkerActions(object):
   """Actions for adding frame Markers and Clearing them"""
@@ -400,9 +446,11 @@ class MarkerActions(object):
     activeSequence.addTagToRange(markerTag, currentTime, currentTime)
     hiero.ui.markersPanel.updateTableView()
 
-  def clearAllMarkers(self):
-    """Clears all Tags from the active Sequence"""
-    activeSequence = hiero.ui.activeSequence()
+  def clearAllMarkers(self, sequence=None):
+    """Clears all Tags annotations from the active Sequence"""
+
+    if not sequence:
+      activeSequence = hiero.ui.activeSequence()
 
     if not activeSequence:
       cv = hiero.ui.currentViewer()
@@ -411,13 +459,16 @@ class MarkerActions(object):
         return
 
     tags = activeSequence.tags()
-    if len(tags)<1:
-      return
 
     proj = activeSequence.project()
     with proj.beginUndo("Clear All Markers"):
       for tag in tags:
         activeSequence.removeTag(tag)
+
+      annotations = activeSequence.annotations()
+      for annotation in annotations:
+        parentTrack = annotation.parentTrack()
+        parentTrack.removeSubTrackItem(annotation)
 
     hiero.ui.markersPanel.updateTableView()
   
@@ -466,7 +517,7 @@ hiero.ui.clearMarkersInActiveRange = markerActions.clearMarkersInActiveRange
 
 hiero.ui.markersPanel = MarkersPanel()
 hiero.ui.markersPanel.__doc__ = "The Markers panel object. Call hiero.ui.markersPanel.updateTableView() to refresh the panel."
-registerPanel( "uk.co.thefoundry.markers.1", hiero.ui.markersPanel )
+registerPanel( "uk.co.thefoundry.markers", hiero.ui.markersPanel )
 
 wm = hiero.ui.windowManager()
 wm.addWindow( hiero.ui.markersPanel )
