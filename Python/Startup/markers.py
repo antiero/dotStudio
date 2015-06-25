@@ -209,7 +209,8 @@ class MarkersPanel(QtGui.QWidget):
     self.table_view.clicked.connect(self.movePlayheadToMarker)
 
     layout = QtGui.QVBoxLayout(self)
-    self.buttonLayout = QtGui.QHBoxLayout()
+    self.currentSequenceNameLabel = QtGui.QLabel("Sequence")
+    self.topLayout = QtGui.QHBoxLayout()
     self.searchLineEdit = QtGui.QLineEdit()
     self.searchLineEdit.textChanged.connect(self.markerSortFilterProxyModel.setKeyword)
     self.searchLineEdit.setStyleSheet("QLineEdit { border: 0.5px solid black; border-radius: 9px; padding: 1 6px; }")
@@ -221,19 +222,26 @@ class MarkersPanel(QtGui.QWidget):
     self.displayModeComboBox.addItems([self.kModeTags, self.kModeAnnotations, self.kModeAnnotationsAndTags])
     self.displayModeComboBox.currentIndexChanged.connect(self.displayModeChanged)
 
-    self.clearSelectedMarkersButton = QtGui.QPushButton("Clear Selected")
-    self.clearAllMarkersButton = QtGui.QPushButton("Clear All")
+    self.clearSelectedMarkersButton = QtGui.QPushButton("Selected")
+    self.clearSelectedMarkersButton.setIcon(QtGui.QIcon("icons:status/TagOnHold.png"))
+    self.clearAllMarkersButton = QtGui.QPushButton("All")
+    self.clearAllMarkersButton.setIcon(QtGui.QIcon("icons:status/TagOmitted.png"))
     self.clearAllMarkersButton.setFixedWidth(80)
     self.clearSelectedMarkersButton.setFixedWidth(100)
     self.clearAllMarkersButton.clicked.connect(hiero.ui.clearAllTimelineMarkers)
     self.clearSelectedMarkersButton.clicked.connect(self.clearTagsForSelectedRows)
-    self.buttonLayout.addWidget(self.displayModeComboBox)
+
+    self.topLayout.addWidget(self.currentSequenceNameLabel)
+    self.topLayout.addWidget(self.displayModeComboBox)
+    self.topLayout.addWidget(self.searchLineEdit)
+    layout.addLayout(self.topLayout)
+    layout.addWidget(self.table_view)
+
+    self.buttonLayout = QtGui.QHBoxLayout()
+    self.buttonLayout.setAlignment(Qt.AlignLeft);
     self.buttonLayout.addWidget(self.clearAllMarkersButton)
     self.buttonLayout.addWidget(self.clearSelectedMarkersButton)
-    self.buttonLayout.addWidget(self.searchLineEdit)
-
     layout.addLayout(self.buttonLayout)
-    layout.addWidget(self.table_view)
 
     self.setMinimumSize(480, 160)
     self.setLayout(layout)
@@ -271,7 +279,7 @@ class MarkersPanel(QtGui.QWidget):
       for data in dataForDeletion:
         sequence = data['Sequence']
         try:
-          sequence.removeTag(data['Tag'])
+          sequence.removeTag(data['Item'])
         except:
           pass
 
@@ -305,11 +313,16 @@ class MarkersPanel(QtGui.QWidget):
     self.updateTableView()
 
   def updateTableView(self):
-    self.__buildDataForCurrentSequence()
+    seq = hiero.ui.currentViewer().player().sequence()
+    if not seq:
+      self.infoDict = []
+    else:
+      self.currentSequenceNameLabel.setText(seq.name())
+      self.__buildDataForSequence(seq)
+    
     self.table_model.infoDict = self.infoDict
     self.markerSortFilterProxyModel.setSourceModel(self.table_model)
-    #self.table_view.resizeColumnsToContents()
-
+    
   def formatStringFromSeq(self, seq):
     seq = seq.format()
     height = seq.height()
@@ -381,23 +394,26 @@ class MarkersPanel(QtGui.QWidget):
                          "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
                          "Note": " , ".join(notes),
                          "Duration": duration,
-                         "Marker": "icons:TagComment.png",
+                         "Marker": "icons:ViewerToolAnnotationVis.png",
                          "Sequence": seq,
-                         "Thumbnail": "icons:TagComment.png"
+                         "Thumbnail": "icons:ViewerToolAnnotationVis.png"
                          }]
     return annotationsDict
 
-  def __buildDataForCurrentSequence(self):
-      seq = hiero.ui.activeSequence()
+  def __buildDataForSequence(self, seq):
+      
+      if not seq:
+        return
+
       self.infoDict = []
-      if not seq or isinstance(seq, hiero.core.Clip):
-          return
-      elif isinstance(seq, hiero.core.Sequence):
-        # We need a list of Tags, sorted by the inTime...
-        if self._dataDisplayMode in (self.kModeTags, self.kModeAnnotationsAndTags):
-          self.infoDict += self.__getTagsDictForSequence(seq)
-        if self._dataDisplayMode in (self.kModeAnnotations, self.kModeAnnotationsAndTags):
-          self.infoDict += self.__getAnnoationsDictForSequence(seq)
+      #if not seq or isinstance(seq, hiero.core.Clip):
+      #    return
+      #elif isinstance(seq, hiero.core.Sequence):
+      # We need a list of Tags, sorted by the inTime...
+      if self._dataDisplayMode in (self.kModeTags, self.kModeAnnotationsAndTags):
+        self.infoDict += self.__getTagsDictForSequence(seq)
+      if self._dataDisplayMode in (self.kModeAnnotations, self.kModeAnnotationsAndTags):
+        self.infoDict += self.__getAnnoationsDictForSequence(seq)
 
       # Now sort these based on inTime
       sortedDict = sorted(self.infoDict, key=lambda k: k["In"]) 
