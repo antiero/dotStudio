@@ -1,4 +1,3 @@
-import hiero.core
 import json, os, sys, urllib2
 import xml.etree.ElementTree as ET
 
@@ -9,9 +8,26 @@ class FlixConnection(object):
     def __init__(self):
         self.port = int(os.environ.get('FLIX_PORT', 35980))
         self.baseUrl = os.environ.get('FLIX_IP_ADDRESS', "http://127.0.0.1")
-
+        self.flixEnv = None
+        
         # Setup the envrionment variables to add FLIX to current path
         self.setupPaths()
+
+    def setupPaths(self):
+
+        """Sets up the paths required to communicate with FLIX"""
+        if not getattr(sys, 'FLIX_PATH_ADDED', False):
+            response = self.sendRequestGetResponse('env?format=json')
+            if response:
+                env = json.loads(response.read())
+                self.flixEnv = env
+                pysrc = env['FLIX_PYTHONSOURCE_FOLDER']
+                print 'Importing flix from %s' % pysrc
+                sys.path.append(pysrc)
+                sys.path.append(os.path.join(pysrc, 'thirdParty'))
+                sys.FLIX_PATH_ADDED = True
+            else:
+                print 'Unable to import flix module. Check ports are open and Flix is running'        
 
     def sendRequestGetResponse(self, requestURL):
         """Returns a url response"""
@@ -55,21 +71,3 @@ class FlixConnection(object):
                 sequenceNames+=[sequence.get('name')]
 
         return sequenceNames
-
-    def setupPaths(self):
-
-        """Sets up the paths required to communicate with FLIX"""
-        if not getattr(sys, 'FLIX_PATH_ADDED', False):
-            response = self.sendRequestGetResponse('env?format=json')
-            if response:
-                env = json.loads(response.read())
-                hiero.core.flixEnv = env
-                pysrc = env['FLIX_PYTHONSOURCE_FOLDER']
-                print 'Importing flix from %s' % pysrc
-                sys.path.append(pysrc)
-                sys.path.append(os.path.join(pysrc, 'thirdParty'))
-                sys.FLIX_PATH_ADDED = True
-            else:
-                print 'Unable to import flix module. Check ports are open and Flix is running'
-
-hiero.core.flixConnection = FlixConnection()
