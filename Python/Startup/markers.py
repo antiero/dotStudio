@@ -151,13 +151,14 @@ class MarkersTableModel(QAbstractTableModel):
       """This gets called when user enters Text"""
       row = index.row()
       col = index.column()
-      if col == 1:
-        print "setData", index.row(), index.column(), value
-      elif col == 5: 
-        tag = self.infoDict[index.row()]["Item"]
-        tag.setNote(str(value))
-        self.infoDict[index.row()]["Note"] = tag.note()
-        self.emit(SIGNAL('dataChanged()'))
+      #if col == 1:
+      #  print "setData", index.row(), index.column(), value
+      if col == 5:
+        if len(value)>0:
+          tag = self.infoDict[index.row()]["Item"]
+          tag.setNote(str(value))
+          self.infoDict[index.row()]["Note"] = tag.note()
+          self.emit(SIGNAL('dataChanged()'))
       return True
 
   def headerData(self, section, orientation, role=Qt.DisplayRole):
@@ -333,7 +334,10 @@ class MarkersPanel(QtGui.QWidget):
 
   def __getTagsDictForSequence(self, seq):
     timecodeStart = seq.timecodeStart()
-    tags = list(seq.tags())
+
+    # We need to get Tags which are NOT applied to the whole Clip/Sequence...
+    tags = [tag for tag in list(seq.tags()) if int(tag.metadata().value('tag.applieswhole')) == 0]
+
     fps = seq.framerate()
     sortedTags = sorted(tags, key=lambda k: k.inTime())
     tagDict = []
