@@ -2,23 +2,14 @@
 import operator
 import hiero.core
 import hiero.ui
+import copy
 from hiero.ui import findMenuAction, registerAction, registerPanel, insertMenuAction, createMenuAction
 from PySide import QtGui
 from PySide.QtCore import Qt, QAbstractTableModel, QSize, SIGNAL
-
-gStatusTags = {'Approved':'icons:status/TagApproved.png',
-  'Unapproved':'icons:status/TagUnapproved.png',
-  'Ready To Start':'icons:status/TagReadyToStart.png',
-  'Blocked':'icons:status/TagBlocked.png',
-  'On Hold':'icons:status/TagOnHold.png',
-  'In Progress':'icons:status/TagInProgress.png',
-  'Awaiting Approval':'icons:status/TagAwaitingApproval.png',
-  'Omitted':'icons:status/TagOmitted.png',
-  'Final':'icons:status/TagFinal.png'}
-
 from compiler.ast import flatten
 
-def seq_annotations(self):
+
+def sequence_annotations(self):
   """hiero.core.Sequence.annotations -> returns the Annotations for a Sequence"""
   tracks = self.videoTracks()
   annotations = []
@@ -35,8 +26,137 @@ def clip_annotations(self):
   annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
   return annotations
 
-hiero.core.Sequence.annotations = seq_annotations
+hiero.core.Sequence.annotations = sequence_annotations
 hiero.core.Clip.annotations = clip_annotations
+
+class UpdateMarkerDialog(QtGui.QDialog):
+
+  def __init__(self, itemSelection=None,parent=None):
+    if not parent:
+      parent = hiero.ui.mainWindow()
+    super(UpdateMarkerDialog, self).__init__(parent)
+    self.setWindowTitle("Modify Marker")
+    self.setWindowIcon(QtGui.QIcon("icons:TagsIcon.png"))
+    self.setSizePolicy( QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed )
+
+    layout = QtGui.QFormLayout()
+    self._itemSelection = itemSelection
+
+    print "Dialog raised with %s" % str(self._itemSelection)
+
+    self._currentIcon = ""
+    self._currentName = ""
+    self._currentNote = ""
+    self._currentInTime = ""
+    self._currentDuration = ""
+
+    if self._itemSelection:
+      self._currentIcon = self._itemSelection["Icon"]
+      self._currentName = self._itemSelection["Name"]
+      self._currentNote = self._itemSelection["Note"]
+      self._currentInTime = self._itemSelection["TimecodeStart"]
+      self._currentDuration = self._itemSelection["Duration"]
+
+    # Name for Marker
+    self._markerLabelEdit = QtGui.QLineEdit()
+    self._markerLabelEdit.setText(self._currentName)
+    self._markerLabelEdit.setToolTip('Enter the name of the Marker.')
+    layout.addRow("Label: ",self._markerLabelEdit)
+
+    # Time + Duration Layout
+    self._timeLayout = QtGui.QHBoxLayout()
+    self._timeInLabel = QtGui.QLabel(str(self._currentInTime))
+    self._durationLabel = QtGui.QLabel("Duration: %s" % str(self._currentDuration))
+    self._timeLayout.addWidget(self._timeInLabel)
+    self._timeLayout.addWidget(self._durationLabel)
+    layout.addRow("Time:",self._timeLayout)
+
+    # Marker Colours
+    self._markerButtonLayout = QtGui.QHBoxLayout()
+    markerTags = self.__getMarkerTags()
+    for tag in markerTags:
+      markerButton = self.__createMarkerButtonFromTag(tag)
+      self._markerButtonLayout.addWidget(markerButton)
+
+    # Add a Combobox for selecting a Tag...
+    self._iconCombo = QtGui.QComboBox()
+    self._iconCombo.currentIndexChanged.connect(self.tagIconChanged)
+    self._markerButtonLayout.addWidget(self._iconCombo)    
+
+    layout.addRow("Colour", self._markerButtonLayout)
+
+    self._noteEdit = QtGui.QPlainTextEdit()
+    print "CURRENT NOTE IS: " + str(self._currentNote)
+    self._noteEdit.setToolTip('Enter notes here.')
+    #self._noteEdit.setFixedHeight(80)
+    self._noteEdit.setPlainText(self._currentNote)
+    layout.addRow("Note: ",self._noteEdit)
+
+    # Standard buttons for Add/Cancel
+    self._buttonbox = QtGui.QDialogButtonBox(QtGui.QDialogButtonBox.Ok | QtGui.QDialogButtonBox.Cancel)
+    self._buttonbox.button(QtGui.QDialogButtonBox.Ok).setText("OK")
+    self._buttonbox.accepted.connect(self.accept)
+    self._buttonbox.rejected.connect(self.reject)
+    layout.addRow("",self._buttonbox)
+    
+    # To-do: Set the focus on the _noteEdit field
+    self.setLayout(layout)
+    
+    # Set the focus to be the Note field
+    self._markerLabelEdit.setFocus()
+
+  def _getCurrentData(self):
+    """returns the currently displayed data from the Dialog as a dictionary"""
+    currentDataDict = {"Name":self._markerLabelEdit.text(), 
+                       "Icon": self.getTagIcon(), 
+                       "Note": self.getTagNote()
+                       }
+    return currentDataDict
+
+  def __createMarkerButtonFromTag(self, tag):
+      markerButton = QtGui.QPushButton("")
+      markerButton.setIcon(QtGui.QIcon(tag.icon()))
+      markerButton.setObjectName("marker."+tag.name())
+      markerButton.setFlat(True)
+      markerButton.clicked.connect(lambda: self.__markerLabelClicked(tag.icon()))
+      return markerButton
+
+  def __markerLabelClicked(self, markerButton):
+    """Sets the current icon variable to the button icon that was clicked"""
+    self._currentIcon = markerButton
+
+  def __getMarkerTags(self):
+    tagsBin = hiero.core.project("Tag Presets").tagsBin()
+    markerBin = tagsBin["Markers"]
+    markerTags = markerBin.items()
+    return markerTags
+
+  def __getStatusTags(self):
+    tagsBin = hiero.core.project("Tag Presets").tagsBin()
+    markerBin = tagsBin["Status"]
+    markerTags = markerBin.items()
+    return markerTags
+
+  # Override the exec_ method to update the TagComboBox with any new Project Tags
+  def exec_(self):
+    return super(UpdateMarkerDialog, self).exec_()
+
+  def tagIconChanged(self,index):
+    #update the note field
+    print "tagIconChanged"
+    #note = self.tags[index].note()
+    #self._noteEdit.setText(note)
+    
+  # This returns a hiero.core.Tag object, currently described by the UpdateMarkerDialog 
+  def getTagNote(self):
+    print "getTag"
+    # This gets the contents of the Note field
+    tagNote = unicode(self._noteEdit.toPlainText())
+    return tagNote
+
+  def getTagIcon(self):
+    print "getTagIcon"
+    return self._currentIcon
 
 class MarkerSortFilterProxyModel(QtGui.QSortFilterProxyModel):
     def __init__(self):
@@ -106,7 +226,7 @@ class MarkersTableModel(QAbstractTableModel):
 
     elif role == Qt.DisplayRole:
         label = self.infoDict[index.row()]["Name"]
-        timecode = self.infoDict[index.row()]["Timecode"]
+        timecode = self.infoDict[index.row()]["TimecodeStart"]
         note = self.infoDict[index.row()]["Note"]
         duration = self.infoDict[index.row()]["Duration"]
 
@@ -188,12 +308,14 @@ class MarkersPanel(QtGui.QWidget):
     self.setObjectName( "uk.co.thefoundry.markers.1" )
     self.setWindowIcon( QtGui.QIcon("icons:Tag.png") )
 
+    self._dialog = None
+
     self.timecodeDisplayMode  = hiero.core.Timecode().kDisplayTimecode
 
     # The mode to display data - either Tags, Annotations, or Annotations + Tags
     self._dataDisplayMode  = self.kModeTags
     self.infoDict = []
-    self.headerKeys = ["", "Marker", "Name", "Timecode", "Duration", "Note"]
+    self.headerKeys = ["", "Icon", "Name", "Time", "Duration", "Note"]
     self.table_model = MarkersTableModel(self, self.infoDict, self.headerKeys)
 
     self.markerSortFilterProxyModel=MarkerSortFilterProxyModel()
@@ -208,6 +330,8 @@ class MarkersPanel(QtGui.QWidget):
     self.table_view.setShowGrid(True)
     self.table_view.verticalHeader().setVisible(False)
     self.table_view.clicked.connect(self.movePlayheadToMarker)
+
+    self.table_view.doubleClicked.connect(self.displayMarkerDialog)
 
     layout = QtGui.QVBoxLayout(self)
     self.currentSequenceNameLabel = QtGui.QLabel("Sequence")
@@ -296,10 +420,29 @@ class MarkersPanel(QtGui.QWidget):
     # We may be filtered, so need to map the index to the Source index
     mappedModelIndex = self.markerSortFilterProxyModel.mapToSource(modelIndex)
 
-    inTime = self.table_model.infoDict[ mappedModelIndex.row() ]['In']
+    inTime = self.table_model.infoDict[ mappedModelIndex.row() ]["InTime"]
 
     cv = hiero.ui.currentViewer()
     cv.setTime(int(inTime))
+
+  def displayMarkerDialog(self, modelIndex):
+    mappedModelIndex = self.markerSortFilterProxyModel.mapToSource(modelIndex)
+    item = self.table_model.infoDict[ mappedModelIndex.row() ]
+
+    self._dialog = UpdateMarkerDialog(itemSelection = item)
+
+    if self._dialog.exec_():
+      
+      data = self._dialog._getCurrentData()
+      print "Display Dialog with data %s" % str(data)
+      newNote = data["Note"]
+      newIcon = data["Icon"]
+      tag = self.table_model.infoDict[ mappedModelIndex.row() ]["Item"]
+      tag.setNote(data["Note"])
+      self.infoDict[mappedModelIndex.row()]["Note"] = tag.note()
+      tag.setIcon(newIcon)
+      self.infoDict[mappedModelIndex.row()]["Icon"] = newIcon
+      self.updateTableView()
 
   def toggleTimecodeDisplay(self):
     """TO-DO: Toggles the mode for timecode or frame display"""
@@ -355,17 +498,17 @@ class MarkersPanel(QtGui.QWidget):
       outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
 
       if self.timecodeDisplayMode == tc.kDisplayTimecode:
-        timecodeString = "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode))
+        timecodeString = "%s" % (str(inTimecode))
       else:
-        timecodeString = "In: %i\nOut: %i" % (inTime, outTime)
+        timecodeString = "%i" % (inTime)
       tagDict += [{"Item": tag, 
                          "Name": tag.name(), 
-                         "In": inTime, 
-                         "Out": outTime,
-                         "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
+                         "InTime": inTime, 
+                         "OutTime": outTime,
+                         "TimecodeStart": "%s" % (str(inTimecode)),
                          "Note": tag.note(),
                          "Duration": duration,
-                         "Marker": str(tag.icon()),
+                         "Icon": str(tag.icon()),
                          "Sequence": seq,
                          "Thumbnail": str(tag.icon())
                          }]
@@ -388,17 +531,17 @@ class MarkersPanel(QtGui.QWidget):
       outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
 
       if self.timecodeDisplayMode == tc.kDisplayTimecode:
-        timecodeString = "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode))
+        timecodeString = "%s" % (str(inTimecode))
       else:
-        timecodeString = "In: %i\nOut: %i" % (inTime, outTime)
+        timecodeString = "%i" % (inTime)
       annotationsDict += [{"Item": annotation, 
                          "Name": annotation.parent().name(), 
-                         "In": inTime, 
-                         "Out": outTime,
-                         "Timecode": "In: %s\nOut: %s" % (str(inTimecode), str(outTimecode)),
+                         "InTime": inTime, 
+                         "OutTime": outTime,
+                         "TimecodeStart": "%s" % (str(inTimecode)),
                          "Note": " , ".join(notes),
                          "Duration": duration,
-                         "Marker": "icons:ViewerToolAnnotationVis.png",
+                         "Icon": "icons:ViewerToolAnnotationVis.png",
                          "Sequence": seq,
                          "Thumbnail": "icons:ViewerToolAnnotationVis.png"
                          }]
@@ -420,7 +563,7 @@ class MarkersPanel(QtGui.QWidget):
         self.infoDict += self.__getAnnoationsDictForSequence(seq)
 
       # Now sort these based on inTime
-      sortedDict = sorted(self.infoDict, key=lambda k: k["In"]) 
+      sortedDict = sorted(self.infoDict, key=lambda k: k["InTime"]) 
       self.infoDict = sortedDict
 
 class MarkerActions(object):
@@ -461,7 +604,7 @@ class MarkerActions(object):
     if not currentTime:
       return
 
-    markerTag = hiero.core.Tag("Marker")
+    markerTag = hiero.core.Tag("Icon")
     M = markerTag.metadata()
     activeSequence.addTagToRange(markerTag, currentTime, currentTime)
     hiero.ui.markersPanel.updateTableView()
