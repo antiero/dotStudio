@@ -295,6 +295,48 @@ class MarkersTableModel(QAbstractTableModel):
           self.infoDict.reverse()
       self.emit(SIGNAL("layoutChanged()"))
 
+class MarkerTableView(QtGui.QTableView):
+    """The TableView used in the Marker Panel"""
+    def __init__(self, parent = None):
+        super(MarkerTableView, self).__init__()
+        self.setContextMenuPolicy(Qt.DefaultContextMenu)
+
+        self.setSortingEnabled(True)
+        verticalHeader = self.verticalHeader()
+        verticalHeader.setResizeMode(QtGui.QHeaderView.ResizeToContents)    
+        self.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+        self.setShowGrid(True)
+        self.verticalHeader().setVisible(False)
+        self.resizeColumnsToContents()
+        self.setColumnWidth(0, 100)    
+        self.setColumnWidth(1, 48)
+        self.setColumnWidth(4, 64)
+        self.setColumnWidth(5, 320)
+
+    def contextMenuEvent(self, event):
+        '''Handle context menu for each cell'''
+        handled = False
+        index = self.indexAt(event.pos())
+        menu = QtGui.QMenu()
+        #an action for everyone
+        every = hiero.ui.createMenuAction("For All", hiero.core.getPluginPath)
+        if index.column() == 3:  #treat the Nth column special row...
+            action_1 = hiero.ui.createMenuAction("Something for one", hiero.core.getPluginPath)
+            action_2 = hiero.ui.createMenuAction("Something for two", hiero.core.getPluginPath)
+            menu.addActions([action_1, action_2])
+            handled = True
+            pass
+        elif index.column() == 0:
+            action_1 = hiero.ui.createMenuAction("Uh oh", hiero.core.getPluginPath)
+            menu.addActions([action_1])
+            handled = True
+            pass
+
+        menu.addAction(every)
+        menu.exec_(event.globalPos())
+        event.accept() # TELL QT IVE HANDLED THIS THING
+        return
+
 class MarkersPanel(QtGui.QWidget):
   """A dockable Markers Panel that displays frame Markers for the Current Sequence"""
 
@@ -321,16 +363,9 @@ class MarkersPanel(QtGui.QWidget):
     self.markerSortFilterProxyModel=MarkerSortFilterProxyModel()
     self.markerSortFilterProxyModel.setSourceModel(self.table_model)
 
-    self.table_view = QtGui.QTableView()
-    self.table_view.setSortingEnabled(True)
+    self.table_view = MarkerTableView()    
     self.table_view.setModel(self.markerSortFilterProxyModel)
-    verticalHeader = self.table_view.verticalHeader()
-    verticalHeader.setResizeMode(QtGui.QHeaderView.ResizeToContents)    
-    self.table_view.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
-    self.table_view.setShowGrid(True)
-    self.table_view.verticalHeader().setVisible(False)
-    self.table_view.clicked.connect(self.movePlayheadToMarker)
-
+    self.table_view.clicked.connect(self.movePlayheadToMarker)            
     self.table_view.doubleClicked.connect(self.displayMarkerDialog)
 
     layout = QtGui.QVBoxLayout(self)
@@ -340,7 +375,6 @@ class MarkersPanel(QtGui.QWidget):
     self.searchLineEdit.textChanged.connect(self.markerSortFilterProxyModel.setKeyword)
     self.searchLineEdit.setStyleSheet("QLineEdit { border: 0.5px solid black; border-radius: 9px; padding: 1 6px; }")
     self.searchLineEdit.setPlaceholderText("Filter")
-
 
     # A dropdown to display either Tags or Annotations
     self.displayModeComboBox = QtGui.QComboBox(self)
@@ -375,11 +409,6 @@ class MarkersPanel(QtGui.QWidget):
     hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
     hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
     self.updateTableView()
-    self.table_view.resizeColumnsToContents()
-    self.table_view.setColumnWidth(0, 100)    
-    self.table_view.setColumnWidth(1, 48)
-    self.table_view.setColumnWidth(4, 64)
-    self.table_view.setColumnWidth(5, 320)
 
   def displayModeChanged(self):
     self._dataDisplayMode = self.displayModeComboBox.currentText()
@@ -454,10 +483,13 @@ class MarkersPanel(QtGui.QWidget):
     self.updateTableView()
 
   def _updateTableViewEvent(self, event):
-    self.updateTableView()
+    try:
+      self.updateTableView(event.sender.sequence())
+    except AttributeError:
+      self.updateTableView()
 
-  def updateTableView(self):
-    seq = hiero.ui.currentViewer().player().sequence()
+  def updateTableView(self, seq=None):
+    seq = seq or hiero.ui.currentViewer().player().sequence()
     if not seq:
       self.infoDict = []
     else:
