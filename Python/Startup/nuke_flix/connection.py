@@ -1,17 +1,24 @@
-import json, os, sys, urllib2
+# Nuke Studio <> Connection
+import json
+import os
+import sys
+import urllib2
+import urlparse
 import xml.etree.ElementTree as ET
 
-class FlixConnection(object):
+class NukeStudioFlixConnection(object):
 
-    """A Flix Connection object for communicating to the Flix server"""
+    """A NukeStudioFlixConnection <> Flix Connection object for communicating to the Flix server"""
 
     def __init__(self):
         self.port = int(os.environ.get('FLIX_PORT', 35980))
         self.baseUrl = os.environ.get('FLIX_IP_ADDRESS', "http://127.0.0.1")
+        self.flixURL = self.baseUrl+':'+str(self.port)
         self.flixEnv = None
         
         # Setup the envrionment variables to add FLIX to current path
         self.setupPaths()
+        
 
     def setupPaths(self):
 
@@ -71,3 +78,23 @@ class FlixConnection(object):
                 sequenceNames+=[sequence.get('name')]
 
         return sequenceNames
+
+    def makeImportSequenceRequest(self, show, sequence, edlPath, moviePath, branch):
+        """Send a GET to the correct FLIX endpoint with suitable arguments
+        for importing a FLIX sequence.
+
+        :rtype: (str, dict)
+        """
+        import requests
+        params = dict(
+            show=show,
+            sequence = sequence,
+            edlFile=edlPath,
+            movieFile=moviePath,
+            branch=branch
+        )
+        url = urlparse.urljoin(self.flixURL, 'core/importNukeStudioSequence')
+        response = requests.get(url, params=params)
+        if response.status_code != 200:
+            raise RuntimeError('status code: %s' % response.status_code)
+        return url, params        
