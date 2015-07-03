@@ -79,19 +79,27 @@ class NukeStudioFlixConnection(object):
 
         return sequenceNames
 
-    def makeImportSequenceRequest(self, show, sequence, edlPath, moviePath, branch):
+    def makeImportSequenceRequest(self, show="", sequence="", edlPath="", moviePath="", branch="main", comment="", username=None, importAsStills=True):
         """Send a GET to the correct FLIX endpoint with suitable arguments
         for importing a FLIX sequence.
 
         :rtype: (str, dict)
         """
         import requests
+        # show, sequence, branch, edlFile, movie, comment, username, importAsStills=True, shotgunPub=False):
+
+        if not username:
+            os.getenv('USER')
+
         params = dict(
             show=show,
             sequence = sequence,
+            branch=branch,
             edlFile=edlPath,
             movieFile=moviePath,
-            branch=branch
+            comment=comment,
+            username = username,
+            importAsStills=importAsStills
         )
         url = urlparse.urljoin(self.flixURL, 'core/importNukeStudioSequence')
         response = requests.get(url, params=params)
