@@ -42,8 +42,6 @@ class UpdateMarkerDialog(QtGui.QDialog):
     layout = QtGui.QFormLayout()
     self._itemSelection = itemSelection
 
-    print "Dialog raised with %s" % str(self._itemSelection)
-
     self._currentIcon = ""
     self._currentName = ""
     self._currentNote = ""
@@ -86,9 +84,7 @@ class UpdateMarkerDialog(QtGui.QDialog):
     layout.addRow("Colour", self._markerButtonLayout)
 
     self._noteEdit = QtGui.QPlainTextEdit()
-    print "CURRENT NOTE IS: " + str(self._currentNote)
     self._noteEdit.setToolTip('Enter notes here.')
-    #self._noteEdit.setFixedHeight(80)
     self._noteEdit.setPlainText(self._currentNote)
     layout.addRow("Note: ",self._noteEdit)
 
@@ -246,13 +242,10 @@ class MarkersTableModel(QAbstractTableModel):
 
     elif role == Qt.TextAlignmentRole:
 
-        if index.column() == 3:
-            return Qt.AlignLeft | Qt.AlignVCenter
-
         if index.column() == 5:
-            return Qt.AlignJustify | Qt.AlignVCenter
+            return Qt.AlignJustify
 
-        return Qt.AlignHCenter | Qt.AlignVCenter
+        return Qt.AlignLeft | Qt.AlignVCenter
  
     else:
         return
@@ -271,8 +264,7 @@ class MarkersTableModel(QAbstractTableModel):
       """This gets called when user enters Text"""
       row = index.row()
       col = index.column()
-      #if col == 1:
-      #  print "setData", index.row(), index.column(), value
+
       if col == 5:
         if len(value)>0:
           tag = self.infoDict[index.row()]["Item"]
@@ -619,24 +611,21 @@ class MarkerActions(object):
 
   def addMarkerToCurrentFrame(self):
     """Adds a basic single frame Marker to the current Frame"""
-    activeSequence = hiero.ui.activeSequence()
+    
+    cv = hiero.ui.currentViewer()
+    if not cv:
+      return
+
+    activeSequence = cv.player().sequence()
     if not activeSequence:
       return
 
-    activeView = hiero.ui.activeView()
-    if not activeView:
+    currentTime = cv.time()
+
+    if currentTime < 0:
       return
 
-    currentTime = None
-    if isinstance(activeView, hiero.ui.Viewer):
-      currentTime = activeView.time()
-    elif isinstance(activeView, hiero.ui.TimelineEditor):
-      currentTime = hiero.ui.currentViewer().time()
-
-    if not currentTime:
-      return
-
-    markerTag = hiero.core.Tag("Icon")
+    markerTag = hiero.core.Tag("Marker")
     M = markerTag.metadata()
     activeSequence.addTagToRange(markerTag, currentTime, currentTime)
     hiero.ui.markersPanel.updateTableView()
