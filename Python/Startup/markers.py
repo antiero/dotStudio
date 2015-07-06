@@ -405,7 +405,7 @@ class MarkersPanel(QtGui.QWidget):
     self.setMinimumSize(480, 160)
     self.setLayout(layout)
     
-    hiero.core.events.registerInterest("kPlaybackClipChanged", self._updateTableViewEvent)
+    #hiero.core.events.registerInterest("kPlaybackClipChanged", self._updateTableViewEvent)
     hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
     hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
     self.updateTableView()
