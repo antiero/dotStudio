@@ -7,7 +7,7 @@ import glob
 from PySide.QtGui import *
 from PySide.QtCore import *
 
-from hiero.core import TaskGroup, TaskBase
+from hiero.core import log, TaskGroup, TaskBase
 
 # Need to work a strategy of not using Globals
 gCurrentFlixXML = ""
@@ -36,19 +36,43 @@ class FLIXExportDialog(QDialog):
 
     self._flixShows = ["htr", "training"]
 
-    self._flixShowList = QComboBox()
+    self._flixBranches = ["main"]
+
+    self._flixShowList = QComboBox() # "Show"
     self._flixShowList.currentIndexChanged.connect(self.flixShowComboChanged)
     self._flixShowList.setFixedWidth(80)
 
     for show in self._flixShows:
       self._flixShowList.addItem(show)
 
-    self._flixSequenceList = QComboBox()
+    self._flixSequenceList = QComboBox() # "Sequence"
     self.updateFlixSequenceListForShow(self._flixShowList.currentText())
     self._flixSequenceList.setFixedWidth(100)
+    self._flixSequenceList.currentIndexChanged.connect(self.updateFlixBranchesListForCurrentShowAndSequence)
 
-    formLayout.addRow("Show", self._flixShowList)
-    formLayout.addRow("Sequence", self._flixSequenceList)
+    self._flixBranchList = QComboBox() # "Branch"
+
+    for branch in self._flixBranches:
+      self._flixBranchList.addItem(branch)    
+    self._flixBranchList.setFixedWidth(100)
+
+    self._importStillsCheckBox = QCheckBox("Import Stills?")
+    self._importStillsCheckBox.setCheckState(Qt.Checked)
+    self._importStillsCheckBox.clicked.connect(self._importStillsCheckChanged)
+
+
+    # Top Row is Seq-Show-Import as Stills
+    topLayout = QHBoxLayout()
+    topLayout.setAlignment(Qt.AlignLeft)
+    topLayout.addWidget(QLabel("Show"))
+    topLayout.addWidget(self._flixShowList)
+    topLayout.addWidget(QLabel("Sequence"))
+    topLayout.addWidget(self._flixSequenceList)
+    topLayout.addWidget(QLabel("Branch"))
+    topLayout.addWidget(self._flixBranchList)
+    topLayout.addWidget(self._importStillsCheckBox)
+
+    formLayout.addRow(topLayout)
 
     self._commentField = QLineEdit()
     formLayout.addRow("Comment", self._commentField)
@@ -94,16 +118,17 @@ class FLIXExportDialog(QDialog):
     layout.addWidget(self._buttonbox)
 
     self.updateFlixShowList()
+    self.updateFlixBranchesListForCurrentShowAndSequence()
     self.setLayout(layout)
 
     # This is required for the post-export task behaviour of importing into FLIX
     self.setupCustomTaskGroupBehaviour()
 
   def customFinishTaskHandler(TaskBase, self):
-    print "Finished Task"
+    log.info("Finished Task")
     self._finished = True
     resolvedPath = self.resolvedExportPath()
-    print "Resolved Export Path: %s" % resolvedPath
+    log.info("Resolved Export Path: %s" % resolvedPath)
     if resolvedPath.endswith('xml'):
       global gCurrentFlixXML
       gCurrentFlixXML = resolvedPath
@@ -143,14 +168,19 @@ class FLIXExportDialog(QDialog):
                                                           importAsStills=self._importStillsOption
                                                           )
 
+  def _importStillsCheckChanged(self):
+    self._importStillsOption = self._importStillsCheckBox.isChecked()
+    return self._importStillsOption
+
   def setupCustomTaskGroupBehaviour(self):
     """We inject custom behaviour into the TaskGroup to allow the
     Movie and XML to be imported into FLIX after the job has finished"""
     TaskBase.finishTask = self.customFinishTaskHandler
 
   def flixShowComboChanged(self):
-    show = self._flixShowList.currentText()
+    show = self.currentShow()
     self.updateFlixSequenceListForShow(show)
+    self.updateFlixBranchesListForCurrentShowAndSequence()
 
   def updateFlixShowList(self):
     try:
@@ -163,10 +193,10 @@ class FLIXExportDialog(QDialog):
     for show in self._flixShows:
       self._flixShowList.addItem(show)
 
-    self.updateFlixSequenceListForShow(self._flixShowList.currentText())
+    self.updateFlixSequenceListForShow(self.currentShow())
 
   def updateFlixSequenceListForShow(self, show):
-    print "Getting updated Flix sequence list for show %s" % show
+    log.info("Getting updated Flix sequence list for show %s" % show)
     try:
       self._flixSequences = hiero.core.flixConnection.getSequencesForShow(show)
     except:
@@ -177,13 +207,37 @@ class FLIXExportDialog(QDialog):
     for sequence in self._flixSequences:
       self._flixSequenceList.addItem(sequence)
 
+  def updateFlixBranchesListForCurrentShowAndSequence(self):
+    """Updates the Branches UI list based on the current show and sequence"""
+    show = self.currentShow()
+    sequence = self.currentSequence()
+    log.info("Getting updated Flix sequence list for show %s and sequence %s" % (show, sequence))
+    try:
+      self._flixBranches = hiero.core.flixConnection.getSequenceBranchesForShowAndSequence(show, sequence)
+    except:
+      print "unable to get Flix branches for %s - is Flix open?" % show
+      self._flixBranches = []
+
+    self._flixBranchList.clear()
+    for branch in self._flixBranches:
+      self._flixBranchList.addItem(branch)      
+
   def acceptTest(self):
     self._currentXMLFile = None
     self._currentMovFile = None
-    self._currentShow = self._flixShowList.currentText()
+    self._currentShow = self.currentShow()
     self._currentSequence = self._flixSequenceList.currentText()
     self._currentComment = self._commentField.text() # NOTE: handle non-ascii here properly!!!
     self.accept()
+
+  def currentShow(self):
+    return self._flixShowList.currentText()
+
+  def currentSequence(self):
+    return self._flixSequenceList.currentText()    
+
+  def currentBranch(self):
+    return self._flixBranchList.currentText()    
   
   def presetSelectionChanged (self, index):
     if index.isValid():
@@ -211,7 +265,7 @@ class FLIXExportDialog(QDialog):
 
 class FLIXExportAction(QAction):
   def __init__(self):
-      QAction.__init__(self, "FLIX Export...", None)
+      QAction.__init__(self, "Export to FLIX...", None)
       self.triggered.connect(self.doit)
       self.setIcon(QIcon("/Users/ant/.nuke/Python/Startup/nuke_flix/flix_logo.png"))
       hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
@@ -261,7 +315,7 @@ class FLIXExportAction(QAction):
         # Grab preset from registry
         preset = hiero.core.taskRegistry.processorPresetByName(presetName)
         # Launch export
-        print "executing preset: %s with selection %s" % (preset, selection)
+        log.info("executing preset: %s with selection %s" % (preset, selection))
         hiero.core.res = hiero.core.taskRegistry.createAndExecuteProcessor(preset, selection)
 
   def eventHandler(self, event):
@@ -282,7 +336,7 @@ class FLIXExportAction(QAction):
                       self.setEnabled(False)
                       break
                   
-      title = "FLIX Export..."
+      title = "Export to FLIX..."
       self.setText(title)
       event.menu.addAction(self)
       

@@ -79,6 +79,18 @@ class NukeStudioFlixConnection(object):
 
         return sequenceNames
 
+    def getSequenceBranchesForShowAndSequence(self, show, sequence):
+        """Return a sequence's branch list"""
+        branchesXML = self.sendRequestAndReadData("core/getSequenceBranches/%s/%s" % (show, sequence))
+        branchNames = []
+        if branchesXML:
+            root = ET.fromstring(branchesXML)
+            branches = root.findall('Branch')
+            for branch in branches:
+                branchNames+=[branch.get('name')]
+
+        return branchNames
+
     def makeImportSequenceRequest(self, show="", sequence="", edlPath="", moviePath="", branch="main", comment="", username=None, importAsStills=True):
         """Send a GET to the correct FLIX endpoint with suitable arguments
         for importing a FLIX sequence.
