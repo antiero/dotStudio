@@ -24,7 +24,7 @@ class FLIXExportDialog(QDialog):
 
     self._currentShow = ""
     self._currentSequence = ""
-    self._branch = "main"
+    self._currentBranch = "main"
     self._currentXMLFile = None
     self._currentMovFile = None
     self._currentComment = ""
@@ -146,11 +146,14 @@ class FLIXExportDialog(QDialog):
     global gCurrentFlixMovie
     self._currentXMLFile = gCurrentFlixXML
     self._currentMovFile = gCurrentFlixMovie
+    self._currentShow = self.currentShow()
+    self._currentSequence = self.currentSequence()
+    self._currentBranch = self.currentBranch()
 
     if self._currentMovFile and self._currentXMLFile:
       print "Will now import to show: %s, seq: %s, branch: %s, xml: %s, movie: %s, comment %s, user: %s, importStills %s" % (self._currentShow, 
                                                                                              self._currentSequence, 
-                                                                                             self._branch,
+                                                                                             self._currentBranch,
                                                                                              self._currentXMLFile, 
                                                                                              self._currentMovFile,
                                                                                              self._currentComment,
@@ -160,7 +163,7 @@ class FLIXExportDialog(QDialog):
 
       hiero.core.flixConnection.makeImportSequenceRequest(show=self._currentShow, 
                                                           sequence=self._currentSequence, 
-                                                          branch=self._branch,
+                                                          branch=self._currentBranch,
                                                           edlPath=self._currentXMLFile, 
                                                           moviePath=self._currentMovFile,
                                                           comment=self._currentComment,
@@ -223,6 +226,7 @@ class FLIXExportDialog(QDialog):
       self._flixBranchList.addItem(branch)      
 
   def acceptTest(self):
+    """Triggered when Export button is clicked"""
     self._currentXMLFile = None
     self._currentMovFile = None
     self._currentShow = self.currentShow()
@@ -231,12 +235,15 @@ class FLIXExportDialog(QDialog):
     self.accept()
 
   def currentShow(self):
+    """returns the currently selected show string"""
     return self._flixShowList.currentText()
 
   def currentSequence(self):
+    """returns the currently selected sequence string"""
     return self._flixSequenceList.currentText()    
 
   def currentBranch(self):
+    """returns the currently selected branch string"""
     return self._flixBranchList.currentText()    
   
   def presetSelectionChanged (self, index):
