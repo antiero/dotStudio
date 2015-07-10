@@ -398,8 +398,8 @@ class MarkersPanel(QtGui.QWidget):
     self.setLayout(layout)
     
     #hiero.core.events.registerInterest("kPlaybackClipChanged", self._updateTableViewEvent)
-    hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
-    hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
+    #hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
+    #hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
     self.updateTableView()
 
   def displayModeChanged(self):
@@ -455,11 +455,14 @@ class MarkersPanel(QtGui.QWidget):
     if self._dialog.exec_():
       
       data = self._dialog._getCurrentData()
-      print "Display Dialog with data %s" % str(data)
+      #print "Display Dialog with data %s" % str(data)
+      newName = data["Name"]
       newNote = data["Note"]
       newIcon = data["Icon"]
       tag = self.table_model.infoDict[ mappedModelIndex.row() ]["Item"]
-      tag.setNote(data["Note"])
+      tag.setName(newName)
+      self.infoDict[mappedModelIndex.row()]["Name"] = tag.note()
+      tag.setNote(newNote)
       self.infoDict[mappedModelIndex.row()]["Note"] = tag.note()
       tag.setIcon(newIcon)
       self.infoDict[mappedModelIndex.row()]["Icon"] = newIcon
