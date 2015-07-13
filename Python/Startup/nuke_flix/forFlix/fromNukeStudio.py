@@ -72,7 +72,7 @@ class FromNukeStudio(fromFCP.FromFCP):
         properties = {}
 
         # todo verify the sequence exists
-        log("*** getRecipePropertiesFromClip - clip: %s, name %s, parts: %s" % (str(clip), str(name), str(parts)), isInfo=True)
+        log("*** fromNukeStudio: getRecipePropertiesFromClip - clip: %s, name %s, parts: %s" % (str(clip), str(name), str(parts)), isInfo=True)
 
         if len(parts) == 3:
             # parse the name if the version is missing
@@ -92,9 +92,14 @@ class FromNukeStudio(fromFCP.FromFCP):
                 properties["version"] = parts[-1]
             return properties
 
-        # Nuke Studio Clip names do not use the same '-' clipitem names
+        # Nuke Studio Clip names use underscores for clipitem names
         elif len(parts) == 1:
-            clipNameParts = parts[0].split('_') # ['hum', 'p', '1033', 'v2.hd']
+            clipNameParts = parts[0].split('_') # parts e.g: ['hum', 'p', '1033', 'v2.hd']
+            
+            # We need four parts of the Clip name... if not it's ref
+            if len(clipNameParts) != 4:
+                return None
+
             properties["show"] = self.show
             properties["sequence"] = clipNameParts[0]
             properties["beat"] = clipNameParts[1]
