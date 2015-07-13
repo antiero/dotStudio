@@ -1553,7 +1553,7 @@ class ServerFlixFunctions:
                 self.copyMetaData(properties, shotMetaData)
 
     @cherrypy.expose
-    def importNukeStudioSequence(self, show=None, sequence=None, branch="", edlFile="", movieFile="", comment="", username="", importAsStills=False):
+    def importNukeStudioSequence(self, show=None, sequence=None, branch="", edlFile="", movieFile="", comment="", username="", importAsStills=""):
         """create a new sequence version from the Nuke Studio XML
         """
         if None in [show, sequence]:
@@ -1568,11 +1568,16 @@ class ServerFlixFunctions:
         show = sessionInfo.get('show')
         sequence = sessionInfo.get('sequence')
         branch = sessionInfo.get('branch')
+        importAsStills = sessionInfo.get('importAsStills')
+        edlFile = args.get('edlFile')
+        movieFile = args.get('movieFile', "")
+        comment = args.get('comment', "")
+        username = args.get('username', "")
         log("**** importNukeStudioEdit sessionInfo: show %s" % str(show), isInfo=True)
         log("**** importNukeStudioEdit sessionInfo: sequence %s" % str(sequence), isInfo=True)
+        log("**** importNukeStudioEdit Import Stills: %s" % str(importAsStills), isInfo=True)
 
-        fromNukeStudio = FromNukeStudio(sessionInfo.get('show'), sessionInfo.get('sequence'), sessionInfo.get('branch'), args.get('edlFile'), args.get('movieFile', ""), args.get('comment', ""), args.get('username', ""), importAsStills=args.get('importAsStills'))
-        log("**** CALLED importNukeStudioEdit %s" % str(fromNukeStudio), isInfo=True)
+        fromNukeStudio = FromNukeStudio(show, sequence, branch, edlFile, movieFile, comment, username, importAsStills=args.get('importAsStills'))
         fromNukeStudio.importToFlix()
 
     def updateMayaSequencer(self, shotCutList):
@@ -1672,9 +1677,9 @@ class ServerFlixFunctions:
                         movPose["poseFrame"]         = "%04d" % (int(currentTime) + int(index))
                         movPose["version"]           = "1"
                         tempPose = Mode(show, sequence).get('[poseSequence]', movPose)
-
+                        tempPose = os.path.dirname(tempPose) + "/.%s"%(os.path.basename(tempPose))
                         movPath = imageXml.attrib['imageFile']
-                        if not self.fileService.exists(os.path.dirname(tempPose)):
+                        if not self.fileServiceLocal.exists(os.path.dirname(tempPose)):
                             self.fileService.createFolders(os.path.dirname(tempPose))
                         self.fileService.copy(movPath, tempPose)
                         frameRange = FlixNuke().getMovFrameRange(tempPose)

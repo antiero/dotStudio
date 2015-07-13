@@ -12,6 +12,14 @@ from pyamf import remoting
 
 class FromNukeStudio(fromFCP.FromFCP):
 
+    def __init__(self, show, sequence, branch, edlFile, movie, comment, username, importAsStills=True, shotgunPub=False):
+        
+        fromFCP.FromFCP.__init__(self, show, sequence, branch, edlFile, movie, comment, username, importAsStills=importAsStills, shotgunPub=shotgunPub)
+        
+        # importAsStills option comes in as a string. Convert to bool...
+        importAsStillsBool = True if str(importAsStills) in ['True','true', 'yes', 'YES'] else False
+        self.importAsStills = importAsStillsBool
+
     def breakdownMovie(self):
         """Export out the frames and audio from the movie"""
 
@@ -52,21 +60,50 @@ class FromNukeStudio(fromFCP.FromFCP):
         result = proxyHttpCall.makeRequest(request, job, True, maxAttempts)
         return result
 
-    def getRecipePropertiesFromClip(self, clip):
-        parts = clip.name.split(" ")[0]
-        parts = re.split(r"[_-]", parts)
-        if len(parts) > 3:
-            properties = {}
+    def getRecipePropertiesFromClip(self, clip, name=None):
+
+        if name:
+            parts = name.split("_")
+        else:
+            if clip.name.startswith('_uuid_'):
+                return None
+            parts = clip.name.split(" ")[0]
+            parts = parts.split("-")
+        properties = {}
+
+        # todo verify the sequence exists
+        log("*** getRecipePropertiesFromClip - clip: %s, name %s, parts: %s" % (str(clip), str(name), str(parts)), isInfo=True)
+
+        if len(parts) == 3:
+            # parse the name if the version is missing
+            properties["show"] = self.show
+            properties["sequence"] = parts[0]
+            properties["beat"] = parts[1]
+            properties["setup"] = parts[2]
+            properties["version"] = "1"
+            return properties
+        elif len(parts) > 3:
             properties["show"] = self.show
             properties["sequence"] = ''.join(parts[0:-3])
-            properties["beat"] = 'rlo'
+            properties["beat"] = parts[-3]
             properties["setup"] = parts[-2]
-            if not parts[1] == 'rlo':
-                properties['setup'] = None
             properties["version"] = "1"
             if parts[-1].isdigit():
-                properties["version"] = int(parts[-1]) if parts[1] == 'rlo' else 1
+                properties["version"] = parts[-1]
             return properties
+
+        # Nuke Studio Clip names do not use the same '-' clipitem names
+        elif len(parts) == 1:
+            clipNameParts = parts[0].split('_') # ['hum', 'p', '1033', 'v2.hd']
+            properties["show"] = self.show
+            properties["sequence"] = clipNameParts[0]
+            properties["beat"] = clipNameParts[1]
+            properties["setup"] = clipNameParts[2]
+            properties["version"] = clipNameParts[3].replace('v','').replace('.hd','')
+            if not properties["version"].isdigit():
+                properties["version"] = "1"
+            return properties
+
         return None
 
     def parseEDL(self):

@@ -58,8 +58,7 @@ class FLIXExportDialog(QDialog):
 
     self._importStillsCheckBox = QCheckBox("Import Stills?")
     self._importStillsCheckBox.setCheckState(Qt.Checked)
-    self._importStillsCheckBox.clicked.connect(self._importStillsCheckChanged)
-
+    #self._importStillsCheckBox.clicked.connect(self._importStillsCheckChanged)
 
     # Top Row is Seq-Show-Import as Stills
     topLayout = QHBoxLayout()
@@ -149,6 +148,7 @@ class FLIXExportDialog(QDialog):
     self._currentShow = self.currentShow()
     self._currentSequence = self.currentSequence()
     self._currentBranch = self.currentBranch()
+    self._importStillsOption = self.importAsStillsOption()
 
     if self._currentMovFile and self._currentXMLFile:
       print "Will now import to show: %s, seq: %s, branch: %s, xml: %s, movie: %s, comment %s, user: %s, importStills %s" % (self._currentShow, 
@@ -158,7 +158,7 @@ class FLIXExportDialog(QDialog):
                                                                                              self._currentMovFile,
                                                                                              self._currentComment,
                                                                                              self._currentUser,
-                                                                                             str(self._importStillsOption)
+                                                                                             self._importStillsOption
                                                                                              )
 
       hiero.core.flixConnection.makeImportSequenceRequest(show=self._currentShow, 
@@ -233,6 +233,10 @@ class FLIXExportDialog(QDialog):
     self._currentSequence = self._flixSequenceList.currentText()
     self._currentComment = self._commentField.text() # NOTE: handle non-ascii here properly!!!
     self.accept()
+
+  def importAsStillsOption(self):
+    """returns True/False for import as Stills checkbox option"""
+    return self._importStillsCheckBox.isChecked()
 
   def currentShow(self):
     """returns the currently selected show string"""

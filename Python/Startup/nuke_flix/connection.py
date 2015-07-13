@@ -91,7 +91,7 @@ class NukeStudioFlixConnection(object):
 
         return branchNames
 
-    def makeImportSequenceRequest(self, show="", sequence="", edlPath="", moviePath="", branch="main", comment="", username=None, importAsStills=True):
+    def makeImportSequenceRequest(self, show="", sequence="", edlPath="", moviePath="", branch="main", comment="", username=None, importAsStills=""):
         """Send a GET to the correct FLIX endpoint with suitable arguments
         for importing a FLIX sequence.
 
