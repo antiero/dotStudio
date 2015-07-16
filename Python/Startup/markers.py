@@ -78,7 +78,7 @@ class UpdateMarkerDialog(QtGui.QDialog):
 
     # Add a Combobox for selecting a Tag...
     self._iconCombo = QtGui.QComboBox()
-    self._iconCombo.currentIndexChanged.connect(self.tagIconChanged)
+    self._iconCombo.currentIndexChanged.connect(self.tagComboChanged)
     self._markerButtonLayout.addWidget(self._iconCombo)    
 
     layout.addRow("Colour", self._markerButtonLayout)
@@ -114,6 +114,7 @@ class UpdateMarkerDialog(QtGui.QDialog):
       markerButton.setIcon(QtGui.QIcon(tag.icon()))
       markerButton.setObjectName("marker."+tag.name())
       markerButton.setFlat(True)
+      markerButton.setFixedWidth(20)
       markerButton.clicked.connect(lambda: self.__markerLabelClicked(tag.icon()))
       return markerButton
 
@@ -135,13 +136,36 @@ class UpdateMarkerDialog(QtGui.QDialog):
 
   # Override the exec_ method to update the TagComboBox with any new Project Tags
   def exec_(self):
+    self.updateTagComboBox()
     return super(UpdateMarkerDialog, self).exec_()
 
-  def tagIconChanged(self,index):
-    #update the note field
-    print "tagIconChanged"
-    #note = self.tags[index].note()
-    #self._noteEdit.setText(note)
+  def tagComboChanged(self,index):
+
+    # We get the index of the current drop-down list entry
+    index = self._iconCombo.currentIndex()
+
+    # We get the Tag at 'index', from the tags dictionary list in our dialog
+    tag = self.tags[index]
+    self._currentIcon = tag.icon()  
+
+  def updateTagComboBox(self):
+    # Build a list of Tags from Hiero's Preset Tags Bin...
+    self.tags = []
+    presetTags = hiero.core.find_items.findProjectTags(hiero.core.project('Tag Presets'))
+    hiero.core.log.debug('Refreshing TagComboBox')
+
+
+    print "updateTagComboBox: " + str(self._itemSelection)
+  
+    # Finally, try to add in any Tags used in the project tagsBin...
+    proj = self._itemSelection['Item'].project()
+    projectTags = hiero.core.find_items.findProjectTags(proj)
+    self.tags = presetTags+projectTags
+
+    self._iconCombo.clear()
+    # Populate the Tags Dropdown menu
+    for t in self.tags:
+      self._iconCombo.addItem(QtGui.QIcon(t.icon()),t.name())    
     
   # This returns a hiero.core.Tag object, currently described by the UpdateMarkerDialog 
   def getTagNote(self):
@@ -211,6 +235,7 @@ class MarkersTableModel(QAbstractTableModel):
             imageView = seq.thumbnail(item.timelineIn())
           pixmap = QtGui.QPixmap.fromImage(imageView.scaledToWidth(100))
         except:
+          # SHOULD RETURN A BLACK PIXMAP HERE...
           icon = QtGui.QIcon("icons:VideoOnlyWarning.png")
           pixmap = icon.pixmap(icon.actualSize(QSize(48, 48)))
         return pixmap
@@ -253,12 +278,10 @@ class MarkersTableModel(QAbstractTableModel):
   def flags(self, index):
 
       # This ensures that only the status and note columns are editable
-      if index.column() == 5:
-          return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
-      else:
-          return Qt.ItemIsEnabled | Qt.ItemIsSelectable
-
-      return flags
+      #if index.column() == 5:
+      #    return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+      #return flags
+      return Qt.ItemIsEnabled | Qt.ItemIsSelectable      
 
   def setData(self, index, value, role=Qt.EditRole):
       """This gets called when user enters Text"""
@@ -301,7 +324,7 @@ class MarkerTableView(QtGui.QTableView):
         self.verticalHeader().setVisible(False)
         self.resizeColumnsToContents()
         self.setColumnWidth(0, 100)    
-        self.setColumnWidth(1, 48)
+        self.setColumnWidth(1, 32)
         self.setColumnWidth(4, 64)
         self.setColumnWidth(5, 320)
 
@@ -343,6 +366,8 @@ class MarkersPanel(QtGui.QWidget):
     self.setWindowIcon( QtGui.QIcon("icons:Tag.png") )
 
     self._dialog = None
+
+
 
     self.timecodeDisplayMode  = hiero.core.Timecode().kDisplayTimecode
 
@@ -396,16 +421,20 @@ class MarkersPanel(QtGui.QWidget):
 
     self.setMinimumSize(480, 160)
     self.setLayout(layout)
-    
-    #hiero.core.events.registerInterest("kPlaybackClipChanged", self._updateTableViewEvent)
-    #hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
-    #hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
+
+    hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
+    hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
+    self.updateTableView()
+
+  def focusInEvent(self, event):
+    self.updateTableView()
+
+  def enterEvent(self, event):
     self.updateTableView()
 
   def displayModeChanged(self):
     self._dataDisplayMode = self.displayModeComboBox.currentText()
     self.updateTableView()
-    #print "Display Mode changed to: " + str(self._dataDisplayMode)
 
   def clearTagsForSelectedRows(self):
     selectionModel = self.table_view.selectionModel()
@@ -455,7 +484,6 @@ class MarkersPanel(QtGui.QWidget):
     if self._dialog.exec_():
       
       data = self._dialog._getCurrentData()
-      #print "Display Dialog with data %s" % str(data)
       newName = data["Name"]
       newNote = data["Note"]
       newIcon = data["Icon"]
