@@ -6,8 +6,11 @@ import copy
 from hiero.ui import findMenuAction, registerAction, registerPanel, insertMenuAction, createMenuAction
 from PySide import QtGui
 from PySide.QtCore import Qt, QAbstractTableModel, QSize, SIGNAL
-from compiler.ast import flatten
+from itertools import chain
 
+def flatten(tupleOfTuples):
+  """Convenience method for flattening a tuple of tuples"""
+  return [x for x in chain.from_iterable(tupleOfTuples)]
 
 def sequence_annotations(self):
   """hiero.core.Sequence.annotations -> returns the Annotations for a Sequence"""
@@ -384,6 +387,7 @@ class MarkersPanel(QtGui.QWidget):
     self.table_view.setModel(self.markerSortFilterProxyModel)
     self.table_view.clicked.connect(self.movePlayheadToMarker)            
     self.table_view.doubleClicked.connect(self.displayMarkerDialog)
+    #self.table_view.keyPressed.connect(self.handleKeypressForDeletion)
 
     layout = QtGui.QVBoxLayout(self)
     self.currentSequenceNameLabel = QtGui.QLabel("Sequence")
@@ -405,7 +409,7 @@ class MarkersPanel(QtGui.QWidget):
     self.clearAllMarkersButton.setFixedWidth(80)
     self.clearSelectedMarkersButton.setFixedWidth(100)
     self.clearAllMarkersButton.clicked.connect(hiero.ui.clearAllTimelineMarkers)
-    self.clearSelectedMarkersButton.clicked.connect(self.clearTagsForSelectedRows)
+    self.clearSelectedMarkersButton.clicked.connect(self.clearItemsForSelectedRows)
 
     self.topLayout.addWidget(self.currentSequenceNameLabel)
     self.topLayout.addWidget(self.displayModeComboBox)
@@ -422,7 +426,8 @@ class MarkersPanel(QtGui.QWidget):
     self.setMinimumSize(480, 160)
     self.setLayout(layout)
 
-    hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
+    # This has the potential to make play/stop sluggish - really need a kEditChanged event
+    #hiero.core.events.registerInterest("kPlaybackStarted", self._updateTableViewEvent)
     hiero.core.events.registerInterest("kPlaybackStopped", self._updateTableViewEvent)
     self.updateTableView()
 
@@ -436,7 +441,7 @@ class MarkersPanel(QtGui.QWidget):
     self._dataDisplayMode = self.displayModeComboBox.currentText()
     self.updateTableView()
 
-  def clearTagsForSelectedRows(self):
+  def clearItemsForSelectedRows(self):
     selectionModel = self.table_view.selectionModel()
 
     hasSelection  = selectionModel.hasSelection()
@@ -453,15 +458,22 @@ class MarkersPanel(QtGui.QWidget):
 
       for data in dataForDeletion:
         sequence = data['Sequence']
-        try:
-          sequence.removeTag(data['Item'])
-        except:
-          pass
+        item = data['Item']
+        if isinstance(item, hiero.core.Tag):
+          try:
+            sequence.removeTag(data['Item'])
+          except:
+            print "Unable to remove Tag - was the item locked?"
+        elif isinstance(item, hiero.core.Annotation):
+          try:
+            track = item.parentTrack()
+            track.removeSubTrackItem(item)
+          except:
+            print "Unable to remove Annotation - was the track locked?"
 
     self.updateTableView()
 
   def showEvent(self, event):
-      super(MarkersPanel, self).showEvent(event)
       self.updateTableView()
 
   def movePlayheadToMarker(self, modelIndex):
@@ -474,6 +486,13 @@ class MarkersPanel(QtGui.QWidget):
 
     cv = hiero.ui.currentViewer()
     cv.setTime(int(inTime))
+
+  def keyPressEvent(self, e):
+    print e.key()
+    if e.key() == Qt.Key_Backspace:
+      self.clearItemsForSelectedRows()
+    elif e.key() == Qt.Key_Delete:
+      self.clearItemsForSelectedRows()
 
   def displayMarkerDialog(self, modelIndex):
     mappedModelIndex = self.markerSortFilterProxyModel.mapToSource(modelIndex)
