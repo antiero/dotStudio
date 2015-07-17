@@ -1,4 +1,4 @@
-# Adds basic frame Marker actions to main Timeline menu and "Mark" context menu.
+# Adds a Markers panel for viewing Timeline Tags and Annotations in a Panel
 import operator
 import hiero.core
 import hiero.ui
@@ -12,6 +12,20 @@ def flatten(tupleOfTuples):
   """Convenience method for flattening a tuple of tuples"""
   return [x for x in chain.from_iterable(tupleOfTuples)]
 
+def annotation_notes(self):
+  """
+  hiero.core.Annotation.notes -> Returns all text notes of an Annotation
+  """
+  elements = self.elements()
+  notes = [item.text() for item in elements if isinstance(item, hiero.core.AnnotationText)]
+  return notes
+
+def clip_annotations(self):
+  """hiero.core.Clip.annotations -> returns the Annotations for a Clip"""
+  #subTrackItems = flatten(flatten(self.subTrackItems()))
+  annotations = [ item for item in chain( *chain(*self.subTrackItems()) ) if isinstance(item, hiero.core.Annotation) ]
+  return annotations
+
 def sequence_annotations(self):
   """hiero.core.Sequence.annotations -> returns the Annotations for a Sequence"""
   tracks = self.videoTracks()
@@ -20,17 +34,19 @@ def sequence_annotations(self):
     subTrackItems = flatten(track.subTrackItems())
     annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
 
-  return annotations
+    # Clip-level annotations can also exist on a Sequence...
+    # We need to do a few things here to ensure the Annotations are relevant for this Sequence
+    # 1) If the Clip is used multiple times, do not repeat the Annotations for each TrackItem (uniquify the Clips)
+    # 2) Ensure Clip-level annotations are mapped to Sequence Time
+    # 3) Ensure Clip-level annotations outside of the usable range of the Sequence are excluded?
 
-def clip_annotations(self):
-  """hiero.core.Clip.annotations -> returns the Annotations for a Clip"""
-  annotations = []
-  subTrackItems = flatten(self.subTrackItems())
-  annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
-  return annotations
+    # This is probably quite ineffecient - consider revising...
+    clips = hiero.core.util.uniquify([item.source() for item in track.items() if hasattr(item, 'source')])
+    for clip in clips:
+      clipAnnotations = clip.annotations()
+      annotations.extend(clipAnnotations)
 
-hiero.core.Sequence.annotations = sequence_annotations
-hiero.core.Clip.annotations = clip_annotations
+  return annotations
 
 class UpdateMarkerDialog(QtGui.QDialog):
 
@@ -156,9 +172,6 @@ class UpdateMarkerDialog(QtGui.QDialog):
     self.tags = []
     presetTags = hiero.core.find_items.findProjectTags(hiero.core.project('Tag Presets'))
     hiero.core.log.debug('Refreshing TagComboBox')
-
-
-    print "updateTagComboBox: " + str(self._itemSelection)
   
     # Finally, try to add in any Tags used in the project tagsBin...
     proj = self._itemSelection['Item'].project()
@@ -172,13 +185,11 @@ class UpdateMarkerDialog(QtGui.QDialog):
     
   # This returns a hiero.core.Tag object, currently described by the UpdateMarkerDialog 
   def getTagNote(self):
-    print "getTag"
     # This gets the contents of the Note field
     tagNote = unicode(self._noteEdit.toPlainText())
     return tagNote
 
   def getTagIcon(self):
-    print "getTagIcon"
     return self._currentIcon
 
 class MarkerSortFilterProxyModel(QtGui.QSortFilterProxyModel):
@@ -488,7 +499,6 @@ class MarkersPanel(QtGui.QWidget):
     cv.setTime(int(inTime))
 
   def keyPressEvent(self, e):
-    print e.key()
     if e.key() == Qt.Key_Backspace:
       self.clearItemsForSelectedRows()
     elif e.key() == Qt.Key_Delete:
@@ -744,6 +754,10 @@ class MarkerActions(object):
         insertMenuAction( self._addMarkerAction, a.menu())
         insertMenuAction( self._clearAllMarkersAction, a.menu())
         insertMenuAction( self._clearMarkersInOutAction, a.menu())
+
+hiero.core.Annotation.notes = annotation_notes
+hiero.core.Clip.annotations = clip_annotations
+hiero.core.Sequence.annotations = sequence_annotations
 
 markerActions = MarkerActions()
 hiero.ui.clearAllTimelineMarkers = markerActions.clearAllMarkers
