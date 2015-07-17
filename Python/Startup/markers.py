@@ -598,7 +598,7 @@ class MarkersPanel(QtGui.QWidget):
                          }]
     return tagDict
 
-  def __getAnnoationsDictForSequence(self, seq):
+  def __getAnnotationsDictForSequence(self, seq):
     timecodeStart = seq.timecodeStart()
     annotations = seq.annotations()
     fps = seq.framerate()
@@ -644,7 +644,7 @@ class MarkersPanel(QtGui.QWidget):
       if self._dataDisplayMode in (self.kModeTags, self.kModeAnnotationsAndTags):
         self.infoDict += self.__getTagsDictForSequence(seq)
       if self._dataDisplayMode in (self.kModeAnnotations, self.kModeAnnotationsAndTags):
-        self.infoDict += self.__getAnnoationsDictForSequence(seq)
+        self.infoDict += self.__getAnnotationsDictForSequence(seq)
 
       # Now sort these based on inTime
       sortedDict = sorted(self.infoDict, key=lambda k: k["InTime"]) 
