@@ -211,6 +211,13 @@ class PDFExporter(object):
         infoString = "%ix%i, %if @%sFPS" % (width, height, duration, fps)
         return infoString
 
+    def validString(self, stringToValidate):
+        string = xml.sax.saxutils.unescape(unicode(urllib.unquote_plus(stringToValidate).decode('utf8')))
+        if len(string)>50:
+            string = string[0:49]
+
+        return string
+
     def buildImageDataList(self):
         """
         Build the image list with meta data to be constructed into pdf
@@ -250,12 +257,12 @@ class PDFExporter(object):
                         'editVersion':"*Version*",
                         'setup':"*setup*",
                         'timeString': tc.timeToString(shot.timelineIn() + timecodeStart, fps, timecodeDisplayMode) + ", %if" % shot.duration(),
-                        'name': shot.name(),
+                        'name': self.validString(shot.name()),
                         'version':"*version*",
                         'path': thumbPath, 
-                        'track': shot.parentTrack().name(),
-                        'shot':shot.source().name(),
-                        'shotLabel':shot.name(), # Do this instead? unicode(urllib.unquote_plus(markerName).decode('utf8')),
+                        'track': self.validString(shot.parentTrack().name()),
+                        'shot': self.validString(shot.source().name()),
+                        'shotLabel': self.validString(shot.name()),
                         'shotStatus': "*ShotStatus*",
             }
             
@@ -277,7 +284,6 @@ class PDFExporter(object):
         self.textColor              = "black"
         self.editComment            = "Comments"
         self.title                  = self.sequence.name() + " , " + self.sequenceInfoString(self.sequence)
-        self.title = xml.sax.saxutils.unescape(unicode(urllib.unquote_plus(self.title).decode('utf8')))
 
     def getBackground(self):
         """
