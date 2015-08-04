@@ -3,11 +3,12 @@
 #------------------------------------------------------------------------------
 # Copyright (c) 2015 The Foundry Visionmongers Ltd.  All Rights Reserved.
 #------------------------------------------------------------------------------
+# PDF Layout by Abo Biglarpour. Reportlab: http://www.reportlab.com
 #------------------------------------------------------------------------------
 try:
     from reportlab.platypus import Paragraph, Table, TableStyle
 except:
-    print "Unable to import reportlab. Check that reportlab is in your path!"
+    print "Unable to import reportlab. Check that reportlab is in your sys.path!"
 
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.colors import lightslategray, black, green, limegreen, white
@@ -30,6 +31,7 @@ import urllib
 import xml.sax.saxutils
 
 import hiero.ui
+from hiero.core import Timecode
 
 class PDFExporter(object):
 
@@ -67,9 +69,6 @@ class PDFExporter(object):
         # prep show logo for potential usage
         self.getShowLogo()
 
-        # prep all status icons for potential upload, convert to jpgs if not already
-        #self.remoteConvertStatusIcons()
-
         fontColorImport = __import__("reportlab.lib.colors", globals(), locals(), [self.textColor], -1)
         print "fontColorImport: " + str(fontColorImport)
         self.fontColor = getattr(fontColorImport, self.textColor)
@@ -93,7 +92,7 @@ class PDFExporter(object):
         rowCounter = 0
         colCounter = 0
         pageNumber = 1
-        self.panelVertShift = 0
+        self.shotVertShift = 0
         self.textGap    = (self.fontSize+4) * 4
         self.header = self.marginSize*1.5
 
@@ -106,40 +105,40 @@ class PDFExporter(object):
         # loop through imageDataList and create the pages of PDF with all content based on row and column count provided
         for index, imageData in enumerate(self.imageDataList):
             image = imageData['path']
-            panel = ImageReader(image)
+            shot = ImageReader(image)
 
             # figure out the image sizes based on the number of row's and column's
-            panelWidth, panelHeight = self.getPanelSize(panel)
+            shotWidth, shotHeight = self.getShotSize(shot)
 
-            # get each panels XY position on the pdf page
-            panelX, panelY = self.getPanelPosition(panelWidth, panelHeight, rowCounter, colCounter)
+            # get each shots XY position on the pdf page
+            shotX, shotY = self.getShotPosition(shotWidth, shotHeight, rowCounter, colCounter)
 
-            imageData.update({"panelX":panelX,
-                              "panelY":panelY,
-                              "panelW":panelWidth,
-                              "panelH":panelHeight})
+            imageData.update({"shotX":shotX,
+                              "shotY":shotY,
+                              "shotW":shotWidth,
+                              "shotH":shotHeight})
 
             # insert the image and stroke
-            self.canvas.drawImage(panel, panelX, panelY, width=panelWidth, height=panelHeight)
-            self.canvas.rect(panelX, panelY, width=panelWidth, height=panelHeight)
+            self.canvas.drawImage(shot, shotX, shotY, width=shotWidth, height=shotHeight)
+            self.canvas.rect(shotX, shotY, width=shotWidth, height=shotHeight)
 
-            # insert panel label and dialogue
-            self.setPanelDialogueData(imageData)
+            # insert shot label and track
+            self.setShotTrackData(imageData)
 
-            # set index number of each panel
-            indexY = panelY - 10
-            indexX = panelX + panelWidth
+            # set index number of each shot
+            indexY = shotY - 10
+            indexX = shotX + shotWidth
             self.canvas.setFillColor(self.fontColor)
             self.canvas.drawRightString(indexX, indexY, str(index+1))
 
+            # TO-DO Status and New shots?
             # check if shot status exists and set icon
-            #self.setPanelShotStatus(imageData)
+            #self.setShotShotStatus(imageData)
+            # check if the current shot is new and set new icon
+            #self.setShotNewIcon(imageData)
 
-            # check if the current panel is new and set new icon
-            #self.setPanelNewIcon(imageData)
-
-            # set the shot label
-            self.setPanelShotLabel(imageData)
+            # set the shot time label (this will be a Time info)
+            self.setShotShotLabel(imageData)
 
             # check the row's and column's counter to set the next image in the correct place
             colCounter += 1
@@ -202,6 +201,16 @@ class PDFExporter(object):
         # Returns current time epoch number as a string with underscores
         return str(time.time()).replace('.','_')
 
+    def sequenceInfoString(self, sequence):
+        """Returns a string to match the BinItem display, of the form:wxh, %if @%iFPS"""
+        format = sequence.format()
+        width = format.width()
+        height = format.height()
+        fps = sequence.framerate().toString()
+        duration = sequence.duration()
+        infoString = "%ix%i, %if @%sFPS" % (width, height, duration, fps)
+        return infoString
+
     def buildImageDataList(self):
         """
         Build the image list with meta data to be constructed into pdf
@@ -215,6 +224,10 @@ class PDFExporter(object):
         numFiles = len(self.shotCutList)
         progress = QProgressDialog("Generating PDF...", "Cancel Export", 0, numFiles, hiero.ui.mainWindow())
         progress.setWindowModality(Qt.WindowModal)
+        tc = Timecode()
+        timecodeStart = self.sequence.timecodeStart()
+        timecodeDisplayMode = Timecode().kDisplayTimecode
+        fps = self.sequence.framerate()
 
         count = 1
         for shot in self.shotCutList:
@@ -236,13 +249,14 @@ class PDFExporter(object):
                         'sequence':self.sequence,
                         'editVersion':"*Version*",
                         'setup':"*setup*",
-                        'name': shot.name(), # "*beat*",
+                        'timeString': tc.timeToString(shot.timelineIn() + timecodeStart, fps, timecodeDisplayMode) + ", %if" % shot.duration(),
+                        'name': shot.name(),
                         'version':"*version*",
-                        'path':thumbPath, #shot.source().filename(),
-                        'dialogue': shot.parentTrack().name(),#"dialogue", #unicode(shot.recipe.getDialogue().decode('utf8')),
+                        'path': thumbPath, 
+                        'track': shot.parentTrack().name(),
                         'shot':shot.source().name(),
-                        'shotLabel':shot.name(),#unicode(urllib.unquote_plus(markerName).decode('utf8')),
-                        'shotStatus': "*ShotStatus*", #shotStatus
+                        'shotLabel':shot.name(), # Do this instead? unicode(urllib.unquote_plus(markerName).decode('utf8')),
+                        'shotStatus': "*ShotStatus*",
             }
             
             self.imageDataList.append(dataDict)
@@ -253,16 +267,16 @@ class PDFExporter(object):
         """
         Fetch all the show parameters for pdf template
         """
-        self.companyName            = "The Foundry" #self.mode.get('[company]')
+        self.companyName            = "The Foundry"
         self.companyLogoPath        = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images/logo.jpg")
         self.showLogoPath           = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images/show.jpg")
-        self.background             = "white" #self.mode.get('[pdfBackground]')
+        self.background             = "white"
         self.fontTypePath           = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts/OpenSans-Light.ttf")
-        self.watermarkText          = "" # "CONFIDENTIAL"
+        self.watermarkText          = "" # "e.g. CONFIDENTIAL"
         self.fontSize               = 10
         self.textColor              = "black"
         self.editComment            = "Comments"
-        self.title                  = self.sequence.name()
+        self.title                  = self.sequence.name() + " , " + self.sequenceInfoString(self.sequence)
         self.title = xml.sax.saxutils.unescape(unicode(urllib.unquote_plus(self.title).decode('utf8')))
 
     def getBackground(self):
@@ -310,9 +324,6 @@ class PDFExporter(object):
         :return: new jpeg path
         """
         newSource = source.replace(os.path.splitext(source)[-1], '.jpeg')
-        if not self.fileService.exists(newSource):
-            flix.rendering.FlixNuke().convertImgFormat(source, newSource, [[1,1]])
-        self.fileService.copyToLocal(newSource)
         return newSource
 
     def loadFontType(self):
@@ -339,85 +350,85 @@ class PDFExporter(object):
 
         return self.pageSize[0], self.pageSize[1]
 
-    def getPanelSize(self, panel):
+    def getShotSize(self, shot):
         """
-        Calculate the width and height of each panel based on layout and row/column
-        :param panel:
+        Calculate the width and height of each shot based on layout and row/column
+        :param shot:
         :return:
         """
         if self.row >= self.column and not (self.row ==1 and self.column ==1):
-            panelHeight = ((self.pageHeight-((self.marginSize*4)+self.textGap))/self.row) - (self.textGap*((self.row-1)/float(self.row)))
-            panelWidth = panelHeight * (panel._width/float(panel._height) )
-            if ((panelWidth*self.column)+(self.marginSize*(self.column+1))) >= self.pageWidth:
-                panelWidth  = ((self.pageWidth-(self.marginSize*2))/self.column) - (self.marginSize*((self.column-1)/float(self.column)))
-                panelHeight = panelWidth * (float(panel._height) / panel._width)
+            shotHeight = ((self.pageHeight-((self.marginSize*4)+self.textGap))/self.row) - (self.textGap*((self.row-1)/float(self.row)))
+            shotWidth = shotHeight * (shot._width/float(shot._height) )
+            if ((shotWidth*self.column)+(self.marginSize*(self.column+1))) >= self.pageWidth:
+                shotWidth  = ((self.pageWidth-(self.marginSize*2))/self.column) - (self.marginSize*((self.column-1)/float(self.column)))
+                shotHeight = shotWidth * (float(shot._height) / shot._width)
         else:
-            panelWidth  = ((self.pageWidth-(self.marginSize*2))/self.column) - (self.marginSize*((self.column-1)/float(self.column)))
-            panelHeight = panelWidth * (float(panel._height) / panel._width)
+            shotWidth  = ((self.pageWidth-(self.marginSize*2))/self.column) - (self.marginSize*((self.column-1)/float(self.column)))
+            shotHeight = shotWidth * (float(shot._height) / shot._width)
 
-        return panelWidth, panelHeight
+        return shotWidth, shotHeight
 
-    def getPanelPosition(self, panelW, panelH, rowCounter, colCounter):
+    def getShotPosition(self, shotW, shotH, rowCounter, colCounter):
         """
-        Calculate the XY position of the given panel, takes in consideration of panel size and number of row/column
-        adds extra padding for dialogue and gaps between images for aesthetics
-        :param panelW: panel width
-        :param panelH: panel height
+        Calculate the XY position of the given shot, takes in consideration of shot size and number of row/column
+        adds extra padding for track name and gaps between images for aesthetics
+        :param shotW: shot width
+        :param shotH: shot height
         :param rowCounter: the current row index
         :param colCounter: the current column index
-        :return: panel XY positions as tuple
+        :return: shot XY positions as tuple
         """
         # calculate the gap between each image based on image size and page size
-        imageGapW = ((self.pageWidth-(self.marginSize*2)) - (panelW * self.column))/(self.column-1) if self.column > 1 else 0
-        imageGapH = ((self.pageHeight - ((self.header+(self.fontSize*2))*2)) - (panelH * self.row))/self.row if self.row > 1 else 30
+        imageGapW = ((self.pageWidth-(self.marginSize*2)) - (shotW * self.column))/(self.column-1) if self.column > 1 else 0
+        imageGapH = ((self.pageHeight - ((self.header+(self.fontSize*2))*2)) - (shotH * self.row))/self.row if self.row > 1 else 30
 
         # calculate where each images x,y positions are
-        panelX =  ((panelW + imageGapW) * colCounter) + self.marginSize
-        panelY =  ((self.pageHeight-(self.header+(self.fontSize*2)))  - ((panelH+imageGapH)*(rowCounter+1)))
+        shotX =  ((shotW + imageGapW) * colCounter) + self.marginSize
+        shotY =  ((self.pageHeight-(self.header+(self.fontSize*2)))  - ((shotH+imageGapH)*(rowCounter+1)))
         if rowCounter == 0:
-            panelYExpected = ((self.pageHeight-(self.header+(self.fontSize*2)))  - (panelH*(rowCounter+1)))
-            if panelY != panelYExpected:
-                self.panelVertShift = panelY - panelYExpected
-        panelY -= self.panelVertShift
+            shotYExpected = ((self.pageHeight-(self.header+(self.fontSize*2)))  - (shotH*(rowCounter+1)))
+            if shotY != shotYExpected:
+                self.shotVertShift = shotY - shotYExpected
+        shotY -= self.shotVertShift
 
-        return panelX, panelY
+        return shotX, shotY
 
-    def setPanelDialogueData(self, imageData):
+    def setShotTrackData(self, imageData):
         """
-        Set the panel label and dialogue for the given panel and place it in the appropriate position based on layout
-        :param imageData: dictionary object with panel metaData
+        Set the shot name and track for the given shot and place it in the appropriate position based on layout
+        :param imageData: dictionary object with shot metaData
         :return: Table object
         """
-        panelX = imageData.get("panelX")
-        panelY = imageData.get("panelY")
-        panelH = imageData.get("panelH")
-        panelW = imageData.get("panelW")
-        # set the panel label and dialogue for each panel
-        #panelLabel = "%04d-%s"%(int(imageData['setup']),imageData['version']) if imageData['version']>1 else "%04d"%int(imageData['setup'])
-        panelLabel = "%s" % imageData['name']
-        panelData = {'panelLabel':panelLabel,
+        shotX = imageData.get("shotX")
+        shotY = imageData.get("shotY")
+        shotH = imageData.get("shotH")
+        shotW = imageData.get("shotW")
+        # set the shot label and track for each shot
+        #shotLabel = "%04d-%s"%(int(imageData['setup']),imageData['version']) if imageData['version']>1 else "%04d"%int(imageData['setup'])
+        shotLabel = "%s" % imageData['name']
+        shotData = {'shotLabel':shotLabel,
                      'textColor':self.textColor,
                      'fontSize':self.fontSize,
                      'fontName':self.fontType,
-                     'dialogue':imageData['dialogue'].replace("\n", "<br/>")}
+                     'track':imageData['track'].replace("\n", "<br/>")}
 
-        panelName = Paragraph('''<para align=center spaceb=3>
+        shotName = Paragraph('''<para align=center spaceb=3>
                                  <font name=%(fontName)s size=11 color=%(textColor)s>
-                                 <b>%(panelLabel)s</b></font><br/>
+                                 <b>%(shotLabel)s</b></font><br/>
                                  <font name=%(fontName)s size=%(fontSize)s color=%(textColor)s>
-                                 %(dialogue)s</font></para>'''%panelData, self.styles['BodyText'])
+                                 %(track)s</font></para>'''%shotData, self.styles['BodyText'])
 
-        data = [[panelName]]
+        data = [[shotName]]
 
-        # adjust dialogue placement based on row/column layout
+        # adjust track placement based on row/column layout
         if self.column == 1 and not self.row == 1:
-            textX = panelX + panelW + self.marginSize
-            textY = (panelY + panelH) - self.textGap
-            textWidth = self.pageWidth - panelW - (self.marginSize*3)
+            textX = shotX + shotW + self.marginSize
+            textY = (shotY + shotH) - self.textGap
+            textWidth = self.pageWidth - shotW - (self.marginSize*3)
         else:
-            textWidth = panelW
-            textX = panelX
-            textY = panelY - self.textGap
+            textWidth = shotW
+            textX = shotX
+            textY = shotY - self.textGap
 
         table = Table(data, colWidths=textWidth, rowHeights=self.textGap)
         table.setStyle(TableStyle([('VALIGN',(-1,-1),(-1,-1),'TOP')]))
@@ -453,13 +464,13 @@ class PDFExporter(object):
             self.canvas.drawImage(self.showLogo, logoX, logoY, width=showLogoWidth, height=showLogoHeight)
         return showLogoWidth
 
-    def setPanelShotStatus(self, imageData):
+    def setShotShotStatus(self, imageData):
         """
-        Sets the shots status of the given panel if status exists, aligned to the bottom left of the panel
-        :param imageData: dictionary object with panel metaData
+        Sets the shots status of the given shot if status exists, aligned to the bottom left of the shot
+        :param imageData: dictionary object with shot metaData
         """
-        panelX = imageData.get("panelX")
-        panelY = imageData.get("panelY")
+        shotX = imageData.get("shotX")
+        shotY = imageData.get("shotY")
         if imageData.get('shotStatus'):
             statusIcon = [status.iconPath for status in self.shotStatuses.statuses if imageData['shotStatus'] == status.label]
             if len(statusIcon) > 0:
@@ -470,24 +481,24 @@ class PDFExporter(object):
                     statusIconReader = ImageReader(self.repath.localize(statusIcon))
                     statusH = 15
                     statusW = statusH * (statusIconReader._width/float(statusIconReader._height))
-                    statusX = panelX
-                    statusY = panelY - statusH - 2
+                    statusX = shotX
+                    statusY = shotY - statusH - 2
                     self.canvas.drawImage(statusIconReader, statusX, statusY, statusW, statusH)
 
-    def setPanelNewIcon(self, imageData):
+    def setShotNewIcon(self, imageData):
         """
-        Sets the panels new icons if the panel is new since the last editorial publish, aligned to the top right of the panel
-        :param imageData: dictionary object with panel metaData
+        Sets the shots new icons if the shot is new since the last editorial publish, aligned to the top right of the shot
+        :param imageData: dictionary object with shot metaData
         """
-        panelX = imageData.get("panelX")
-        panelY = imageData.get("panelY")
-        panelH = imageData.get("panelH")
-        panelW = imageData.get("panelW")
+        shotX = imageData.get("shotX")
+        shotY = imageData.get("shotY")
+        shotH = imageData.get("shotH")
+        shotW = imageData.get("shotW")
         if imageData['shot'].label in self.newShots:
             newLabelW = 25
             newLabelH = 10
-            newLabelX = panelX + panelW - newLabelW
-            newLabelY = panelY + panelH + 2
+            newLabelX = shotX + shotW - newLabelW
+            newLabelY = shotY + shotH + 2
             self.canvas.setFillColor(limegreen)
             self.canvas.setStrokeColor(black)
             self.canvas.rect(newLabelX, newLabelY, newLabelW, newLabelH, fill=True, stroke=True)
@@ -496,19 +507,19 @@ class PDFExporter(object):
             self.canvas.setFillColor(black)
             self.canvas.drawString(newTextX, newTextY, 'NEW')
 
-    def setPanelShotLabel(self, imageData):
+    def setShotShotLabel(self, imageData):
         """
-        sets the panels shot label if belongs to a shot, aligned on the top left of the panel
-        :param imageData: dictionary object with panel metaData
+        sets the shots shot label if belongs to a shot, aligned on the top left of the shot
+        :param imageData: dictionary object with shot metaData
         """
-        panelX = imageData.get("panelX")
-        panelY = imageData.get("panelY")
-        panelH = imageData.get("panelH")
-        if imageData.get('shotLabel'):
-            shotLabelX = panelX
-            shotLabelY = panelY + panelH + 2
+        shotX = imageData.get("shotX")
+        shotY = imageData.get("shotY")
+        shotH = imageData.get("shotH")
+        if imageData.get('timeString'):
+            shotLabelX = shotX
+            shotLabelY = shotY + shotH + 2
             self.canvas.setFillColor(self.textColor)
-            self.canvas.drawString(shotLabelX, shotLabelY, imageData.get('shotLabel'))
+            self.canvas.drawString(shotLabelX, shotLabelY, imageData.get('timeString'))
 
     def setHeader(self):
         """
@@ -550,10 +561,10 @@ class PDFExporter(object):
                        'textColor':self.textColor,
                        'fontName':self.fontType,
                        'size':7}
-        panelName = Paragraph('''<para align=center spaceb=3>
+        shotName = Paragraph('''<para align=center spaceb=3>
                                   <font name=%(fontName)s size=%(size)s color=%(textColor)s>%(msg1)s<br/>
                                   %(msg2)s</font></para>'''%privacyInfo, self.styles['BodyText'])
-        privacyTable = Table([[panelName]], colWidths=(self.pageWidth-(self.marginSize*2)))
+        privacyTable = Table([[shotName]], colWidths=(self.pageWidth-(self.marginSize*2)))
         privacyTable.setStyle(TableStyle([('VALIGN',(-1,-1),(-1,-1),'TOP')]))
         privacyTable.wrapOn(self.canvas, self.marginSize, 10)
         privacyTable.drawOn(self.canvas, self.marginSize, 10)
