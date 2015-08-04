@@ -1,0 +1,74 @@
+Read {
+ name InputClip
+}
+Group {
+ name CutDetector
+ selected true
+ xpos 181
+ ypos -93
+ addUserKnob {20 User l CutDetector}
+ addUserKnob {41 intensitydata l INVISIBLE +INVISIBLE T CurveTool1.intensitydata}
+ addUserKnob {41 ROI l INVISIBLE +INVISIBLE T CurveTool1.ROI}
+ addUserKnob {3 first l Range t "The first frame to analyse from"}
+ first {{"\[value input.first]"}}
+ addUserKnob {3 last l - -STARTLINE}
+ last {{"\[value input.last]"}}
+ addUserKnob {26 ""}
+ addUserKnob {7 magnitude l Magnitude}
+ magnitude {{abs(intensitydata.r)+abs(intensitydata.g)+abs(intensitydata.b) x18 0.00257747}}
+ addUserKnob {7 threshold l Threshold R 0 3}
+ threshold 0.32
+ addUserKnob {7 decision l Decision}
+ decision {{"step(threshold, magnitude)"}}
+ addUserKnob {41 go l Compute t "Compute the Cut detection" T CurveTool1.go}
+ addUserKnob {22 reset_data l "Clear Data" t "Reset the curve data" T "nuke.thisNode().knob('intensitydata').clearAnimated()\nnuke.thisNode().knob('intensitydata').setValue(0)" +STARTLINE}
+ addUserKnob {22 set_keys l "Set Keys" t "Click here to set keys based on the cut decision vector" -STARTLINE T "nuke.thisNode()\['clear_keys'].execute()\ndecisionKnob = nuke.thisNode()\['decision']\nfirst = int(nuke.thisNode()\[\"first\"].value())\nlast = int(nuke.thisNode()\[\"last\"].value())\nDEC = \[0] * int((last-first)+1)\nfor x in range(first,last):\n  DEC\[x] = decisionKnob.valueAt(x)\n  \ncutPoints = \[i for i, x in enumerate(DEC) if x == 1]\nfor cut in cutPoints:\n  decisionKnob.setKeyAt(cut)\n"}
+ addUserKnob {22 clear_keys l "Clear Keys" -STARTLINE T "nuke.thisNode()\['decision'].clearAnimated()\nnuke.thisNode()\['decision'].setExpression(\"step(threshold, magnitude)\")"}
+ addUserKnob {26 ""}
+ addUserKnob {26 analysis_line l Output}
+ addUserKnob {41 channels T CurveTool1.channels}
+ addUserKnob {4 output l display t "Select the output of the Cut Detector" M {source ROI difference ""}}
+}
+ Input {
+  inputs 0
+  name Input1
+ }
+set N23eb4fd0 [stack 0]
+ Reformat {
+  type "to box"
+  box_width 256
+  box_height 256
+  box_fixed true
+  resize distort
+  filter Impulse
+  name Reformat1
+  selected true
+ }
+set N9278bce0 [stack 0]
+ TimeOffset {
+  time_offset -1
+  time ""
+  name TimeOffset1
+ }
+push $N9278bce0
+ Merge2 {
+  inputs 2
+  operation difference
+  name Merge1
+ }
+ CurveTool {
+  avgframes 1
+  ROI {0 0 256 256}
+  name CurveTool1
+ }
+push $N9278bce0
+push $N23eb4fd0
+ Switch {
+  inputs 3
+  which {{parent.output}}
+  name Switch1
+ }
+ Output {
+  name Output1
+ }
+end_group
