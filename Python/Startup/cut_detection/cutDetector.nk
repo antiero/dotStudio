@@ -3,9 +3,6 @@ Read {
 }
 Group {
  name CutDetector
- selected true
- xpos 181
- ypos -93
  addUserKnob {20 User l CutDetector}
  addUserKnob {41 intensitydata l INVISIBLE +INVISIBLE T CurveTool1.intensitydata}
  addUserKnob {41 ROI l INVISIBLE +INVISIBLE T CurveTool1.ROI}
@@ -15,14 +12,17 @@ Group {
  last {{"\[value input.last]"}}
  addUserKnob {26 ""}
  addUserKnob {7 magnitude l Magnitude}
- magnitude {{abs(intensitydata.r)+abs(intensitydata.g)+abs(intensitydata.b) x18 0.00257747}}
+ magnitude {{abs(intensitydata.r)+abs(intensitydata.g)+abs(intensitydata.b)}}
  addUserKnob {7 threshold l Threshold R 0 3}
- threshold 0.32
- addUserKnob {7 decision l Decision}
+ threshold 0.3995
+ addUserKnob {22 compute_threshold l AutoSet t "Sets a rough threshold for cut detection based on the mean + 3 STDs" -STARTLINE T "from math import sqrt\nN = nuke.thisNode()\nmagKnob = N\['magnitude']\nfirst = int(N\[\"first\"].value())\nlast = int(N\[\"last\"].value())\nmag = \[0] * int((last-first)+1)\nfor x in range(first,last):\n  mag\[x] = magKnob.valueAt(x)\n\nmean = sum(mag) / len(mag)\nprint \"Mean is %f\" % mean\nstd = sqrt(sum(\[(x - mean) ** 2 for x in mag]) / len(mag))\nprint \"Standard Deviation is %f\" % std\nT = mean + (3.0*std)\nprint \"Threshold is %f\" % T\nN\['threshold'].setValue(T)"}
+ addUserKnob {3 min_frames l "Cut min. frames" t "This value dictates the minimum number of frames allowed between cuts (default = 10)"}
+ min_frames 10
+ addUserKnob {3 decision l "Raw Decision" t "This is the raw decision vector \[0,1] based on the magnitude being greater than a threshold of rgb avg differences."}
  decision {{"step(threshold, magnitude)"}}
  addUserKnob {41 go l Compute t "Compute the Cut detection" T CurveTool1.go}
  addUserKnob {22 reset_data l "Clear Data" t "Reset the curve data" T "nuke.thisNode().knob('intensitydata').clearAnimated()\nnuke.thisNode().knob('intensitydata').setValue(0)" +STARTLINE}
- addUserKnob {22 set_keys l "Set Keys" t "Click here to set keys based on the cut decision vector" -STARTLINE T "nuke.thisNode()\['clear_keys'].execute()\ndecisionKnob = nuke.thisNode()\['decision']\nfirst = int(nuke.thisNode()\[\"first\"].value())\nlast = int(nuke.thisNode()\[\"last\"].value())\nDEC = \[0] * int((last-first)+1)\nfor x in range(first,last):\n  DEC\[x] = decisionKnob.valueAt(x)\n  \ncutPoints = \[i for i, x in enumerate(DEC) if x == 1]\nfor cut in cutPoints:\n  decisionKnob.setKeyAt(cut)\n"}
+ addUserKnob {22 set_keys l "Set Keys" t "Click here to set keys based on the cut decision vector" -STARTLINE T "nuke.thisNode()\['clear_keys'].execute()\ndecisionKnob = nuke.thisNode()\['decision']\nfirst = int(nuke.thisNode()\[\"first\"].value())\nlast = int(nuke.thisNode()\[\"last\"].value())\nDEC = \[0] * int((last-first)+1)\nfor x in range(first,last):\n  DEC\[x] = decisionKnob.valueAt(x)\n\nminFrames =   first = int(nuke.thisNode()\[\"min_frames\"].value())\ncutPoints = \[i for i, x in enumerate(DEC) if x == 1 and sum(DEC\[i-minFrames:i])==0]\nfor cut in cutPoints:\n  decisionKnob.setKeyAt( cut+1 )"}
  addUserKnob {22 clear_keys l "Clear Keys" -STARTLINE T "nuke.thisNode()\['decision'].clearAnimated()\nnuke.thisNode()\['decision'].setExpression(\"step(threshold, magnitude)\")"}
  addUserKnob {26 ""}
  addUserKnob {26 analysis_line l Output}
@@ -33,7 +33,7 @@ Group {
   inputs 0
   name Input1
  }
-set N23eb4fd0 [stack 0]
+set N92632330 [stack 0]
  Reformat {
   type "to box"
   box_width 256
@@ -42,15 +42,14 @@ set N23eb4fd0 [stack 0]
   resize distort
   filter Impulse
   name Reformat1
-  selected true
  }
-set N9278bce0 [stack 0]
+set Ne7722d0 [stack 0]
  TimeOffset {
   time_offset -1
   time ""
   name TimeOffset1
  }
-push $N9278bce0
+push $Ne7722d0
  Merge2 {
   inputs 2
   operation difference
@@ -61,8 +60,8 @@ push $N9278bce0
   ROI {0 0 256 256}
   name CurveTool1
  }
-push $N9278bce0
-push $N23eb4fd0
+push $Ne7722d0
+push $N92632330
  Switch {
   inputs 3
   which {{parent.output}}
