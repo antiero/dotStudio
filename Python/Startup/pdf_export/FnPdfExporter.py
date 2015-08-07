@@ -22,7 +22,7 @@ import os
 import sys
 import shutil
 
-from PySide.QtGui import QProgressDialog
+from PySide.QtGui import QProgressDialog, QMenu, QDialog, QFormLayout, QComboBox, QDialogButtonBox, QSizePolicy
 from PySide.QtCore import Qt
 import tempfile
 import datetime
@@ -30,12 +30,13 @@ import time
 import urllib
 import xml.sax.saxutils
 
+from foundry.ui import FnFilenameField
 import hiero.ui
 from hiero.core import Timecode
 
 class PDFExporter(object):
 
-    def __init__(self, shotCutList, newShots=None):
+    def __init__(self, shotCutList, outputFilePath = None, newShots=None):
         """
         Template for creating PDF sheets for a sequence
         :param shotCutList: Cut list object of sequence version to generate pdf of
@@ -43,6 +44,7 @@ class PDFExporter(object):
         :param process: progress process to add and remove from
         """
         self.shotCutList   = shotCutList
+        self.outputFilePath = outputFilePath
         self.project = self.shotCutList[0].project()
         self.sequence = self.shotCutList[0].parentSequence()
         self.imageDataList = []
@@ -70,7 +72,6 @@ class PDFExporter(object):
         self.getShowLogo()
 
         fontColorImport = __import__("reportlab.lib.colors", globals(), locals(), [self.textColor], -1)
-        print "fontColorImport: " + str(fontColorImport)
         self.fontColor = getattr(fontColorImport, self.textColor)
 
         today = datetime.datetime.now()
@@ -86,7 +87,9 @@ class PDFExporter(object):
         self.pageWidth, self.pageHeight = self.getPageSize()
 
         # create an empty canvas
-        self.outputFilePath =  os.path.join(os.getenv('HOME'), "Desktop", "Sequence_" + self.currentTimeString() + ".pdf")
+        if not self.outputFilePath:
+            self.outputFilePath =  os.path.join(os.getenv('HOME'), "Desktop", "Sequence_" + self.currentTimeString() + ".pdf")
+
         self.canvas = reportlab.pdfgen.canvas.Canvas(self.outputFilePath, pagesize=self.pageSize)
 
         rowCounter = 0
@@ -189,7 +192,6 @@ class PDFExporter(object):
             try:
                 os.remove(f)
             except:
-                error = "Unable to remove temporary files"
                 pass
         if error:
             print error
@@ -247,6 +249,8 @@ class PDFExporter(object):
                 shutil.copy(self.offlineLogoPath, thumbPath)
 
             if not os.path.isfile(thumbPath) or progress.wasCanceled():
+                self.cleanUpAndShowPDF()
+                progress.cancel()
                 break
 
             # This file list gets cleaned up after the PDF save finishes
@@ -575,9 +579,60 @@ class PDFExporter(object):
         privacyTable.wrapOn(self.canvas, self.marginSize, 10)
         privacyTable.drawOn(self.canvas, self.marginSize, 10)
 
-class ExportPDFAction(object):
+class ExportPdfOptionDialog(QDialog):
+    """
+    Displays options UI for the PDF
+    """
+
+    def __init__(self, parent = None):
+        if not parent:
+            parent = hiero.ui.mainWindow()
+        super(ExportPdfOptionDialog, self).__init__(parent)
+
+        layout = QFormLayout()
+        self._fileNameField  = FnFilenameField(False, isSaveFile=False, caption="Set PDF name", filter='*.pdf')
+        self._fileNameField.setFilename(os.path.join(os.getenv('HOME'), "Desktop", "Sequence.pdf"))
+        self._optionDropdown  = QComboBox()
+        self._buttonbox = QDialogButtonBox( QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self._buttonbox.button(QDialogButtonBox.Ok).setText("Export")
+        self._buttonbox.accepted.connect(self.accept)
+        self._buttonbox.rejected.connect(self.reject)
+
+        self._pdfActionSettings = {"1 Shot per page" : [1,1],
+                                   "4 Shots per page)": [2,2], 
+                                   "9 Shots per page)": [3,3]}
+
+        for pdfMode in self._pdfActionSettings.keys():
+            self._optionDropdown.addItem(pdfMode)
+
+        layout.addRow("Save to:", self._fileNameField)
+        layout.addRow("PDF Layout:", self._optionDropdown)
+        layout.addRow("", self._buttonbox)
+
+        self.setLayout(layout)
+        self.setWindowTitle("Export PDF Options")
+        self.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Fixed )
+
+    def numRows(self):
+        """Returns the number of rows for the pdf"""
+        optionText = self._optionDropdown.currentText()
+        return self._pdfActionSettings[optionText][0]
+
+    def numColumns(self):
+        """Returns the number of columns for the pdf"""
+        optionText = self._optionDropdown.currentText()
+        return self._pdfActionSettings[optionText][1]
+
+    def filePath(self):
+        """Returns the filepath for the pdf"""
+        filename = self._fileNameField.filename()
+        if not filename.endswith('.pdf'):
+            filename = filename + ".pdf"
+        return filename
+
+class ExportPdfAction(object):
     def __init__(self):
-        self.makePDFAction  = hiero.ui.createMenuAction("Export PDF", self.printSelectedSequencesToPDF)
+        self.makePDFAction  = hiero.ui.createMenuAction("Export PDF...", self.printSelectedSequencesToPDF)
         hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
 
     def printSelectedSequencesToPDF(self):
@@ -595,8 +650,15 @@ class ExportPDFAction(object):
         for track in videoTracks:
             trackItems += [item for item in track.items() if isinstance(item, hiero.core.TrackItem)]
 
-        printer = PDFExporter(trackItems)
-        printer.exportPDF()
+        dialog = ExportPdfOptionDialog()
+        if dialog.exec_():
+            numRows = dialog.numRows()
+            numColumns = dialog.numColumns()
+            outputFilePath = dialog.filePath()
+            printer = PDFExporter(trackItems, outputFilePath)
+            printer.row = numRows
+            printer.column = numColumns
+            printer.exportPDF()
 
     def eventHandler(self, event):
         selection = event.sender.selection()
@@ -604,4 +666,4 @@ class ExportPDFAction(object):
         if len(sequences) == 1:
             event.menu.addAction(self.makePDFAction)
 
-act = ExportPDFAction()
+act = ExportPdfAction()
