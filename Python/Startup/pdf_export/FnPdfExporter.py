@@ -602,7 +602,7 @@ class ExportPdfOptionDialog(QDialog):
                                    "4 Shots per page)": [2,2], 
                                    "9 Shots per page)": [3,3]}
 
-        for pdfMode in self._pdfActionSettings.keys():
+        for pdfMode in sorted(self._pdfActionSettings, reverse=True):
             self._optionDropdown.addItem(pdfMode)
 
         layout.addRow("Save to:", self._fileNameField)
