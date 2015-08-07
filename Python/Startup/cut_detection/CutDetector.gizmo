@@ -1,0 +1,77 @@
+#! /Applications/Nuke9.0v7/Nuke9.0v7.app/Contents/MacOS//libnuke-9.0.7.dylib -nx
+version 9.0 v7
+Gizmo {
+ addUserKnob {20 User l CutDetector}
+ addUserKnob {41 intensitydata l INVISIBLE +INVISIBLE T CurveTool.intensitydata}
+ addUserKnob {41 ROI l INVISIBLE +INVISIBLE T CurveTool.ROI}
+ addUserKnob {3 first l INVISIBLE t "The first frame to analyse from" +INVISIBLE}
+ first {{"\[value input.first]"}}
+ addUserKnob {3 last l INVISIBLE -STARTLINE +INVISIBLE}
+ last {{"\[value input.last]"}}
+ addUserKnob {26 anal_line l Analysis}
+ addUserKnob {20 endGroup n -1}
+ addUserKnob {7 magnitude l Magnitude}
+ magnitude {{abs(intensitydata.r)+abs(intensitydata.g)+abs(intensitydata.b)}}
+ addUserKnob {22 analyse_frames l "Analyse Frames" t "Analyses the frames for cut detection decision" T "N = nuke.thisNode()\nsetThresh = N\['compute_threshold']\nCT = nuke.allNodes(\"CurveTool\", group=N)\[0]\nCT\['go'].execute()\nsetThresh.execute()\n" +STARTLINE}
+ addUserKnob {22 reset_data l "Reset Analysis" t "Reset (clears) the current analysis data" -STARTLINE T "yn = nuke.ask(\"Do you want to delete the analysis data?\")\nif yn:\n  N = nuke.thisNode()\n  N\['intensitydata'].clearAnimated()\n  N\['intensitydata'].setValue(0)"}
+ addUserKnob {26 dec_line l Decision}
+ addUserKnob {7 threshold l Threshold R 0 3}
+ threshold 0.33
+ addUserKnob {22 compute_threshold l AutoSet t "Sets an estimated threshold for cut detection based on the median value + 3 STDs" -STARTLINE T "from math import sqrt\n\ndef median(numbers):\n  srtd = sorted(numbers)\n  mid = int(len(numbers)/2)\n\n  if len(numbers) % 2 == 0:\n      return (srtd\[mid-1] + srtd\[mid]) / 2.0\n  else:\n      return srtd\[mid]\n\nN = nuke.thisNode()\nmagKnob = N\['magnitude']\nfirst = int(N\[\"first\"].value())\nlast = int(N\[\"last\"].value())\nmag = \[0] * int((last-first)+1)\nfor x in range(first,last):\n  mag\[x] = magKnob.valueAt(x)\n\nmean = sum(mag) / len(mag)\nstd = sqrt(sum(\[(x - mean) ** 2 for x in mag]) / len(mag))\n#T = mean + (3.0*std)\nT = median(mag) + (3.0*std)\n\nN\['threshold'].setValue(T)"}
+ addUserKnob {3 min_frames l "Min. cut frames" t "This value dictates the minimum number of frames allowed between cuts (default = 10)"}
+ min_frames 10
+ addUserKnob {3 decision l "Cut Decision" t "This is the raw decision vector \[0,1] based on the magnitude being greater than a threshold of rgb avg differences."}
+ decision {{"step(threshold, magnitude)"}}
+ addUserKnob {22 set_keys l "Set Keys" t "Click here to set keys based on the cut decision vector" T "N = nuke.thisNode()\nN\['clear_keys'].execute()\ndecisionKnob = N\['decision']\nmagnitudeKnob = N\['magnitude']\nthreshold = N\['threshold'].value()\nfirst = int(N\[\"first\"].value())\nlast = int(N\[\"last\"].value())\nDEC = \[0] * int((last-first)+1)\nfor x in range(first,last):\n  DEC\[x] = decisionKnob.valueAt(x)\n\nmag = \[0] * int((last-first)+1)\nfor x in range(first,last):\n  mag\[x] = magnitudeKnob.valueAt(x)\n\nmagPadded = \[0] + mag + \[0]\n\nminFrames =  int(N\[\"min_frames\"].value())\ncutPoints = \[i for i, x in enumerate(DEC) if x == 1 and sum( DEC\[ i-minFrames:i ] )==0 ]\n\nprunedCuts = \[cut for cut in cutPoints if magPadded\[cut] < (0.25*threshold) and magPadded\[cut+2] < (0.25*threshold)]\n\nfor cut in prunedCuts:\n  decisionKnob.setKeyAt( cut+1 )" +STARTLINE}
+ addUserKnob {22 clear_keys l "Clear Keys" -STARTLINE T "nuke.thisNode()\['decision'].clearAnimated()\nnuke.thisNode()\['decision'].setExpression(\"step(threshold, magnitude)\")"}
+ addUserKnob {26 output_line l Output}
+ addUserKnob {4 output l display t "Select the output of the Cut Detector" M {source ROI difference ""}}
+ output source
+ addUserKnob {22 create_sequence l "Create Sequence" t "Generates a new .hrox Project with this Clip cut up into shots based on the keyframes set via Set Keys" T "N = nuke.thisNode()\ndecisionKnob = N\['decision']\nA = decisionKnob.animations()\[0]\ncutPoints = \[int(key.x)-1 for key in A.keys()]\n\nif len(cutPoints) == 0:\n  nuke.message(\"No Cuts Detected!\\nAutoSet or edit Threshold then click 'Set Keys'\")\nelse:\n  proj = hiero.core.newProject()\n  rt = proj.clipsBin()\n\n  f = N.input(0)\['file'].value()\n  clip = hiero.core.Clip(f)\n  rt.addItem(hiero.core.BinItem(clip))\n  clipFPS = clip.framerate()\n  sequence = hiero.core.Sequence(clip.name())\n  rt.addItem(hiero.core.BinItem(sequence))\n  sequence.setFramerate(clipFPS)\n  sequence.addClip(clip, 0)\n\n  for track in sequence.items():\n    track.razorAt(cutPoints)\n\n  hiero.ui.openInTimeline(sequence.binItem())" +STARTLINE}
+}
+ Input {
+  inputs 0
+  name Input1
+ }
+set N7a1cea70 [stack 0]
+ Reformat {
+  type "to box"
+  box_width 256
+  box_height 256
+  box_fixed true
+  resize distort
+  filter Impulse
+  name Reformat1
+ }
+set N7a1dd750 [stack 0]
+ TimeOffset {
+  time_offset -1
+  time ""
+  name TimeOffset1
+  xpos 180
+  ypos 40
+ }
+push $N7a1dd750
+ Merge2 {
+  inputs 2
+  operation difference
+  name Merge1
+  xpos 369
+  ypos 11
+ }
+ CurveTool {
+  avgframes 1
+  ROI {0 0 256 256}
+  name CurveTool
+ }
+push $N7a1dd750
+push $N7a1cea70
+ Switch {
+  inputs 3
+  which {{parent.output}}
+  name Switch1
+ }
+ Output {
+  name Output1
+ }
+end_group
