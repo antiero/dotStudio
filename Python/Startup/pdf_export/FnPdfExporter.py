@@ -158,7 +158,7 @@ class PDFExporter(object):
             
         return self.canvas
 
-    def exportPDF(self):
+    def exportPDF(self, show=True):
         """Exports the PDF and shows it in the file browser"""
 
         self.buildCanvas()
@@ -166,8 +166,11 @@ class PDFExporter(object):
         # save the pdf
         self.canvas.save()
 
-        if self.canvas:
-            self.cleanUpAndShowPDF()
+
+        self.cleanUpTempFiles()
+
+        if self.canvas and show:
+            self.showPDF()
 
     def setCanvasSettings(self, pageNumber=1):
         """
@@ -186,7 +189,7 @@ class PDFExporter(object):
         # footer bar
         self.setFooter(pageNumber)
 
-    def cleanUpAndShowPDF(self):
+    def cleanUpTempFiles(self):
         error = None
         for f in self.fileList:
             try:
@@ -196,6 +199,7 @@ class PDFExporter(object):
         if error:
             print error
 
+    def showPDF(self):
         if os.path.isfile(self.outputFilePath):
             hiero.ui.openInOSShell(self.outputFilePath)
 
@@ -249,7 +253,7 @@ class PDFExporter(object):
                 shutil.copy(self.offlineLogoPath, thumbPath)
 
             if not os.path.isfile(thumbPath) or progress.wasCanceled():
-                self.cleanUpAndShowPDF()
+                self.cleanUpTempFiles()
                 progress.cancel()
                 break
 
@@ -658,12 +662,22 @@ class ExportPdfAction(object):
             printer = PDFExporter(trackItems, outputFilePath)
             printer.row = numRows
             printer.column = numColumns
-            printer.exportPDF()
+            printer.exportPDF(show=True)
+
+    def printSequenceToPDF(self, sequence, outputFilePath, numRows=3, numColumns=3):
+        """Prints the Sequence to PDF"""
+        videoTracks = sequence.videoTracks()
+        trackItems = []
+        for track in videoTracks:
+            trackItems += [item for item in track.items() if isinstance(item, hiero.core.TrackItem)]
+
+        printer = PDFExporter(trackItems, outputFilePath)
+        printer.row = numRows
+        printer.column = numColumns
+        printer.exportPDF(show=False)            
 
     def eventHandler(self, event):
         selection = event.sender.selection()
         sequences = [item for item in selection if isinstance(item.activeItem(), hiero.core.Sequence)]
         if len(sequences) == 1:
             event.menu.addAction(self.makePDFAction)
-
-act = ExportPdfAction()
