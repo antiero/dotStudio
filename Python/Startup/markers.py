@@ -152,7 +152,12 @@ class UpdateMarkerDialog(QtGui.QDialog):
   def __getMarkerTags(self):
     tagsBin = hiero.core.project("Tag Presets").tagsBin()
     markerBin = tagsBin["Markers"]
-    markerTags = markerBin.items()
+    markerTags = list(markerBin.items())
+
+    # There is also a default Gray Tag.png which should be included
+    grayTag = hiero.core.Tag("Gray", "icons:Tag.png")
+    markerTags.append(grayTag)
+
     return markerTags
 
   def __getStatusTags(self):
@@ -254,12 +259,12 @@ class MarkersTableModel(QAbstractTableModel):
         except:
           # SHOULD RETURN A BLACK PIXMAP HERE...
           icon = QtGui.QIcon("icons:VideoOnlyWarning.png")
-          pixmap = icon.pixmap(icon.actualSize(QSize(48, 48)))
+          pixmap = icon.pixmap(icon.actualSize(QSize(26, 26)))
         return pixmap
 
       elif index.column() == 1:
-        icon = QtGui.QIcon(self.infoDict[index.row()]["Thumbnail"])
-        pixmap = icon.pixmap(icon.actualSize(QSize(32, 32)))
+        icon = QtGui.QIcon(self.infoDict[index.row()]["Icon"])
+        pixmap = icon.pixmap(icon.actualSize(QSize(26, 26)))
         return pixmap
 
     elif role == Qt.DisplayRole:
@@ -335,17 +340,10 @@ class MarkerTableView(QtGui.QTableView):
 
         self.setSortingEnabled(True)
         verticalHeader = self.verticalHeader()
-        horizontalHeader = self.horizontalHeader()
-        horizontalHeader.setResizeMode(QtGui.QHeaderView.ResizeToContents)
         verticalHeader.setResizeMode(QtGui.QHeaderView.ResizeToContents)    
         self.horizontalHeader().setDefaultAlignment(Qt.AlignVCenter | Qt.AlignHCenter )
         self.setShowGrid(True)
         self.verticalHeader().setVisible(False)
-        self.resizeColumnsToContents()
-        self.setColumnWidth(0, 100)    
-        self.setColumnWidth(1, 32)
-        self.setColumnWidth(4, 64)
-        self.setColumnWidth(5, 320)
 
     def contextMenuEvent(self, event):
         '''Handle context menu for each cell'''
@@ -553,6 +551,11 @@ class MarkersPanel(QtGui.QWidget):
     
     self.table_model.infoDict = self.infoDict
     self.markerSortFilterProxyModel.setSourceModel(self.table_model)
+    self.table_view.setColumnWidth(0, 100)
+    self.table_view.setColumnWidth(1, 36)
+    self.table_view.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.Fixed)
+    self.table_view.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.Fixed)
+    self.table_view.horizontalHeader().setResizeMode(5, QtGui.QHeaderView.Stretch)
     
   def formatStringFromSeq(self, seq):
     seq = seq.format()
@@ -597,7 +600,6 @@ class MarkersPanel(QtGui.QWidget):
                          "Duration": duration,
                          "Icon": str(tag.icon()),
                          "Sequence": seq,
-                         "Thumbnail": str(tag.icon())
                          }]
     return tagDict
 
@@ -630,7 +632,6 @@ class MarkersPanel(QtGui.QWidget):
                          "Duration": duration,
                          "Icon": "icons:ViewerToolAnnotationVis.png",
                          "Sequence": seq,
-                         "Thumbnail": "icons:ViewerToolAnnotationVis.png"
                          }]
     return annotationsDict
 
