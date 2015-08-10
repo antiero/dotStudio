@@ -1,12 +1,13 @@
 # Adds a Markers panel for viewing Timeline Tags and Annotations in a Panel
 import operator
-import hiero.core
-import hiero.ui
-import copy
-from hiero.ui import findMenuAction, registerAction, registerPanel, insertMenuAction, createMenuAction
+from itertools import chain
+
 from PySide import QtGui
 from PySide.QtCore import Qt, QAbstractTableModel, QSize, SIGNAL
-from itertools import chain
+
+import hiero.core
+import hiero.ui
+from hiero.ui import findMenuAction, registerAction, registerPanel, insertMenuAction, createMenuAction
 
 def flatten(tupleOfTuples):
   """Convenience method for flattening a tuple of tuples"""
@@ -48,6 +49,11 @@ def sequence_annotations(self):
 
   return annotations
 
+# Punch these methods into the hiero.core objects for now.
+hiero.core.Annotation.notes = annotation_notes
+hiero.core.Clip.annotations = clip_annotations
+hiero.core.Sequence.annotations = sequence_annotations  
+
 class UpdateMarkerDialog(QtGui.QDialog):
 
   def __init__(self, itemSelection=None,parent=None):
@@ -58,9 +64,8 @@ class UpdateMarkerDialog(QtGui.QDialog):
     self.setWindowIcon(QtGui.QIcon("icons:TagsIcon.png"))
     self.setSizePolicy( QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Fixed )
 
-    layout = QtGui.QFormLayout()
+    # The item passed should only ever be a single item, passed on from the double-clicked row.
     self._itemSelection = itemSelection
-
     self._currentIcon = ""
     self._currentName = ""
     self._currentNote = ""
@@ -72,7 +77,9 @@ class UpdateMarkerDialog(QtGui.QDialog):
       self._currentName = self._itemSelection["Name"]
       self._currentNote = self._itemSelection["Note"]
       self._currentInTime = self._itemSelection["TimecodeStart"]
-      self._currentDuration = self._itemSelection["Duration"]
+      self._currentDuration = self._itemSelection["Duration"]    
+
+    layout = QtGui.QFormLayout()
 
     # Name for Marker
     self._markerLabelEdit = QtGui.QLineEdit()
@@ -97,6 +104,7 @@ class UpdateMarkerDialog(QtGui.QDialog):
 
     # Add a Combobox for selecting a Tag...
     self._iconCombo = QtGui.QComboBox()
+    self.updateTagComboBox()    
     self._iconCombo.currentIndexChanged.connect(self.tagComboChanged)
     self._markerButtonLayout.addWidget(self._iconCombo)    
 
@@ -153,11 +161,6 @@ class UpdateMarkerDialog(QtGui.QDialog):
     markerTags = markerBin.items()
     return markerTags
 
-  # Override the exec_ method to update the TagComboBox with any new Project Tags
-  def exec_(self):
-    self.updateTagComboBox()
-    return super(UpdateMarkerDialog, self).exec_()
-
   def tagComboChanged(self,index):
 
     # We get the index of the current drop-down list entry
@@ -165,7 +168,7 @@ class UpdateMarkerDialog(QtGui.QDialog):
 
     # We get the Tag at 'index', from the tags dictionary list in our dialog
     tag = self.tags[index]
-    self._currentIcon = tag.icon()  
+    self._currentIcon = tag.icon()
 
   def updateTagComboBox(self):
     # Build a list of Tags from Hiero's Preset Tags Bin...
@@ -332,8 +335,10 @@ class MarkerTableView(QtGui.QTableView):
 
         self.setSortingEnabled(True)
         verticalHeader = self.verticalHeader()
+        horizontalHeader = self.horizontalHeader()
+        horizontalHeader.setResizeMode(QtGui.QHeaderView.ResizeToContents)
         verticalHeader.setResizeMode(QtGui.QHeaderView.ResizeToContents)    
-        self.horizontalHeader().setDefaultAlignment(Qt.AlignLeft)
+        self.horizontalHeader().setDefaultAlignment(Qt.AlignVCenter | Qt.AlignHCenter )
         self.setShowGrid(True)
         self.verticalHeader().setVisible(False)
         self.resizeColumnsToContents()
@@ -414,9 +419,7 @@ class MarkersPanel(QtGui.QWidget):
     self.displayModeComboBox.currentIndexChanged.connect(self.displayModeChanged)
 
     self.clearSelectedMarkersButton = QtGui.QPushButton("Selected")
-    self.clearSelectedMarkersButton.setIcon(QtGui.QIcon("icons:status/TagOnHold.png"))
     self.clearAllMarkersButton = QtGui.QPushButton("All")
-    self.clearAllMarkersButton.setIcon(QtGui.QIcon("icons:status/TagOmitted.png"))
     self.clearAllMarkersButton.setFixedWidth(80)
     self.clearSelectedMarkersButton.setFixedWidth(100)
     self.clearAllMarkersButton.clicked.connect(hiero.ui.clearAllTimelineMarkers)
@@ -754,10 +757,6 @@ class MarkerActions(object):
         insertMenuAction( self._addMarkerAction, a.menu())
         insertMenuAction( self._clearAllMarkersAction, a.menu())
         insertMenuAction( self._clearMarkersInOutAction, a.menu())
-
-hiero.core.Annotation.notes = annotation_notes
-hiero.core.Clip.annotations = clip_annotations
-hiero.core.Sequence.annotations = sequence_annotations
 
 markerActions = MarkerActions()
 hiero.ui.clearAllTimelineMarkers = markerActions.clearAllMarkers
