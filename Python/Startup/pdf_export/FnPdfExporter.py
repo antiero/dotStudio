@@ -678,6 +678,6 @@ class ExportPdfAction(object):
 
     def eventHandler(self, event):
         selection = event.sender.selection()
-        sequences = [item for item in selection if isinstance(item.activeItem(), hiero.core.Sequence)]
+        sequences = [item for item in selection if hasattr(item, "activeItem") and isinstance(item.activeItem(), hiero.core.Sequence)]
         if len(sequences) == 1:
             event.menu.addAction(self.makePDFAction)
