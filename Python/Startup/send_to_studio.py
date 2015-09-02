@@ -278,7 +278,7 @@ def sendCompToStudioProject():
     print "nuke.currentPreset is: %s" % str(nuke.currentPreset)
     writeNode = presetDialog.createWriteNodeFromPreset(nuke.currentPreset)
     outputNode = selectedNodes[-1]
-    writeNode.setInput(0, write)
+    writeNode.setInput(0, outputNode)
 
     # To-do: Save the Script somewhere and set the correct path for nkClip
     nkScript = writeNode['file'].value()
