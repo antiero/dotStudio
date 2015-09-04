@@ -22,6 +22,7 @@ import os, logging, threading
 import nuke
 import FnFrameioUI
 import frameio
+from PySide.QtCore import QCoreApplication
 
 class FrameioDelegate(object):
     """Delegate for handling the Frame.io session and communicating with UI"""
@@ -43,6 +44,7 @@ class FrameioDelegate(object):
     def showUploadViewController(self):
         """Saves the Username to the uistate.ini"""
         self.frameioMainViewController.show()
+        self.frameioMainViewController.move(QCoreApplication.instance().desktop().screen().rect().center() - self.frameioMainViewController.rect().center())
 
     def setUserName(self, username):
         """Saves the Username to the uistate.ini"""
