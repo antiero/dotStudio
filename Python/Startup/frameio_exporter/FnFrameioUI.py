@@ -149,6 +149,7 @@ class FrameioUploadWindow(QtGui.QWidget):
         self.uploadViewLayout.addWidget(self.uploadOptionWidget)
 
         self.projectDropdown = QtGui.QComboBox()
+        self.projectDropdown.setFont(font)
         self.projectDropdown.setStyleSheet('QComboBox {width: 370px; height: 60px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #4F535F; color: white;}')
 
         self.uploadViewLayout.addWidget(self.projectDropdown)
@@ -175,9 +176,8 @@ class FrameioUploadWindow(QtGui.QWidget):
     def mouseMoveEvent(self, event):
         if self.draggable and event.buttons() & Qt.LeftButton:
             globalPos = event.globalPos()
-            moved = globalPos - self.__mousePressPos
-            if moved.manhattanLength() > self.dragging_threshold:
-                # move when user drag window more than dragging_threshold
+            if globalPos:
+                moved = globalPos - self.__mousePressPos
                 diff = globalPos - self.__mouseMovePos
                 self.move(diff)
                 self.__mouseMovePos = globalPos - self.pos()

@@ -61,8 +61,8 @@ class FrameioDelegate(object):
 
         if self.frameiosession.sessionAuthenticated:
             print "sessionAuthenticated..."
-            projects = ' '.join( self.frameiosession.projectdict().values() )
-            print "Projects: " + str(projects)
+            print str(self.frameiosession.projectdict().values())
+            projects = self.frameiosession.projectdict().values()
             self.frameioMainViewController._updateProjectsList(projects)
             self.frameioMainViewController.showUploadView()
 
