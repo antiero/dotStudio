@@ -12,6 +12,7 @@ cwd = os.path.dirname(os.path.realpath(__file__))
 gIconPath = "/Users/ant/.nuke/Python/Startup/frameio_exporter/icons/"
 
 gGoogleAccountsEnabled = False # until we get oauth2 login figured out
+UPLOAD_VALID_FILE_TYPES = ['mov', 'mp4']
 
 class FrameioUploadWindow(QtGui.QWidget):
 
@@ -20,6 +21,10 @@ class FrameioUploadWindow(QtGui.QWidget):
     eStatusEmailInvalid = "Not a valid E-mail."
     eStatusGmailUnsupported =  "Google Accounts not currently supported."
     eStatusPasswordInvalid =  "Please enter a valid password."
+    eStatusLoggingIn = "Logging in..."
+
+    # For handling dropped files
+    fileDropped = QtCore.Signal(list)
 
     def __init__(self, delegate, username=None):
         super(FrameioUploadWindow, self).__init__()
@@ -122,37 +127,83 @@ class FrameioUploadWindow(QtGui.QWidget):
         self.loginViewLayout.addWidget(self.submitButton)
 
         self.loginView.setLayout(self.loginViewLayout)
+
         self.stackView.addWidget(self.loginView)
 
-        # Upload Screen View
+        ### View to handle uploading of Clips via drag-drop into a dropzone
+        self.uploadDropzoneView = QtGui.QWidget()
+        self.uploadDropzoneView.setAcceptDrops(True)
+
+        self.uploadDropzoneLayout = QtGui.QVBoxLayout(self)
+        self.uploadDropzoneLayout.setAlignment(Qt.AlignCenter)
+
+        pixmap = QtGui.QPixmap(os.path.join(gIconPath + "uploadDropzone-64px.png"))
+        uploadIcon = QtGui.QLabel("")
+        uploadIcon.setPixmap(pixmap)
+        uploadIcon.setAlignment(Qt.AlignCenter)
+        self.uploadDropzoneLayout.addWidget(uploadIcon)
+
+        self.uploadDropzoneLabel1 = QtGui.QLabel("Upload your files")
+        self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
+        self.uploadDropzoneLabel1.setFont(font)
+        self.uploadDropzoneLabel2 = QtGui.QLabel("Drag 'n Drop your files or Clips/Sequences here.")
+        self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
+        self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel1)
+        font.setPointSize(16)
+        self.uploadDropzoneLabel2.setFont(font)
+        self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel2)
+
+        self.uploadDropzoneView.setLayout(self.uploadDropzoneLayout)
+        self.stackView.addWidget(self.uploadDropzoneView)
+
+        # View to handle uploading of Clips and Timelines View
         self.uploadView = QtGui.QWidget()
         self.uploadView.setStyleSheet('QPushButton {width: 100px; height: 100px; border-width: 0px; border-radius: 50px; border-style: solid; background-color: #9974BA; color: white;}')
 
         self.uploadViewLayout = QtGui.QVBoxLayout(self)
         self.uploadViewLayout.setAlignment(Qt.AlignCenter)
 
-        self.uploadOptionWidget = QtGui.QWidget()
-        self.uploadButtonLayout = QtGui.QHBoxLayout(self)
-        self.uploadButtonLayout.setAlignment(Qt.AlignCenter)
+        self.uploadTopButtonWidget = QtGui.QWidget()
+        self.uploadTopButtonLayout = QtGui.QHBoxLayout(self)
+        self.uploadTopButtonLayout.setAlignment(Qt.AlignCenter)
         self.uploadTimelineOptionButton = QtGui.QPushButton("Timeline")
         self.uploadClipOptionButton = QtGui.QPushButton("Clips")
         self.uploadTimelineOptionButton.setCheckable(True)
         self.uploadTimelineOptionButton.setChecked(False)
-        font.setPointSize(16)
         self.uploadTimelineOptionButton.setFont(font)
         self.uploadClipOptionButton.setCheckable(True)
         self.uploadClipOptionButton.setChecked(False)
         self.uploadClipOptionButton.setFont(font)
-        self.uploadButtonLayout.addWidget(self.uploadTimelineOptionButton)
-        self.uploadButtonLayout.addWidget(self.uploadClipOptionButton)
-        self.uploadOptionWidget.setLayout(self.uploadButtonLayout)
-        self.uploadViewLayout.addWidget(self.uploadOptionWidget)
+        self.uploadTopButtonLayout.addWidget(self.uploadTimelineOptionButton)
+        self.uploadTopButtonLayout.addWidget(self.uploadClipOptionButton)
+        self.uploadTopButtonWidget.setLayout(self.uploadTopButtonLayout)
+
+        self.uploadBottomButtonWidget = QtGui.QWidget()
+        self.uploadBottomButtonLayout = QtGui.QHBoxLayout(self)
+        self.uploadBottomButtonLayout.setAlignment(Qt.AlignCenter)
+        self.uploadCancelButton = QtGui.QPushButton("Cancel")
+        self.uploadCancelButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #767C8E; color: white;}')
+        self.uploadCancelButton.clicked.connect(self.showDropzoneUploadView)
+
+        self.uploadTaskButton = QtGui.QPushButton("Upload")
+        self.uploadTaskButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; color: white;}')
+        font.setPointSize(20)
+        self.uploadCancelButton.setFont(font)
+        self.uploadTaskButton.setFont(font)
+        self.uploadBottomButtonLayout.addWidget(self.uploadCancelButton)
+        self.uploadBottomButtonLayout.addWidget(self.uploadTaskButton)
+        self.uploadBottomButtonWidget.setLayout(self.uploadBottomButtonLayout)
 
         self.projectDropdown = QtGui.QComboBox()
         self.projectDropdown.setFont(font)
-        self.projectDropdown.setStyleSheet('QComboBox {width: 370px; height: 60px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #4F535F; color: white;}')
+        self.projectDropdown.setEditable(True)
+        self.projectDropdown.lineEdit().setAlignment(Qt.AlignCenter)
+        self.projectDropdown.setEditable(False)
+        self.projectDropdown.setStyleSheet('QComboBox {width: 350px; height: 50px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #4F535F; color: white;}')
 
+        self.uploadViewLayout.addWidget(self.uploadTopButtonWidget)
         self.uploadViewLayout.addWidget(self.projectDropdown)
+        self.uploadViewLayout.addWidget(self.uploadBottomButtonWidget)
 
         self.uploadView.setLayout(self.uploadViewLayout)
 
@@ -166,6 +217,46 @@ class FrameioUploadWindow(QtGui.QWidget):
         self.setMinimumSize(160, 160)        
         self.setLayout(layout)
         self.emailLineEdit.setFocus()
+
+
+    def handleDropzoneDrop(self, event):
+        """Handles items dropped onto the Dropzone View"""
+
+    def _getFilePathFromEvent(self, event):
+        '''Get file path from dropped file
+        '''
+        # Validate single url
+        if not event.mimeData().hasUrls():
+            print 'Invalid file.'
+
+        urls = event.mimeData().urls()
+
+        # Validate local file
+        filePath = urls[0].toLocalFile()
+        if not os.path.isfile(filePath):
+            raise ConnectThumbnailValidationError('Invalid file.')
+
+        # Validate file extension
+        fileName, fileExtension = os.path.splitext(filePath)
+        fileExtension = fileExtension[1:].lower()
+        if not fileExtension in se;fTHUMBNAIL_UPLOAD_VALID_FILE_TYPES:
+            raise ConnectThumbnailValidationError('Invalid file type.')
+
+        # Validate file size
+        fileSize = os.path.getsize(filePath)
+        if fileSize > THUMBNAIL_UPLOAD_MAX_SIZE:
+            raise ConnectThumbnailValidationError(
+                'File size is above allowed maximum.'
+            )
+
+        return filePath
+
+    def dropEvent(self, event):
+        '''Handle the dropZone drop event.'''
+        try:
+            filePath = self._getFilePathFromEvent(event)
+        except:
+            pass
 
     def mousePressEvent(self, event):
         if self.draggable and event.button() == Qt.LeftButton:
@@ -186,7 +277,11 @@ class FrameioUploadWindow(QtGui.QWidget):
     def showLoginView(self):
         # Sets the stackView to show the Login View
         self.stackView.setCurrentWidget(self.loginView)
- 
+
+    def showDropzoneUploadView(self):
+        # Sets the stackView to show the Dropzone Upload View
+        self.stackView.setCurrentWidget(self.uploadDropzoneView)
+
     def showUploadView(self):
         # Sets the stackView to show the Upload View
         self.stackView.setCurrentWidget(self.uploadView)
@@ -224,7 +319,6 @@ class FrameioUploadWindow(QtGui.QWidget):
                 self.password = passwordText
 
         if self.username and self.password:
-            self.statusLabel.setText("Logging in...")
             self.delegate.attemptLogin(self.username, self.password)
 
     def keyPressEvent(self, e):

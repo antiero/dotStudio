@@ -32,6 +32,7 @@ class FrameioDelegate(object):
         self.appSettings = ApplicationSettings()
 
         self.username = kwargs.get("username", None)
+        self.project = None # Populate with the last 
 
         # See if username exists already in uistate.ini
         if not self.username:
@@ -54,11 +55,9 @@ class FrameioDelegate(object):
     def attemptLogin(self, username = '', password = ""):
         """Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable"""
 
+        self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
+
         self.frameiosession = frameio.Session(username, password)
-        """if project:
-            self.frameiosession.setProject(project)
-            return False
-        """
         result = self.frameiosession.login(username, password)
 
         if self.frameiosession.sessionAuthenticated:
@@ -189,112 +188,7 @@ def hex_to_rgb(value):
     lv = len(value)
     return tuple(float(int(value[i:i + lv // 3], 16))/255 for i in range(0, lv, lv // 3))
     
-def annotationNode(draw_data , width, height, frame):
-    if draw_data == None:
-        return False
-    import nuke.rotopaint as rp
-    paintNode = nuke.createNode('RotoPaint')
-    paintNode['useLifetime'].setValue(True)
-    paintNode['lifetimeStart'].setValue( frame )
-    paintNode['lifetimeEnd'].setValue( frame )
-    paintNode.hideControlPanel() 
-    i=0
-    for draw in draw_data:
-        if draw['tool'] == 'pen':
-            curvesKnob = paintNode['curves']
-            stroke = rp.Stroke(curvesKnob)
-            for pointindex in xrange(len(draw['xs'])):
-                stroke.append(rp.AnimControlPoint(width*float( draw['xs'][pointindex] ) , height-height*float( draw['ys'][pointindex] )))
-            stroke.name = 'frameio' + str(i)
-            curvesKnob.rootLayer.append(stroke)
-            color = hex_to_rgb( draw['color'] )
-            stroke.getAttributes().set('r' , color[0])
-            stroke.getAttributes().set('g' , color[1])
-            stroke.getAttributes().set('b' , color[2])
-            stroke.getAttributes().set('bs' , draw['size'] *2 )
-            i+=1
-        else:
-            return False
-    
-def loadSelectedcomments():
-    """Loads the comments for a selected node from the server. Comments are generated as text nodes inside a group"""
-    nodes = nuke.selectedNodes()
-    nukeroot = nuke.root()
-    previouscommand = "animCurve = nuke.thisNode()['comment'].animation( 0 ) \nframe = False\nfor i in xrange(len(animCurve.keys())):\n    if nuke.frame() > animCurve.keys()[i].x:\n        frame = animCurve.keys()[i].x     \nif frame:\n    nuke.frame(frame)"
-    nextcommand = "animCurve = nuke.thisNode()['comment'].animation( 0 ) \nframe = False\nfor i in xrange(len(animCurve.keys())):\n    if nuke.frame() < animCurve.keys()[i].x:\n        frame = animCurve.keys()[i].x\n        break\nif frame:\n    nuke.frame(frame)"
-    for node in nodes:
-        if not 'file' in node.knobs():
-            continue
-        filepath = os.path.abspath(node['file'].value())
-        if not os.path.isfile(filepath):
-            continue
-        if nukeroot['frameioproject'].value() == '0':
-            project = ''
-        else:
-            project = nukeroot['frameioproject'].value()
-        frameiosession = login( nukeroot['frameiousername'].value() , project )
-        projectid = node['projectid'].value()
-        filereferenceid = node['filereferenceid'].value()
-        frameiosession.setProjectid(projectid)
-        filereference = frameiosession.getFilereference(filereferenceid)
-        commentdict = filereference.getComments()
-        if not commentdict:
-            return False
-        
-        group = nuke.createNode('Group')
-        
-        group.addKnob( nuke.Tab_Knob('frameio' , 'frame.io') )
-        group.addKnob( nuke.Int_Knob('comment' , 'Comment') )
-        group.addKnob( nuke.Int_Knob('of' , 'of') )
-        group.addKnob( nuke.PyScript_Knob('previous' , 'previous' , previouscommand ) )
-        group.addKnob( nuke.PyScript_Knob('next' , 'next' , nextcommand ) )
-        group['of'].clearFlag(nuke.STARTLINE)
-        group['comment'].setAnimated()
-        i = 1
-        while nuke.toNode('Comments' + str(i)) != None:
-            i+=1
-        group['name'].setValue('Comments' + str(i))
-        group['label'].setValue(os.path.basename(filepath))
-        with group:
-            input = nuke.createNode('Input')
-            input.hideControlPanel() 
-            i = 0
-            for timestamps in sorted(commentdict.keys()):
-                for comment in commentdict[timestamps]:
-                    if node.Class() == 'Read':
-                        if node['frame'].value() == '':
-                            offset = 0
-                        else:
-                            offset = int(node['frame'].value())
-                    else:
-                        offset = int(nuke.root()['first_frame'].value())
-                    frame = round(timestamps) + offset
-                    user = comment[0]
-                    text = comment[1]
-                    draw_data = comment[2]
-                    group['comment'].setValueAt( i+1, frame )
-                    textnode = nuke.createNode('Text2')
-                    textnode['box'].setValue([10,10,node.width()/2,node.height()] )
-                    textnode['yjustify'].setValue('bottom')
-                    textnode['global_font_scale'].setValue(.75)
-                    textnode['enable_background'].setValue(True)
-                    textnode['background_opacity'].setValue(0.9)
-                    textnode['useLifetime'].setValue(True)
-                    textnode['lifetimeStart'].setValue( frame )
-                    textnode['lifetimeEnd'].setValue( frame )
-                    annotationNode(draw_data , node.width(), node.height(), frame)
-                    message = user
-                    message += '\n\n'
-                    message += text
-                    textnode['message'].setValue(message.encode('utf-8'))
-                    textnode.hideControlPanel() 
-                    i+=1
-            group['of'].setValue(i)
-            output = nuke.createNode('Output')
-            output.hideControlPanel() 
-        group.setInput(0, node)
-        nuke.autoplace(group)
-        
+
         
 def doLogging(logfile, loglevel = 50):
     logging.basicConfig(level=loglevel,
