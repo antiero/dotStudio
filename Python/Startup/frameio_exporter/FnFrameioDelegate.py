@@ -23,120 +23,14 @@ import nuke
 import FnFrameioUI
 import frameio
 from PySide.QtCore import QCoreApplication
+from FnFrameioUI import FnProgressTask
 
-class FrameioDelegate(object):
-    """Delegate for handling the Frame.io session and communicating with UI"""
-    def __init__(self, *args, **kwargs):
-
-        self.frameiosession = None 
-        self.appSettings = ApplicationSettings()
-
-        self.username = kwargs.get("username", None)
-        self.project = None # Populate with the last 
-
-        # See if username exists already in uistate.ini
-        if not self.username:
-            savedUserPreference = self.appSettings.value("FrameioUsername")
-            if savedUserPreference:
-                self.username = savedUserPreference
-
-        self.frameioMainViewController = FnFrameioUI.FrameioUploadWindow(delegate = self, username = self.username)
-
-    def showUploadViewController(self):
-        """Saves the Username to the uistate.ini"""
-        self.frameioMainViewController.show()
-        self.frameioMainViewController.move(QCoreApplication.instance().desktop().screen().rect().center() - self.frameioMainViewController.rect().center())
-
-    def setUserName(self, username):
-        """Saves the Username to the uistate.ini"""
-        self.username = username
-        self.appSettings.setValue("FrameioUsername", self.username)
-
-    def attemptLogin(self, username = '', password = ""):
-        """Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable"""
-
-        self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
-
-        self.frameiosession = frameio.Session(username, password)
-        result = self.frameiosession.login(username, password)
-
-        if self.frameiosession.sessionAuthenticated:
-            print "sessionAuthenticated..."
-            print str(self.frameiosession.projectdict().values())
-            projects = self.frameiosession.projectdict().values()
-            self.frameioMainViewController._updateProjectsList(projects)
-            self.frameioMainViewController.showUploadView()
-
-        return True
-    
-def addFrameioroottab():
-    """Adds frame.io settings tab to the nukescript"""
-    nukeroot = nuke.root()
-    if not 'frameio' in nukeroot.knobs():
-        nukeroot.addKnob( nuke.Tab_Knob('frameio' , 'frame.io') )
-        nukeroot.addKnob( nuke.String_Knob('frameiousername' , 'Username') )
-        nukeroot.addKnob( nuke.Enumeration_Knob('frameioproject' , 'Project' , [] ) )
-        
-def addFrameionodetab(node):
-    """Adds frame.io settings tab to the node"""
-    if not 'frameio' in node.knobs():
-        node.addKnob( nuke.Tab_Knob('frameio' , 'frame.io') )
-        node.addKnob( nuke.Link_Knob('frameiousername' , 'Username') )
-        node.addKnob( nuke.Link_Knob('frameioproject' , 'Project' , ) )
-        node['frameiousername'].setLink('root.frameiousername')
-        node['frameioproject'].setLink('root.frameioproject')
-        openbrowser = 'import webbrowser\nurl = "https://app.frame.io/?f=" + nuke.thisNode()["filereferenceid"].value()\nwebbrowser.open_new_tab(url)'
-        node.addKnob(nuke.PyScript_Knob( 'openbrowser', 'Open upload in browser',openbrowser ))
-        node.addKnob( nuke.Text_Knob('line1' , '') )
-        node.addKnob( nuke.String_Knob('filereferenceid' , 'filereferenceid') )
-        node.addKnob( nuke.String_Knob('folderid' , 'folderid') )
-        node.addKnob( nuke.String_Knob('projectid' , 'projectid') )
-        node['openbrowser'].setFlag(nuke.STARTLINE)
-        node['filereferenceid'].setEnabled(False)
-        node['folderid'].setEnabled(False)
-        node['projectid'].setEnabled(False)
-    
-def uploadSelected():
-    """Starts upload tasks for all the selected node with file knobs"""
-    nodes = nuke.selectedNodes()
-    nukeroot = nuke.root()
-    uploads = {}
-    for node in nodes:
-        if not 'file' in node.knobs():
-            continue
-        filepath = os.path.abspath(node['file'].value())
-        if not os.path.isfile(filepath):
-            continue
-        addFrameioroottab()
-        addFrameionodetab(node)
-        if nukeroot['frameioproject'].value() == '0':
-            project = ''
-        else:
-            project = nukeroot['frameioproject'].value()
-        frameiosession = login( nukeroot['frameiousername'].value() , project )
-        if not frameiosession:
-            return False
-        nukeroot['frameiousername'].setValue(frameiosession.getUsername())
-        nukeroot['frameioproject'].setValues(frameiosession.projectdict().values())
-        nukeroot['frameioproject'].setValue(str(frameiosession.getProjectname()))
-        if node['filereferenceid'].value() != '':
-            filereferenceid = node['filereferenceid'].value()
-            filereference = frameiosession.getFilereference(filereferenceid)
-            if filereference.exists():
-                size1 = filereference.getSize()
-                size2 = os.stat(filepath).st_size
-                if size1 == size2:
-                    return
-        uploads[filepath] = node
-    if len(uploads.keys()) != 0:
-        threading.Thread( None, filereferenceTask, args = (uploads , frameiosession ) ).start()
-            
-def filereferenceTask(uploads , frameiosession):
+def NukeFrameioFileReferenceTask(uploads, frameiosession, foldername = "NukeStudioUploads"):
     """Nuke task for creating the upload object and inspecting all the files"""
     totalprogress = len(uploads)*2+1
-    task = nuke.ProgressTask('Preparing uploads' )
+    task = FnProgressTask('Preparing uploads' )
     task.setMessage('Upload to frame.io')
-    foldername = 'Nukeuploads'
+
     subfolders = frameiosession.getSubfolderdict(frameiosession.getRootfolderkey())
     if foldername in subfolders.values():
         for id in subfolders:
@@ -145,7 +39,8 @@ def filereferenceTask(uploads , frameiosession):
                 break
     else:
         folderid = frameiosession.createSubfolders([foldername])[0]['id']
-    upload = frameio.Upload( uploads.keys() , frameiosession , folderid )
+
+    upload = frameio.Upload( uploads.keys(), frameiosession, folderid )
     i = 1
     for filepath in uploads.keys():
         task.setProgress( 100/totalprogress*i )
@@ -159,40 +54,113 @@ def filereferenceTask(uploads , frameiosession):
     for filepath in uploads.keys():
         task.setProgress( 100/totalprogress*i )
         task.setMessage('Starting upload: ' + filepath)
-        uploads[filepath]['folderid'].setValue(folderid)
-        threading.Thread( None, uploadTask, args = (upload,filepath,uploads[filepath]) ).start()
+        uploads[filepath]['folderid'] = folderid
+        threading.Thread( None, NukeFrameioUploadTask, args = (upload,filepath,uploads[filepath]) ).start()
         i+=1
         
-def uploadTask(upload,filepath,node):
+def NukeFrameioUploadTask(upload, filepath, node):
     """Nuke task for uploading the parts for a specific file"""
-    task = nuke.ProgressTask('Upload to frame.io' )
+    task = FnProgressTask('Upload to frame.io' )
     task.setMessage('Creating filereference')
-    node['projectid'].setValue(frameiosession.getProjectid())
-    node['filereferenceid'].setValue(upload.getFilereferenceid(filepath))
     task.setProgress(4)
     parts=upload.getPartcount(filepath)
     for i in xrange(parts):
         task.setMessage('Uploading ' + os.path.basename(filepath) +  ' (part ' + str(i+1) + '/' + str(parts) + ')')
+        print 'Uploading ' + os.path.basename(filepath) +  ' (part ' + str(i+1) + '/' + str(parts) + ')'
         upload.uploadpart(filepath,i)
         task.setProgress(4 + 92/parts*(i+1))
         if task.isCancelled():
-            node['filereferenceid'].setValue('')
             upload.cancel(filepath)
             return
+
     upload.mergeparts(filepath)
     task.setProgress(98)
     upload.workerthread(filepath)
-    
-def hex_to_rgb(value):
-    value = value.lstrip('#')
-    lv = len(value)
-    return tuple(float(int(value[i:i + lv // 3], 16))/255 for i in range(0, lv, lv // 3))
-    
 
-        
-def doLogging(logfile, loglevel = 50):
-    logging.basicConfig(level=loglevel,
-                        format='%(asctime)s %(levelname)-8s %(message)s',
-                        filename=logfile,
-                        filemode='a')
-    logging.info("Logging requested, loglevel=%d",loglevel)
+class FrameioDelegate(object):
+    """Delegate for handling the Frame.io session and communicating with UI"""
+    def __init__(self, *args, **kwargs):
+
+        self.frameioSession = None 
+        self.appSettings = ApplicationSettings()
+
+        self.username = kwargs.get("username", None)
+        self.project = None # Populate with the last 
+
+        # See if username exists already in uistate.ini
+        if not self.username:
+            savedUserPreference = self.appSettings.value("FrameioUsername")
+            if savedUserPreference:
+                self.username = savedUserPreference
+
+        self.frameioMainViewController = FnFrameioUI.FnFrameioWidget(delegate = self, username = self.username)
+
+    def showFrameioWidgetWithSelection(self, selection):
+        """Saves the Username to the uistate.ini"""
+        print "showUploadViewController : %s" % str(selection)
+        self.frameioMainViewController.show(selection)
+
+        if not self.frameioSession or not self.frameioSession.sessionAuthenticated:
+            self.frameioMainViewController.showLoginView()
+        else:
+            self.frameioMainViewController.showUploadView()
+
+        self.frameioMainViewController.move(QCoreApplication.instance().desktop().screen().rect().center() - self.frameioMainViewController.rect().center())
+
+    def setUserName(self, username):
+        """Saves the Username to the uistate.ini"""
+        self.username = username
+        self.appSettings.setValue("FrameioUsername", self.username)
+
+    def attemptLogin(self, username = '', password = ""):
+        """Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable"""
+
+        self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
+
+        self.frameioSession = frameio.Session(username, password)
+        result = self.frameioSession.login(username, password)
+
+        if self.frameioSession.sessionAuthenticated:
+            print "sessionAuthenticated..."
+            self.setUserName(username)
+
+            print str(self.frameioSession.projectdict().values())
+            projects = self.frameioSession.projectdict().values()
+            self.frameioMainViewController._updateProjectsList(projects)
+            self.frameioMainViewController.showUploadView()
+
+        return True
+
+    def uploadFiles(self, files, project, fileReferenceID = None):
+        """Starts upload task for a list of files"""
+
+        uploads = {}
+        for filePath in files:
+            if not os.path.isfile(filePath):
+                return
+
+            if self.frameioSession.sessionAuthenticated:
+                print "Setting project to be: " + str(project)
+                self.frameioSession.setProject(project)
+
+            print "username is: " + self.frameioSession.getUsername()
+            print "projectDict values: " + str(self.frameioSession.projectdict().values())
+            
+            print "frameio.getProjectName:" + str(self.frameioSession.getProjectname())
+
+            #nukeroot['frameioproject'].setValues(frameiosession.projectdict().values())
+            #nukeroot['frameioproject'].setValue(str(frameiosession.getProjectname()))
+
+            # TO-DO: If a Clip object is passed with an existing fileReferenceID, check if the fileref exists
+            if fileReferenceID:
+                filereference = frameiosession.getFilereference(fileReferenceID)
+                if filereference.exists():
+                    size1 = filereference.getSize()
+                    size2 = os.stat(filePath).st_size
+                    if size1 == size2:
+                        break
+
+            uploads[filePath] = {"annotations": '', "fileReferenceID": fileReferenceID}
+
+        if len(uploads.keys()) != 0:
+            threading.Thread( None, NukeFrameioFileReferenceTask, args = (uploads, self.frameioSession) ).start()

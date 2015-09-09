@@ -1,10 +1,12 @@
-﻿"""
+"""
 UI elements for interaction with Frame.io from within Nuke Studio
 
 """
 from PySide import QtGui
-from PySide.QtCore import Qt, QUrl, QRegExp
-from PySide.QtWebKit import QWebView 
+from PySide.QtCore import Qt, QUrl, QRegExp, QCoreApplication
+from PySide.QtWebKit import QWebView
+import hiero.core 
+from hiero.ui import activeView, createMenuAction, mainWindow
 import frameio
 import os
 cwd = os.path.dirname(os.path.realpath(__file__))
@@ -12,9 +14,88 @@ cwd = os.path.dirname(os.path.realpath(__file__))
 gIconPath = "/Users/ant/.nuke/Python/Startup/frameio_exporter/icons/"
 
 gGoogleAccountsEnabled = False # until we get oauth2 login figured out
-UPLOAD_VALID_FILE_TYPES = ['mov', 'mp4']
 
-class FrameioUploadWindow(QtGui.QWidget):
+class FnProgressTask(QtGui.QProgressDialog):
+  """
+  A modal progress bar dialog, which wraps QProgressDialog from PySide.QtGui.
+  FnProgressTask( title = 'Progress', message = 'Progress...', parent = mainWindow(), showNow = True)
+  @param title - the title of the progress dialog
+  @param message - the task label of the progress dialog
+  @param parent - the parent of the dialog (defaults to hiero.ui.mainWindow())
+  @param showNow - a boolean, if True (default) shows dialog immediately after creation. If False, call show() later to show the dialog.
+  setProgress(...)
+     self.setProgress(x) -> None.
+     x is integer, representing the current task progress
+  setMessage(...)
+     self.setMessage(s) -> None.
+     
+     sets the message for the progress task
+  progress(...)
+     self.setMessage(s) -> returns current progress value (default range 0-100).
+  isCancelled(...)
+     self.isCancelled() -> True if the user has requested the task to be cancelled.
+  For more info, see: http://srinikom.github.io/pyside-docs/PySide/QtGui/QProgressDialog.html
+  '"""
+
+  def __init__(self, title = 'Progress', message = 'Progress...', showNow = True ):
+    QtGui.QProgressDialog.__init__(self, None)
+    self.setWindowTitle(title) # The title of the modal progress window
+    self.setMessage(message) # The task label displayed (PySide method is setLabelText)
+    self.setAutoClose(False) # If you set this to True, the dialog will automatically close when the max value is reached
+    self.setAutoReset(False) # If you set this to True, the progress will automatically reset when the max value is reached
+    if showNow:
+      self.show() # To match Nuke, shows the dialog when initialised. Alternatively, use showNow = False, as keyword argument, and call show() later.
+
+  # Nuke-style method for setting the progress message label
+  def setMessage(self,message):
+    self.setLabelText(message)
+
+  # Nuke-style method for setting the progress value
+  def setProgress(self,value):
+    self.setValue(value)
+
+  # Returns the current progress value
+  def progress(self):
+    return self.value()
+
+  # This is the Nuke way! Not sure how useful it is here, because Cancel closes the dialog
+  def isCancelled(self):
+    return self.wasCanceled()
+
+
+class FnFrameioMenu(QtGui.QMenu):
+    def __init__(self):
+        QtGui.QMenu.__init__(self, "Frame.io", None)
+        hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
+        self._actionUploadSelection = createMenuAction("Share to Frame.io...", 
+                                                                self.FrameioUploadSelectionAction, 
+                                                                icon=os.path.join(gIconPath + "logo-gray.png"))
+        self.addAction(self._actionUploadSelection)
+
+    def FrameioUploadSelectionAction(self):
+        """Presents the Frame.io Widget with the active selection of Bin items"""
+        selection = activeView().selection()
+        if not selection:
+            return
+
+        print "Presenting the Frame.io view controller with %s" % str(selection)
+
+        hiero.core.frameioDelegate.showFrameioWidgetWithSelection(selection=selection)
+
+    def eventHandler(self, event):
+        # Check if this actions are not to be enabled
+
+        if not hasattr(event.sender, 'selection'):
+          # Something has gone wrong, we shouldn't only be here if raised
+          # by the timeline view which will give a selection.
+          return
+        event.menu.addMenu(self)    
+
+class FnFrameioWidget(QtGui.QWidget):
+    """
+    Main Frame.io widget for handling interaction with
+    Frame.io
+    """
 
     eStatusCheckEmail = "Checking E-mail."
     eStatusCheckCredentials = "Checking user login credentials."
@@ -22,15 +103,19 @@ class FrameioUploadWindow(QtGui.QWidget):
     eStatusGmailUnsupported =  "Google Accounts not currently supported."
     eStatusPasswordInvalid =  "Please enter a valid password."
     eStatusLoggingIn = "Logging in..."
-
-    # For handling dropped files
-    fileDropped = QtCore.Signal(list)
+    eConnectionError = "Connection error. Check internet access!"
 
     def __init__(self, delegate, username=None):
-        super(FrameioUploadWindow, self).__init__()
+        super(FnFrameioWidget, self).__init__()
 
         global gIconPath
+
+        self._clips = []
+        self._sequences = []
+
         self.username = username
+
+        self.progressTask = FnProgressTask('Upload to frame.io', showNow = False)
 
         # FrameioDelegate
         self.delegate = delegate #kwargs.get("delegate", None)
@@ -132,7 +217,7 @@ class FrameioUploadWindow(QtGui.QWidget):
 
         ### View to handle uploading of Clips via drag-drop into a dropzone
         self.uploadDropzoneView = QtGui.QWidget()
-        self.uploadDropzoneView.setAcceptDrops(True)
+        self.uploadDropzoneView.setAcceptDrops(True) # Not hooked up.
 
         self.uploadDropzoneLayout = QtGui.QVBoxLayout(self)
         self.uploadDropzoneLayout.setAlignment(Qt.AlignCenter)
@@ -156,7 +241,7 @@ class FrameioUploadWindow(QtGui.QWidget):
         self.uploadDropzoneView.setLayout(self.uploadDropzoneLayout)
         self.stackView.addWidget(self.uploadDropzoneView)
 
-        # View to handle uploading of Clips and Timelines View
+        ### View to handle uploading of Clips and Timelines View
         self.uploadView = QtGui.QWidget()
         self.uploadView.setStyleSheet('QPushButton {width: 100px; height: 100px; border-width: 0px; border-radius: 50px; border-style: solid; background-color: #9974BA; color: white;}')
 
@@ -178,6 +263,9 @@ class FrameioUploadWindow(QtGui.QWidget):
         self.uploadTopButtonLayout.addWidget(self.uploadClipOptionButton)
         self.uploadTopButtonWidget.setLayout(self.uploadTopButtonLayout)
 
+        # This will control whether annotations are uploaded into Frame.io for the item
+        self.exportAnnotationsCheckbox = QtGui.QCheckBox("Export Tags+Annotations Text comments")
+
         self.uploadBottomButtonWidget = QtGui.QWidget()
         self.uploadBottomButtonLayout = QtGui.QHBoxLayout(self)
         self.uploadBottomButtonLayout.setAlignment(Qt.AlignCenter)
@@ -187,6 +275,7 @@ class FrameioUploadWindow(QtGui.QWidget):
 
         self.uploadTaskButton = QtGui.QPushButton("Upload")
         self.uploadTaskButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; color: white;}')
+        self.uploadTaskButton.clicked.connect(self._uploadButtonPushed)
         font.setPointSize(20)
         self.uploadCancelButton.setFont(font)
         self.uploadTaskButton.setFont(font)
@@ -202,6 +291,10 @@ class FrameioUploadWindow(QtGui.QWidget):
         self.projectDropdown.setStyleSheet('QComboBox {width: 350px; height: 50px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #4F535F; color: white;}')
 
         self.uploadViewLayout.addWidget(self.uploadTopButtonWidget)
+
+        ### Enable when annotation uploads are supported
+        #self.uploadViewLayout.addWidget(self.exportAnnotationsCheckbox)
+
         self.uploadViewLayout.addWidget(self.projectDropdown)
         self.uploadViewLayout.addWidget(self.uploadBottomButtonWidget)
 
@@ -218,61 +311,52 @@ class FrameioUploadWindow(QtGui.QWidget):
         self.setLayout(layout)
         self.emailLineEdit.setFocus()
 
+    def show(self, selection):
+        if selection:
+            self._clips = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Clip)]
+            self._sequences = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Sequence)]
 
-    def handleDropzoneDrop(self, event):
-        """Handles items dropped onto the Dropzone View"""
-
-    def _getFilePathFromEvent(self, event):
-        '''Get file path from dropped file
-        '''
-        # Validate single url
-        if not event.mimeData().hasUrls():
-            print 'Invalid file.'
-
-        urls = event.mimeData().urls()
-
-        # Validate local file
-        filePath = urls[0].toLocalFile()
-        if not os.path.isfile(filePath):
-            raise ConnectThumbnailValidationError('Invalid file.')
-
-        # Validate file extension
-        fileName, fileExtension = os.path.splitext(filePath)
-        fileExtension = fileExtension[1:].lower()
-        if not fileExtension in se;fTHUMBNAIL_UPLOAD_VALID_FILE_TYPES:
-            raise ConnectThumbnailValidationError('Invalid file type.')
-
-        # Validate file size
-        fileSize = os.path.getsize(filePath)
-        if fileSize > THUMBNAIL_UPLOAD_MAX_SIZE:
-            raise ConnectThumbnailValidationError(
-                'File size is above allowed maximum.'
-            )
-
-        return filePath
-
-    def dropEvent(self, event):
-        '''Handle the dropZone drop event.'''
-        try:
-            filePath = self._getFilePathFromEvent(event)
-        except:
-            pass
+        return super(FnFrameioWidget, self).show()
 
     def mousePressEvent(self, event):
         if self.draggable and event.button() == Qt.LeftButton:
             self.__mousePressPos = event.globalPos()                # global
             self.__mouseMovePos = event.globalPos() - self.pos()    # local
-        super(FrameioUploadWindow, self).mousePressEvent(event)
+        super(FnFrameioWidget, self).mousePressEvent(event)
  
     def mouseMoveEvent(self, event):
         if self.draggable and event.buttons() & Qt.LeftButton:
             globalPos = event.globalPos()
-            if globalPos:
+            if globalPos and self.__mousePressPos:
                 moved = globalPos - self.__mousePressPos
                 diff = globalPos - self.__mouseMovePos
                 self.move(diff)
                 self.__mouseMovePos = globalPos - self.pos()
-        super(FrameioUploadWindow, self).mouseMoveEvent(event)
+        super(FnFrameioWidget, self).mouseMoveEvent(event)
+
+    def setStatus(self, text):
+        self.statusLabel.setText(text)
+
+    def selectedProject(self):
+        """Returns the currently selected Project name"""
+        return self.projectDropdown.currentText()
+
+    def _uploadButtonPushed(self):
+        project = self.selectedProject()
+        self.setStatus("Clips: %s\n, Sequences %s" % (str(self._clips), str(self._sequences)))
+        movieClips = []
+        nonMovieClips = []
+        if len(self._clips) > 0:
+            # Find out which Clips do not need to be transcoded
+            movieClips = [clip for clip in self._clips if hiero.core.isQuickTimeFileExtension(os.path.splitext(clip.mediaSource().filename())[-1])]
+            nonMovieClips = [clip for clip in self._clips if clip not in movieClips]
+
+        self.setStatus("Movie Clips: %s, nonMovieClips %s" % (str(movieClips), str(nonMovieClips)))
+        filesToUpload = []
+        for movClip in movieClips:
+            filesToUpload += [ movClip.mediaSource().fileinfos()[0].filename() ]
+
+        self.delegate.uploadFiles(filesToUpload, project)
  
     def showLoginView(self):
         # Sets the stackView to show the Login View
@@ -301,19 +385,19 @@ class FrameioUploadWindow(QtGui.QWidget):
         # If Gmail oauth2 is not implemented...
         if not gGoogleAccountsEnabled:
             if "gmail.com" in emailText or "googlemail.com" in emailText:
-                    self.statusLabel.setText(self.eStatusGmailUnsupported)
+                    self.setStatus(self.eStatusGmailUnsupported)
                     self.emailLineEdit.setFocus()
                     return
 
         if res[0] != QtGui.QValidator.State.Acceptable:
-                self.statusLabel.setText(self.eStatusEmailInvalid)
+                self.setStatus(self.eStatusEmailInvalid)
                 self.emailLineEdit.setFocus()
                 return
         else:
-            self.statusLabel.setText(self.eStatusCheckEmail)
+            self.setStatus(self.eStatusCheckEmail)
             self.username = emailText
             if len(passwordText) < 6:
-                self.statusLabel.setText(self.eStatusPasswordInvalid)
+                self.setStatus(self.eStatusPasswordInvalid)
                 return
             else:
                 self.password = passwordText
