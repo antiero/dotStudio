@@ -9,6 +9,16 @@ import hiero.core
 import hiero.ui
 from hiero.ui import findMenuAction, registerAction, registerPanel, insertMenuAction, createMenuAction
 
+from collections import defaultdict
+
+def mergeDicts(dict1, dict2):
+  # Merges two python dictionaries with unique keys
+  dicts = [dict1, dict2]
+  final = defaultdict(list)
+  for k, v in ((k, v) for d in dicts for k, v in d.iteritems()):
+    final[k].append(v)
+  return dict(final)
+
 def flatten(tupleOfTuples):
   """Convenience method for flattening a tuple of tuples"""
   return [x for x in chain.from_iterable(tupleOfTuples)]
@@ -28,31 +38,78 @@ def clip_annotations(self):
   return annotations
 
 def sequence_annotations(self):
-  """hiero.core.Sequence.annotations -> returns the Annotations for a Sequence"""
+  """hiero.core.Sequence.annotations -> returns sequence-level Annotations for a Sequence"""
   tracks = self.videoTracks()
   annotations = []
   for track in tracks:
     subTrackItems = flatten(track.subTrackItems())
     annotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
 
-    # Clip-level annotations can also exist on a Sequence...
-    # We need to do a few things here to ensure the Annotations are relevant for this Sequence
-    # 1) If the Clip is used multiple times, do not repeat the Annotations for each TrackItem (uniquify the Clips)
-    # 2) Ensure Clip-level annotations are mapped to Sequence Time
-    # 3) Ensure Clip-level annotations outside of the usable range of the Sequence are excluded?
-
-    # This is probably quite ineffecient - consider revising...
-    clips = hiero.core.util.uniquify([item.source() for item in track.items() if hasattr(item, 'source')])
-    for clip in clips:
-      clipAnnotations = clip.annotations()
-      annotations.extend(clipAnnotations)
-
   return annotations
+
+def annotation_keys(self):
+  """returns a python dictionary whose keys are frames where annotations are present on the timeline. 
+    The values at that keyframe is a list containing annotation objects
+  """
+
+  keyFramesDict = {}
+  if isinstance(self, hiero.core.Sequence):
+    tracks = self.videoTracks()
+    trackItems = []
+    trackLevelAnnotations = []
+
+    for track in tracks:
+      trackItems += [item for item in track.items() if isinstance(item, hiero.core.TrackItem)]
+      subTrackItems = flatten(track.subTrackItems())
+      trackLevelAnnotations += [item for item in subTrackItems if isinstance(item, hiero.core.Annotation)]
+
+    # First get the Sequence-level TrackItems
+    for annotation in trackLevelAnnotations:
+      T = int(annotation.timelineIn())
+      if T not in keyFramesDict.keys():
+        keyFramesDict[T] = [annotation]
+      else:
+        keyFramesDict[T].append(annotation)
+
+    # Next, for each TrackItem, get the list of annotations from the clip, only including ones which are in the track item's source range
+    for trackItem in trackItems:
+      clip = trackItem.source()
+      # Get the list of annotations from the clip, only including ones which are in the track item's source range
+      clipAnnotations = [ item for item in chain( *chain(*clip.subTrackItems()) ) if isinstance(item, hiero.core.Annotation)
+                                                                                                  and item.timelineOut() >= trackItem.sourceIn()
+                                                                                                  and item.timelineIn() < trackItem.sourceOut() ]
+
+      for annotation in clipAnnotations:
+
+        # Map to sequence time.  If the mapped annotation start time is before the track item timeline in, use the track item's timeline in
+        T = int(trackItem.mapSourceToTimeline(annotation.timelineIn()))
+
+        if T not in keyFramesDict.keys():
+          keyFramesDict[T] = [annotation]
+        else:
+          keyFramesDict[T].append(annotation)
+
+  elif isinstance(self, hiero.core.Clip):
+      clipAnnotations = [ item for item in chain( *chain(*self.subTrackItems()) ) if isinstance(item, hiero.core.Annotation) ]
+
+      for annotation in clipAnnotations:
+
+        # Map to sequence time.  If the mapped annotation start time is before the track item timeline in, use the track item's timeline in
+        T = int(annotation.timelineIn())
+
+        if T not in keyFramesDict.keys():
+          keyFramesDict[T] = [annotation]
+        else:
+          keyFramesDict[T].append(annotation)
+
+  return keyFramesDict
 
 # Punch these methods into the hiero.core objects for now.
 hiero.core.Annotation.notes = annotation_notes
 hiero.core.Clip.annotations = clip_annotations
-hiero.core.Sequence.annotations = sequence_annotations  
+hiero.core.Sequence.annotations = sequence_annotations 
+hiero.core.Sequence.annotationKeys = annotation_keys
+hiero.core.Clip.annotationKeys = annotation_keys
 
 class UpdateMarkerDialog(QtGui.QDialog):
 
@@ -290,7 +347,7 @@ class MarkersTableModel(QAbstractTableModel):
     elif role == Qt.TextAlignmentRole:
 
         if index.column() == 5:
-            return Qt.AlignJustify
+            return Qt.AlignVCenter
 
         return Qt.AlignLeft | Qt.AlignVCenter
  
@@ -565,7 +622,8 @@ class MarkersPanel(QtGui.QWidget):
     formatString = "%i x %i, %f" % (width, height, pixel_aspect)
     return formatString
 
-  def __getTagsDictForSequence(self, seq):
+  def __getTagsDictListData(self, seq):
+    """returns a list of dictionaries with data for displaying the Tags of a Clip or Sequence"""
     timecodeStart = seq.timecodeStart()
 
     # We need to get Tags which are NOT applied to the whole Clip/Sequence...
@@ -603,36 +661,42 @@ class MarkersPanel(QtGui.QWidget):
                          }]
     return tagDict
 
-  def __getAnnotationsDictForSequence(self, seq):
+  def __getAnnotationsDictListData(self, seq):
+    """returns a list of dictionaries with data for displaying the Annotations of a Clip or Sequence"""
     timecodeStart = seq.timecodeStart()
-    annotations = seq.annotations()
-    fps = seq.framerate()
-    sortedAnnotations = sorted(annotations, key=lambda k: k.timelineIn())
+    fps = seq.framerate()    
     annotationsDict = []
-    for annotation in sortedAnnotations:
-      inTime = annotation.timelineIn()
-      outTime = annotation.timelineOut()
-      duration = (outTime-inTime)
-      notes = annotation.notes()
+    annotationKeysDict = seq.annotationKeys()
+    sortedAnnotationKeys = sorted(annotationKeysDict.keys())
 
-      tc = hiero.core.Timecode()
-      inTimecode = tc.timeToString(inTime + timecodeStart, fps, self.timecodeDisplayMode)
-      outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
+    for keyFrame in sortedAnnotationKeys:
+      annotations = annotationKeysDict[keyFrame]
 
-      if self.timecodeDisplayMode == tc.kDisplayTimecode:
-        timecodeString = "%s" % (str(inTimecode))
-      else:
-        timecodeString = "%i" % (inTime)
-      annotationsDict += [{"Item": annotation, 
-                         "Name": annotation.parent().name(), 
-                         "InTime": inTime, 
-                         "OutTime": outTime,
-                         "TimecodeStart": "%s" % (str(inTimecode)),
-                         "Note": " , ".join(notes),
-                         "Duration": duration,
-                         "Icon": "icons:ViewerToolAnnotationVis.png",
-                         "Sequence": seq,
-                         }]
+      for annotation in annotations:
+        inTime = keyFrame
+        outTime = annotation.timelineOut()
+        duration = (outTime-inTime)
+        notes = annotation.notes()
+
+        tc = hiero.core.Timecode()
+        inTimecode = tc.timeToString(inTime + timecodeStart, fps, self.timecodeDisplayMode)
+        outTimecode = tc.timeToString(outTime + timecodeStart, fps, self.timecodeDisplayMode)
+
+        if self.timecodeDisplayMode == tc.kDisplayTimecode:
+          timecodeString = "%s" % (str(inTimecode))
+        else:
+          timecodeString = "%i" % (inTime)
+
+        annotationsDict += [{"Item": annotation, 
+                           "Name": annotation.parent().name(), 
+                           "InTime": inTime, 
+                           "OutTime": outTime,
+                           "TimecodeStart": "%s" % (str(inTimecode)),
+                           "Note": " , ".join(notes),
+                           "Duration": duration,
+                           "Icon": "icons:ViewerToolAnnotationVis.png",
+                           "Sequence": seq,
+                           }]
     return annotationsDict
 
   def __buildDataForSequence(self, seq):
@@ -641,14 +705,10 @@ class MarkersPanel(QtGui.QWidget):
         return
 
       self.infoDict = []
-      #if not seq or isinstance(seq, hiero.core.Clip):
-      #    return
-      #elif isinstance(seq, hiero.core.Sequence):
-      # We need a list of Tags, sorted by the inTime...
       if self._dataDisplayMode in (self.kModeTags, self.kModeAnnotationsAndTags):
-        self.infoDict += self.__getTagsDictForSequence(seq)
+        self.infoDict += self.__getTagsDictListData(seq)
       if self._dataDisplayMode in (self.kModeAnnotations, self.kModeAnnotationsAndTags):
-        self.infoDict += self.__getAnnotationsDictForSequence(seq)
+        self.infoDict += self.__getAnnotationsDictListData(seq)
 
       # Now sort these based on inTime
       sortedDict = sorted(self.infoDict, key=lambda k: k["InTime"]) 
@@ -658,7 +718,7 @@ class MarkerActions(object):
   """Actions for adding frame Markers and Clearing them"""
   def __init__(self):
     self._addMarkerAction = createMenuAction("Add Marker", self.addMarkerToCurrentFrame)
-    self._addMarkerAction.setShortcut( "M" )
+    self._addMarkerAction.setShortcut( "Alt+Shift+M" )
     self._addMarkerAction.setObjectName("foundry.timeline.addMarker")
     registerAction(self._addMarkerAction)
 
