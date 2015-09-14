@@ -635,11 +635,11 @@ class MarkersPanel(QtGui.QWidget):
     for tag in sortedTags:
       tagMeta = tag.metadata()
       inTime = tag.inTime()
-      outTime = tag.outTime() # tag.inTime()
+      outTime = tag.outTime()
       try:
         duration = int(tagMeta.value('tag.duration'))
       except:
-        duration = (outTime-inTime)
+        duration = outTime-inTime + 1
 
       tc = hiero.core.Timecode()
       inTimecode = tc.timeToString(inTime + timecodeStart, fps, self.timecodeDisplayMode)
@@ -674,8 +674,8 @@ class MarkersPanel(QtGui.QWidget):
 
       for annotation in annotations:
         inTime = keyFrame
-        outTime = annotation.timelineOut()
-        duration = (outTime-inTime)
+        duration = (annotation.timelineOut()-annotation.timelineIn() + 1)
+        outTime = inTime + duration-1
         notes = annotation.notes()
 
         tc = hiero.core.Timecode()
