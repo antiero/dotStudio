@@ -15,54 +15,6 @@ gIconPath = "/Users/ant/.nuke/Python/Startup/frameio_exporter/icons/"
 
 gGoogleAccountsEnabled = False # until we get oauth2 login figured out
 
-class FnProgressTask(QtGui.QProgressDialog):
-  """
-  A modal progress bar dialog, which wraps QProgressDialog from PySide.QtGui.
-  FnProgressTask( title = 'Progress', message = 'Progress...', parent = mainWindow(), showNow = True)
-  @param title - the title of the progress dialog
-  @param message - the task label of the progress dialog
-  @param parent - the parent of the dialog (defaults to hiero.ui.mainWindow())
-  @param showNow - a boolean, if True (default) shows dialog immediately after creation. If False, call show() later to show the dialog.
-  setProgress(...)
-     self.setProgress(x) -> None.
-     x is integer, representing the current task progress
-  setMessage(...)
-     self.setMessage(s) -> None.
-     
-     sets the message for the progress task
-  progress(...)
-     self.setMessage(s) -> returns current progress value (default range 0-100).
-  isCancelled(...)
-     self.isCancelled() -> True if the user has requested the task to be cancelled.
-  For more info, see: http://srinikom.github.io/pyside-docs/PySide/QtGui/QProgressDialog.html
-  '"""
-
-  def __init__(self, title = 'Progress', message = 'Progress...', showNow = True ):
-    QtGui.QProgressDialog.__init__(self, None)
-    self.setWindowTitle(title) # The title of the modal progress window
-    self.setMessage(message) # The task label displayed (PySide method is setLabelText)
-    self.setAutoClose(False) # If you set this to True, the dialog will automatically close when the max value is reached
-    self.setAutoReset(False) # If you set this to True, the progress will automatically reset when the max value is reached
-    if showNow:
-      self.show() # To match Nuke, shows the dialog when initialised. Alternatively, use showNow = False, as keyword argument, and call show() later.
-
-  # Nuke-style method for setting the progress message label
-  def setMessage(self,message):
-    self.setLabelText(message)
-
-  # Nuke-style method for setting the progress value
-  def setProgress(self,value):
-    self.setValue(value)
-
-  # Returns the current progress value
-  def progress(self):
-    return self.value()
-
-  # This is the Nuke way! Not sure how useful it is here, because Cancel closes the dialog
-  def isCancelled(self):
-    return self.wasCanceled()
-
-
 class FnFrameioMenu(QtGui.QMenu):
     def __init__(self):
         QtGui.QMenu.__init__(self, "Frame.io", None)
@@ -114,8 +66,6 @@ class FnFrameioWidget(QtGui.QWidget):
         self._sequences = []
 
         self.username = username
-
-        self.progressTask = FnProgressTask('Upload to frame.io', showNow = False)
 
         # FrameioDelegate
         self.delegate = delegate #kwargs.get("delegate", None)
@@ -290,7 +240,8 @@ class FnFrameioWidget(QtGui.QWidget):
         self.projectDropdown.setEditable(False)
         self.projectDropdown.setStyleSheet('QComboBox {width: 350px; height: 50px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #4F535F; color: white;}')
 
-        self.uploadViewLayout.addWidget(self.uploadTopButtonWidget)
+        # We don't really need these FCP X style buttons because this acts upon a Selection
+        #self.uploadViewLayout.addWidget(self.uploadTopButtonWidget)
 
         ### Enable when annotation uploads are supported
         #self.uploadViewLayout.addWidget(self.exportAnnotationsCheckbox)
@@ -356,7 +307,9 @@ class FnFrameioWidget(QtGui.QWidget):
         for movClip in movieClips:
             filesToUpload += [ movClip.mediaSource().fileinfos()[0].filename() ]
 
-        self.delegate.uploadFiles(filesToUpload, project)
+        for filePath in filesToUpload:
+            print  "_uploadButtonPushed: filePath to upload: %s" % filePath
+            self.delegate.uploadFile(filePath, project)
  
     def showLoginView(self):
         # Sets the stackView to show the Login View
@@ -368,11 +321,15 @@ class FnFrameioWidget(QtGui.QWidget):
 
     def showUploadView(self):
         # Sets the stackView to show the Upload View
+        self._updateProjectsList()
         self.stackView.setCurrentWidget(self.uploadView)
 
-    def _updateProjectsList(self, projects):
+    def _updateProjectsList(self):
         #Updates the Project list with list of project strings
         self.projectDropdown.clear()
+
+        print str(self.delegate.frameioSession.projectdict().values())
+        projects = self.delegate.frameioSession.projectdict().values()
         for project in projects:
             self.projectDropdown.addItem(project)
 
