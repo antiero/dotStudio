@@ -12,6 +12,6 @@ import FnPdfExporter
 # Add the right-click action
 action = FnPdfExporter.ExportPdfAction()
 
-# Add the Task Preset for the Export dialog
+# Add the Export Task for the Export dialog
 import FnPdfExportTask
-import FnPdfExportUI
+import FnPdfExportTaskUI

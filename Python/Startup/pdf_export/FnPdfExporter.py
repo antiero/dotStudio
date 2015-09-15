@@ -1,65 +1,83 @@
 #------------------------------------------------------------------------------
-# FnPdfExporter.py - Uses reportlab pdf writer to produce PDF contact sheet
+# FnPdfExporter.py - Produces PDF contact sheet shot layouts for a sequence
 #------------------------------------------------------------------------------
-# Copyright (c) 2015 The Foundry Visionmongers Ltd.  All Rights Reserved.
+# v1.0, Antony Nasce, 15/09/15
 #------------------------------------------------------------------------------
-# PDF Layout by Abo Biglarpour. Reportlab: http://www.reportlab.com
+# PDF Layout by Abo Biglarpour. PDF writing Reportlab: http://www.reportlab.com
 #------------------------------------------------------------------------------
 try:
     from reportlab.platypus import Paragraph, Table, TableStyle
 except:
     print "Unable to import reportlab. Check that reportlab is in your sys.path!"
 
+import reportlab.lib.pagesizes
+import reportlab.pdfgen.canvas
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.colors import lightslategray, black, green, limegreen, white
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont, TTFError
 from reportlab.lib.utils import ImageReader, simpleSplit
-import reportlab.lib.pagesizes
-import reportlab.pdfgen.canvas
 
 import os
 import sys
 import shutil
-
-from PySide.QtGui import QProgressDialog, QMenu, QDialog, QFormLayout, QComboBox, QDialogButtonBox, QSizePolicy
-from PySide.QtCore import Qt
 import tempfile
 import datetime
 import time
 import urllib
 import xml.sax.saxutils
 
-from foundry.ui import FnFilenameField
+from PySide.QtCore import Qt
+from PySide.QtGui import QProgressDialog, QMenu, QDialog, QFormLayout, QComboBox, QDialogButtonBox, QSizePolicy
+
 import hiero.ui
+from foundry.ui import FnFilenameField
 from hiero.core import Timecode
 
 class PDFExporter(object):
 
-    def __init__(self, shotCutList, outputFilePath = None, newShots=None):
+    # Data for Export Tasks and GUI action
+    THUMB_FIRST_FRAME = "First"
+    THUMB_MIDDLE_FRAME = "Middle"
+    THUMB_LAST_FRAME = "Last"
+    THUMB_FRAME_TYPES = (THUMB_FIRST_FRAME, THUMB_MIDDLE_FRAME, THUMB_LAST_FRAME)
+    PAGE_LAYOUTS_DICT = {"Landscape 1/pg" : [1, 1, "landscape"], 
+                         "Landscape 4/pg": [2, 2, "landscape"], 
+                         "Landscape 9/pg": [3, 3, "landscape"],
+                         "Letter 3/pg": [3, 1, "letter"]}
+
+    def __init__(self, shotCutList, outputFilePath = None, 
+                 rows = 3, columns = 3, orientation = "landscape", 
+                 thumbnailFrameType = "Middle"):
         """
         Template for creating PDF sheets for a sequence
-        :param shotCutList: Cut list object of sequence version to generate pdf of
-        :param newShots: shot indices of new shots since last editorial publish
-        :param process: progress process to add and remove from
+        :param shotCutList: List of TrackItems to generate pdf for
+        :param outputFilePath: PDF output file path
+        :param rows: number of rows in the PDF
+        :param columns: number of columns in the PDF
+        :param orientation: page orientation of PDF ('landscape' or 'letter')
+        :param thumbnailFrame: the thumbnail frame type ("First, Middle", "Last")
         """
         self.shotCutList   = shotCutList
         self.outputFilePath = outputFilePath
         self.project = self.shotCutList[0].project()
         self.sequence = self.shotCutList[0].parentSequence()
         self.imageDataList = []
-        self.row               = 3
-        self.column            = 3
+        self.row               = rows
+        self.column            = columns
         self.marginSize        = 25
-        self.pageOrientation   = 'landscape'
+        self.pageOrientation   = orientation
         self.styles            = getSampleStyleSheet()
         self.companyLogo       = None
         self.showLogo          = None
         self.offlineLogoPath   = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images/offline.jpg")
 
+        # Determine which frame should be used for the Shot thumbnail
+        self.thumbnailFrameType = thumbnailFrameType
+        if self.thumbnailFrameType not in self.THUMB_FRAME_TYPES:
+            self.thumbnailFrameType = self.THUMB_MIDDLE_FRAME
+
         self.shotStatuses  = []
-        if newShots is None:
-            newShots = []
 
         self.buildImageDataList()
         self.getPdfParameters()
@@ -224,6 +242,18 @@ class PDFExporter(object):
 
         return string
 
+    def getThumbFrameForShot(self, shot):
+        """Returns the frame number from which to take the thumbnail based on the options passed to the export task"""
+        # Case for Clips and Sequences
+        if self.thumbnailFrameType == self.THUMB_FIRST_FRAME:
+            thumbFrame = shot.sourceIn()
+        elif self.thumbnailFrameType == self.THUMB_MIDDLE_FRAME:
+            thumbFrame = shot.sourceIn()+int((shot.sourceOut()-shot.sourceIn())/2)
+        elif self.thumbnailFrameType == self.THUMB_LAST_FRAME:
+            thumbFrame = shot.sourceOut()
+        
+        return int(thumbFrame)
+
     def buildImageDataList(self):
         """
         Build the image list with meta data to be constructed into pdf
@@ -246,9 +276,11 @@ class PDFExporter(object):
         for shot in self.shotCutList:
             thumbPath = os.path.join(self.tempFileDir,"%s_%s.jpg" % (shot.name(), self.currentTimeString()))
 
+            thumbnailFrame = self.getThumbFrameForShot(shot)
+
             # Try and get a thumbnail, assuming the media is present etc...
             try:
-                thumb = shot.thumbnail(shot.sourceIn()).save(thumbPath)
+                thumb = shot.thumbnail( thumbnailFrame ).save(thumbPath)
             except:
                 shutil.copy(self.offlineLogoPath, thumbPath)
 
@@ -480,6 +512,7 @@ class PDFExporter(object):
 
     def setShotShotStatus(self, imageData):
         """
+        UNUSED - Should be updated to optionally include Shot Status
         Sets the shots status of the given shot if status exists, aligned to the bottom left of the shot
         :param imageData: dictionary object with shot metaData
         """
@@ -501,6 +534,7 @@ class PDFExporter(object):
 
     def setShotNewIcon(self, imageData):
         """
+        UNUSED - Should be updated to optionally include Tag Icons
         Sets the shots new icons if the shot is new since the last editorial publish, aligned to the top right of the shot
         :param imageData: dictionary object with shot metaData
         """
@@ -596,51 +630,85 @@ class ExportPdfOptionDialog(QDialog):
         layout = QFormLayout()
         self._fileNameField  = FnFilenameField(False, isSaveFile=False, caption="Set PDF name", filter='*.pdf')
         self._fileNameField.setFilename(os.path.join(os.getenv('HOME'), "Desktop", "Sequence.pdf"))
-        self._optionDropdown  = QComboBox()
+        self._pdfLayoutDropdown  = QComboBox()
+        self._pdfLayoutDropdown.setToolTip("Set the PDF page layout type.")
+        self._thumbFrameTypeDropdown  = QComboBox()
+        self._thumbFrameTypeDropdown.setToolTip("Set which frame to take the thumbnail from.")
+
         self._buttonbox = QDialogButtonBox( QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self._buttonbox.button(QDialogButtonBox.Ok).setText("Export")
         self._buttonbox.accepted.connect(self.accept)
         self._buttonbox.rejected.connect(self.reject)
 
-        self._pdfActionSettings = {"1 Shot per page" : [1,1],
-                                   "4 Shots per page)": [2,2], 
-                                   "9 Shots per page)": [3,3]}
+        self._pdfLayouts = PDFExporter.PAGE_LAYOUTS_DICT
 
-        for pdfMode in sorted(self._pdfActionSettings, reverse=True):
-            self._optionDropdown.addItem(pdfMode)
+        self._thumbFrameTypes = PDFExporter.THUMB_FRAME_TYPES
+
+        for pdfLayout in sorted(self._pdfLayouts, reverse=True):
+            self._pdfLayoutDropdown.addItem(pdfLayout)
+
+        for frameType in self._thumbFrameTypes:
+            self._thumbFrameTypeDropdown.addItem(frameType)
 
         layout.addRow("Save to:", self._fileNameField)
-        layout.addRow("PDF Layout:", self._optionDropdown)
+        layout.addRow("PDF Layout:", self._pdfLayoutDropdown)
+        layout.addRow("Thumbnail Frame:", self._thumbFrameTypeDropdown)        
         layout.addRow("", self._buttonbox)
 
         self.setLayout(layout)
         self.setWindowTitle("Export PDF Options")
         self.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Fixed )
 
-    def numRows(self):
+    def _thumbnailFrameType(self):
+        """Returns the currently selected thumbnail frame type"""
+        return self._thumbFrameTypeDropdown.currentText()
+
+    def _numRows(self):
         """Returns the number of rows for the pdf"""
-        optionText = self._optionDropdown.currentText()
-        return self._pdfActionSettings[optionText][0]
+        optionText = self._pdfLayoutDropdown.currentText()
+        return self._pdfLayouts[optionText][0]
 
-    def numColumns(self):
+    def _numColumns(self):
         """Returns the number of columns for the pdf"""
-        optionText = self._optionDropdown.currentText()
-        return self._pdfActionSettings[optionText][1]
+        optionText = self._pdfLayoutDropdown.currentText()
+        return self._pdfLayouts[optionText][1]
 
-    def filePath(self):
+    def _filePath(self):
         """Returns the filepath for the pdf"""
         filename = self._fileNameField.filename()
         if not filename.endswith('.pdf'):
             filename = filename + ".pdf"
         return filename
 
+def printSequenceToPDF(sequence, outputFilePath, 
+                       numRows=3, numColumns=3, 
+                       orientation='landscape', 
+                       thumbnailFrameType="Middle", showPDF=False):
+    """
+    Prints a hiero.core.Sequence object to PDF
+        :param sequence: sequence to export
+        :param outputFilePath: PDF output file path
+        :param numRows: number of rows in the PDF
+        :param numColumns: number of columns in the PDF
+        :param orientation: page orientation of PDF ('landscape' or 'letter')
+        :param thumbnailFrame: the thumbnail frame type ("First, Middle", "Last")
+        :param showPDF: boolean to optionally show the PDF in file browser after export
+    """
+    videoTracks = sequence.videoTracks()
+    trackItems = []
+    for track in videoTracks:
+        trackItems += [item for item in track.items() if isinstance(item, hiero.core.TrackItem)]
+
+    printer = PDFExporter(trackItems, outputFilePath, rows = numRows, columns = numColumns, thumbnailFrameType = thumbnailFrameType)
+    printer.exportPDF(show=showPDF)        
+
 class ExportPdfAction(object):
     def __init__(self):
-        self.makePDFAction  = hiero.ui.createMenuAction("Export PDF...", self.printSelectedSequencesToPDF)
+        self.makePDFAction  = hiero.ui.createMenuAction("Export PDF...", self.printSelectedSequenceToPDF)
         hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
 
-    def printSelectedSequencesToPDF(self):
-        """Prints the selected Sequences to PDF"""
+    def printSelectedSequenceToPDF(self):
+        """Prints the selected Sequences to PDF and shows them in the browser"""
         selection = hiero.ui.activeView().selection()
 
         sequences = [item.activeItem() for item in selection if hasattr(item, "activeItem") and isinstance(item.activeItem(), hiero.core.Sequence)]
@@ -649,32 +717,14 @@ class ExportPdfAction(object):
             return
 
         sequence = sequences[0]
-        videoTracks = sequence.videoTracks()
-        trackItems = []
-        for track in videoTracks:
-            trackItems += [item for item in track.items() if isinstance(item, hiero.core.TrackItem)]
 
         dialog = ExportPdfOptionDialog()
         if dialog.exec_():
-            numRows = dialog.numRows()
-            numColumns = dialog.numColumns()
-            outputFilePath = dialog.filePath()
-            printer = PDFExporter(trackItems, outputFilePath)
-            printer.row = numRows
-            printer.column = numColumns
-            printer.exportPDF(show=True)
-
-    def printSequenceToPDF(self, sequence, outputFilePath, numRows=3, numColumns=3):
-        """Prints the Sequence to PDF"""
-        videoTracks = sequence.videoTracks()
-        trackItems = []
-        for track in videoTracks:
-            trackItems += [item for item in track.items() if isinstance(item, hiero.core.TrackItem)]
-
-        printer = PDFExporter(trackItems, outputFilePath)
-        printer.row = numRows
-        printer.column = numColumns
-        printer.exportPDF(show=False)            
+            numRows = dialog._numRows()
+            numColumns = dialog._numColumns()
+            outputFilePath = dialog._filePath()
+            thumbnailFrameType = dialog._thumbnailFrameType()
+            printSequenceToPDF(sequence, outputFilePath, numRows=numRows, numColumns=numColumns, thumbnailFrameType=thumbnailFrameType, showPDF = True)
 
     def eventHandler(self, event):
         selection = event.sender.selection()
