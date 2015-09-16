@@ -138,7 +138,7 @@ class WhereAmIMenu(object):
 
     def showSequenceTimeline():
       binItem = sequence.binItem()
-      hiero.ui.openInTimeline(binItem)
+      hiero.ui.openInViewer(binItem)
     
     action.triggered.connect( showSequenceTimeline )
     return action
