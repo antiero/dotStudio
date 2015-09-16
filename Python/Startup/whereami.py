@@ -176,7 +176,7 @@ class WhereAmIMenu(object):
   def showTrackItemInSequence(self, item, sequence):
     """Opens a Sequence up in a new Timeline and places playhead at the position of the TrackItem"""
     T = item.timelineIn()
-    editor = hiero.ui.openInTimeline(sequence.binItem())
+    editor = hiero.ui.openInViewer(sequence.binItem())
 
     # Not sure this will work...
     editor.setSelection(item)
