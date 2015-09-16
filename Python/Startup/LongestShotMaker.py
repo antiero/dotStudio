@@ -2,7 +2,7 @@ import hiero.core
 from PySide.QtGui import QAction
 
 # Longest Shot from Sequence
-# Creates a new Sequence which contains Shots with the longest range of frames used across all shots.
+# Creates a new Sequence which contains Shots with the longest range of frames used across all shots in different sequences
 
 class LongestSequenceFromSelectionAction(QAction):
   
@@ -56,20 +56,20 @@ class LongestSequenceFromSelectionAction(QAction):
 
     longestShots = hiero.core.util.uniquify(longestShots)
 
-    print 'LONGEST SHOTS WERE: ' + str(longestShots)
+    # Attempt to sort the shots based on their timeline in order...
+    longestShots = sorted(longestShots, key=lambda shot: shot.timelineIn())
+
     # Create a new Sequence
     seq2 = hiero.core.Sequence("Longest Shots")
     longestTrack = hiero.core.VideoTrack('Longest')
     seq2.addTrack(longestTrack)
     t0 = 0
     for shot in longestShots:
-      print 'ADDING SHOT: ' + str(shot)
       newShot = shot.copy()
       newShot.setTimelineIn(t0)
       newShot.setTimelineOut(t0+shot.duration()-1)
       longestTrack.addTrackItem(newShot)
       t0 = t0+shot.duration()
-      print "Sequence duration is %i" % t0
     proj = seq.project()
     root = proj.clipsBin()
     root.addItem(hiero.core.BinItem(seq2))
@@ -81,7 +81,7 @@ class LongestSequenceFromSelectionAction(QAction):
     # Disable if nothing is selected
     selection = event.sender.selection()
     
-    selectedSequences = [item for item in selection if isinstance(item.activeItem(),hiero.core.Sequence)]
+    selectedSequences = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(),hiero.core.Sequence)]
 
     self.setEnabled( len(selectedSequences) > 1 )
     event.menu.addAction(self)
