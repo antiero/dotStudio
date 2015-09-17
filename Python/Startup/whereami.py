@@ -91,10 +91,11 @@ def _sequenceShotManifest(self):
               manifest[seq].append(shot)
 
         elif isinstance(self, hiero.core.TrackItem):
+          if shot.source().binItem() == self.source().binItem():
             if seq not in manifest.keys():
               manifest[seq] = [shot]
             else:
-              manifest[seq].append(shot)
+              manifest[seq].append(shot) 
 
   return manifest
 
@@ -119,34 +120,44 @@ class WhereAmIMenu(object):
       """
       self._whereAmIMenu = QtGui.QMenu("Show in Sequence...")
 
-      self._sequenceActions = []
-
-      # To reduce the time needed to show the menu for large projects, create this menu dynamically when the action is shown
-      self._whereAmIMenu.aboutToShow.connect(self.createSequenceUsageMenuForActiveView)
+      # To reduce the right-click show time for large projects, create this menu dynamically when user hovers over menu
+      self._whereAmIMenu.aboutToShow.connect(self._createSequenceUsageMenuForActiveView)
 
       hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
       hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
       hiero.core.events.registerInterest("kShowContextMenu/kSpreadsheet", self.eventHandler)
 
 
-  def makeShowSequenceActionForSequence(self, sequence):
-    """This is used to populate the QAction list of Versions when a single Clip is selected in the BinView. 
-    It also triggers the Version Update action based on the version passed to it. 
-    (Not sure if this is good design practice, but it's compact!)"""
-    action = QtGui.QAction(sequence.name(),None)
+  def _createShowSequenceActionForSequenceShotList(self, sequenceShotList):
+    """
+    This is used to populate the QAction list with Sequence names for a single Clip or TrackItem selection.
+    sequenceShotList is a list whose first element is a Sequence, and second is a list of TrackItems
+    """
+    sequence = sequenceShotList[0]
+    shot = sequenceShotList[1][0]
+
+    action = QtGui.QAction(sequence.name(), None)
     action.setData(lambda: sequence)
 
-    def showSequenceTimeline():
+    def _showSequenceTimeline():
       binItem = sequence.binItem()
-      hiero.ui.openInViewer(binItem)
+
+      if hiero.ui.activeSequence() != sequence:
+        hiero.ui.openInViewer(binItem)
+      editor = hiero.ui.getTimelineEditor(sequence)
+      editor.setSelection(shot)
+      cv = hiero.ui.currentViewer()
+      T = shot.timelineIn()
+      cv.setTime(T)
     
-    action.triggered.connect( showSequenceTimeline )
+    action.triggered.connect( _showSequenceTimeline )
     return action
 
   # This generates the Version Up Everywhere menu
-  def createSequenceUsageMenuForActiveView(self):
+  def _createSequenceUsageMenuForActiveView(self):
     self._whereAmIMenu.clear()
     view = hiero.ui.activeView()
+    activeSequence = hiero.ui.activeSequence()
     selection = view.selection()
 
     if len(selection)!=1:
@@ -165,29 +176,18 @@ class WhereAmIMenu(object):
 
     manifest = item.usageManifest()
 
-    for sequence in manifest.keys():
-      act = self.makeShowSequenceActionForSequence(sequence)
-      if act not in hiero.ui.registeredActions():
-        hiero.ui.registerAction(act)
+    # Create a list of actions sorted alphabetically
+    for sequenceShotList in sorted( manifest.items(), key = lambda seq: seq[0].name()):
+      # 1st element of sequenceShotLost is a Sequence, 2nd is a list of Shots in that Sequence
+      # If the Sequence is the currently active one, don't add it to the list, just show other Sequences
+      if (sequenceShotList[0] != activeSequence) or (not activeSequence):     
+        act = self._createShowSequenceActionForSequenceShotList(sequenceShotList)
+        if act not in hiero.ui.registeredActions():
+          hiero.ui.registerAction(act)
 
-      self._whereAmIMenu.addAction(act)
-
-  # Set Tag dialog with Note and Selection info. Adds Tag to entire object, not over a range of frames
-  def showTrackItemInSequence(self, item, sequence):
-    """Opens a Sequence up in a new Timeline and places playhead at the position of the TrackItem"""
-    T = item.timelineIn()
-    editor = hiero.ui.openInViewer(sequence.binItem())
-
-    # Not sure this will work...
-    editor.setSelection(item)
-    cv = hiero.ui.currentViewer()
-
-    t = sequence.trackItemAt
-    cv.setTime(T)
-
-  ########## EVENT HANDLERS ##########
+        self._whereAmIMenu.addAction(act)
   
-  # This handles events from the Viewer View (kViewer)
+  # This handles events from the Bin and Timeline/Spreadsheet
   def eventHandler(self, event):
     hiero.ui.insertMenuAction(self._whereAmIMenu.menuAction(), event.menu, after = "foundry.menu.version")
 
