@@ -158,21 +158,26 @@ class WhereAmIMenu(object):
     self._whereAmIMenu.clear()
     view = hiero.ui.activeView()
     activeSequence = hiero.ui.activeSequence()
+
     selection = view.selection()
 
-    if len(selection)!=1:
-      return
-
     if isinstance(view, hiero.ui.BinView):
+      if len(selection) != 1:
+        return      
       selection = selection[0]
       if not hasattr(selection, 'activeItem'):
         return 
       else:
         item = selection.activeItem()
     elif isinstance(view, (hiero.ui.TimelineEditor, hiero.ui.SpreadsheetView)):
-      item = selection[0]
-      if not isinstance(item, hiero.core.TrackItem):
+      # Some filtering is needed to ensure linked audio/soft effects don't stop us from finding a shot
+      # TO-DO: Handle the logic for linked video tracks properly
+      videoTrackItemSelection = [item for item in selection if isinstance(item, hiero.core.TrackItem) and item.mediaType() == hiero.core.TrackItem.MediaType.kVideo]
+
+      if len(videoTrackItemSelection) != 1:
         return
+      else:
+        item = videoTrackItemSelection[0]
 
     manifest = item.usageManifest()
 
