@@ -21,6 +21,8 @@ class ThumbnailWidget(QtGui.QWidget):
         # In the case a BinItem is passed, take the activeItem
         if isinstance(sourceItem, hiero.core.BinItem):
         	self.sourceItem = sourceItem.activeItem()
+        elif isinstance(sourceItem, hiero.core.TrackItem):
+            self.sourceItem = sourceItem.source()
 
         imageErrorIcon = QtGui.QIcon("icons:MediaOffline.png")
         self.imageErrorPixmap = imageErrorIcon.pixmap(imageErrorIcon.actualSize(QtCore.QSize(48, 48)))
@@ -59,6 +61,10 @@ class ThumbnailWidget(QtGui.QWidget):
         self.mouseInside = False
         self.sourceItem.setPosterFrame( self.currentFrame )
         self.close()
+
+    def showAt(self, pos):
+        self.move(pos.x()-self.width()/2, pos.y()-self.height()/2)
+        self.show()        
 
     def initUI(self):
         layout = QtGui.QGridLayout()
@@ -118,6 +124,8 @@ class ThumbnailWidget(QtGui.QWidget):
         self.thumbGraphicsScenePixMapItem.setPixmap(posterFramePixmap)
 
 
+
+
     def updatePosterFrameForPlaybackPercentage(self, perc):
         # Sets the thumbnail for the frame at a given playback percentage
 
@@ -160,8 +168,7 @@ def showThumbForActiveItem():
 
     item = selection[0]
     T = ThumbnailWidget(item)
-    T.show()
-    T.raise_()
+    T.showAt(QtGui.QCursor.pos())
 
 act = hiero.ui.createMenuAction("Clip Thumb", showThumbForActiveItem)
 act.setShortcut("?")
