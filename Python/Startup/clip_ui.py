@@ -11,6 +11,8 @@ class ThumbnailWidget(QtGui.QWidget):
         """
 
         QtGui.QWidget.__init__(self)
+
+        self.setParent(hiero.ui.mainWindow())
         # A QWidget for displaying
         self.sourceItem = sourceItem
 
@@ -56,6 +58,7 @@ class ThumbnailWidget(QtGui.QWidget):
     def leaveEvent(self, event):
         self.mouseInside = False
         self.sourceItem.setPosterFrame( self.currentFrame )
+        self.close()
 
     def initUI(self):
         layout = QtGui.QGridLayout()
@@ -144,3 +147,23 @@ class ThumbnailWidget(QtGui.QWidget):
             self.updatePlayheadPosition()
 
         super(ThumbnailWidget, self).mouseMoveEvent(event)
+
+def showThumbForActiveItem():
+    view = hiero.ui.activeView()
+
+    if not view:
+        return
+        
+    selection = view.selection()
+    if len(selection) != 1:
+        return
+
+    item = selection[0]
+    T = ThumbnailWidget(item)
+    T.show()
+    T.raise_()
+
+act = hiero.ui.createMenuAction("Clip Thumb", showThumbForActiveItem)
+act.setShortcut("?")
+w = hiero.ui.findMenuAction("Window")
+w.menu().addAction(act)
