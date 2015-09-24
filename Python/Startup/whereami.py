@@ -152,25 +152,23 @@ class WhereAmIMenu(object):
     action.triggered.connect( _showSequenceTimeline )
     return action
 
-  # This generates the Version Up Everywhere menu
+  # This generates the Show In Sequence menu
   def _createSequenceUsageMenuForActiveView(self):
     self._whereAmIMenu.clear()
     view = hiero.ui.activeView()
     activeSequence = hiero.ui.activeSequence()
 
-    if not view or if not hasattr(view, 'selection'):
+    if not view or not hasattr(view, 'selection'):
       return
 
     selection = view.selection()
 
     if isinstance(view, hiero.ui.BinView):
-      if len(selection) != 1:
+      clips = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Clip)]
+      if len(clips) < 1:
         return      
-      selection = selection[0]
-      if not hasattr(selection, 'activeItem'):
-        return 
-      else:
-        item = selection.activeItem()
+      item = clips[0]
+
     elif isinstance(view, (hiero.ui.TimelineEditor, hiero.ui.SpreadsheetView)):
       # Some filtering is needed to ensure linked audio/soft effects don't stop us from finding a shot
       # TO-DO: Handle the logic for linked video tracks properly
