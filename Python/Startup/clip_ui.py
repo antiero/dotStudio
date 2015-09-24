@@ -12,7 +12,7 @@ class ThumbnailWidget(QtGui.QWidget):
 
         QtGui.QWidget.__init__(self)
 
-        self.setParent(hiero.ui.mainWindow())
+        #self.setParent(hiero.ui.mainWindow())
         # A QWidget for displaying
         self.sourceItem = sourceItem
 
@@ -28,14 +28,14 @@ class ThumbnailWidget(QtGui.QWidget):
         self.imageErrorPixmap = imageErrorIcon.pixmap(imageErrorIcon.actualSize(QtCore.QSize(48, 48)))
 
         # Some initial values
-        self.currentFrame = 1
+        self.currentFrame = self.sourceItem.posterFrame()
         self.currentXPos = 1
 
         # To determine if visual cue for Playhead as mouse is dragged is shown
         self.showPlayhead = True
         self.playheadColor = QtGui.QColor(246,146,30, 255)
         self.setWindowFlags( QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint )
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground); 
+        #self.setAttribute(QtCore.Qt.WA_TranslucentBackground); 
         self.mouseInside = False
 
         self.initUI()
@@ -64,7 +64,8 @@ class ThumbnailWidget(QtGui.QWidget):
 
     def showAt(self, pos):
         self.move(pos.x()-self.width()/2, pos.y()-self.height()/2)
-        self.show()        
+        self.show()
+
 
     def initUI(self):
         layout = QtGui.QGridLayout()
@@ -93,7 +94,8 @@ class ThumbnailWidget(QtGui.QWidget):
         self.thumbGraphicsView.setFixedWidth(self.rect().width())
 
         self.playheadLine = QtGui.QGraphicsLineItem()
-        self.playheadLine.setPen(QtGui.QPen(self.playheadColor, 2))
+        self.pen = QtGui.QPen(self.playheadColor, 2)
+        self.playheadLine.setPen(self.pen)
         self.playheadLine.setVisible(False)
         self.thumbGraphicsScene.addItem(self.playheadLine)
 
@@ -124,8 +126,6 @@ class ThumbnailWidget(QtGui.QWidget):
         self.thumbGraphicsScenePixMapItem.setPixmap(posterFramePixmap)
 
 
-
-
     def updatePosterFrameForPlaybackPercentage(self, perc):
         # Sets the thumbnail for the frame at a given playback percentage
 
@@ -149,8 +149,14 @@ class ThumbnailWidget(QtGui.QWidget):
     def mouseMoveEvent(self, event):
         # When the mouse moves over the widget it will force an update of the poster frame
         if event.buttons() == QtCore.Qt.NoButton:
-            self.currentXPos = event.pos().x()
-            mosXposPercentage = float(self.currentXPos)/float(self.rect().width())
+            currentPoint = self.thumbGraphicsView.mapFromGlobal(QtGui.QCursor.pos())
+            self.currentXPos = currentPoint.x()
+
+            # Avoid zero division
+            if self.currentXPos<1:
+                self.currentXPos = 1
+
+            mosXposPercentage = float(self.currentXPos)/float(self.thumbGraphicsView.rect().width())
             self.updatePosterFrameForPlaybackPercentage(mosXposPercentage)
             self.updatePlayheadPosition()
 
@@ -159,7 +165,7 @@ class ThumbnailWidget(QtGui.QWidget):
 def showThumbForActiveItem():
     view = hiero.ui.activeView()
 
-    if not view:
+    if not view or not hasattr(view, 'selection'):
         return
         
     selection = view.selection()
