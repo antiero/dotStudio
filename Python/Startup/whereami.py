@@ -158,6 +158,9 @@ class WhereAmIMenu(object):
     view = hiero.ui.activeView()
     activeSequence = hiero.ui.activeSequence()
 
+    if not view or if not hasattr(view, 'selection'):
+      return
+
     selection = view.selection()
 
     if isinstance(view, hiero.ui.BinView):
