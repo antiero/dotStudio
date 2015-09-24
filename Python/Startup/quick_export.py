@@ -24,8 +24,11 @@ class QuickExportAction(QtGui.QAction):
       return self._item == None
 
     def binItem (self):
-      if isinstance(self._item, hiero.core.BinItem):
-        return self._item
+      if isinstance(self._item, (hiero.core.Clip, hiero.core.Sequence)):
+        return self._item.binItem()
+      return None
+
+    def root(self):
       return None      
       
     def sequence (self):
@@ -72,7 +75,14 @@ class QuickExportAction(QtGui.QAction):
     """This raises a File browser to allow the user to pick an export root"""
 
     # Prepare list of selected items for export
-    selection = [QuickExportAction.CustomItemWrapper(item) for item in hiero.ui.activeView().selection()]
+    view = hiero.ui.activeView()
+    print "view is: " + str(view)
+    if not view or not hasattr(view, 'selection'):
+      print "No selection available"
+      return
+
+    selection = [QuickExportAction.CustomItemWrapper(item) for item in view.selection()]
+    print "selection is: " + str(selection)
 
     if len(selection) > 0:
       # Raise the dialog to set the Export Root:
@@ -80,7 +90,7 @@ class QuickExportAction(QtGui.QAction):
       # Set the default file location to be the project root if it exists, else, look to uistate for last path
       browserPath = self.getInitialFilePath( selection[0] )
 
-      exportRoot = foundry.ui.openFileBrowser(caption="Select Export Root", initialPath=browserPath, mode=2)
+      exportRoot = foundry.ui.openFileBrowser(caption="Set Export Root", initialPath=browserPath, mode=2)
 
       if exportRoot:
         exportRoot = exportRoot[0]
@@ -113,6 +123,8 @@ class ExportersMenu:
 
     self.populateQuickExportMenus()
 
+    # Should also add this to the Timeline and Spreadsheet eventually
+    hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
 
   def addActionToMenu(self, action, menu):
     menu.addAction(action)
@@ -137,6 +149,15 @@ class ExportersMenu:
         self.timelineProcessorsMenu.addAction(act)
       elif isinstance(preset,hiero.exporters.FnShotProcessor.ShotProcessorPreset):
         self.shotProcessorsMenu.addAction(act)
+
+  def eventHandler(self, event):
+    if not hasattr(event.sender, 'selection'):
+      return
+
+    selection = event.sender.selection()
+    if len(selection)>=1:
+      menu = event.menu
+      menu.addMenu(self.rootMenu)
 
 def addExportMenu(event):
   exportersMenu = ExportersMenu()
