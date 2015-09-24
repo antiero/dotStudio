@@ -73,7 +73,6 @@ def _sequenceShotManifest(self):
   searches = hiero.core.findItemsInProject(proj, 'Sequence')
 
   if len(searches)==0:
-    hiero.core.log.info('Unable to find %s in any items of type: %s' % (str(self),str(searchType)))
     return {}
   
   manifest = {}
