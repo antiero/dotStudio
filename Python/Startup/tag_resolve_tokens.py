@@ -1,3 +1,4 @@
+# Allows metadata values to be used in keywords in the Export dialog
 from hiero.exporters.FnShotProcessor import ShotProcessorPreset
 from hiero.exporters.FnBinProcessor import BinProcessorPreset
 
