@@ -295,8 +295,11 @@ class FnFrameioWidget(QtGui.QWidget):
     def _uploadButtonPushed(self):
         project = self.selectedProject()
         self.setStatus("Clips: %s\n, Sequences %s" % (str(self._clips), str(self._sequences)))
+
+        # Should move logic below out of UI here and just pass the items
         movieClips = []
         nonMovieClips = []
+        
         if len(self._clips) > 0:
             # Find out which Clips do not need to be transcoded
             movieClips = [clip for clip in self._clips if hiero.core.isQuickTimeFileExtension(os.path.splitext(clip.mediaSource().filename())[-1])]
