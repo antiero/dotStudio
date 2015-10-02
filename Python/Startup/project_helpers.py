@@ -200,5 +200,6 @@ saveNewAct = SaveNewProjectVersion()
 
 fileMenu = hiero.ui.findMenuAction("foundry.menu.file")
 importAct = hiero.ui.findMenuAction("foundry.project.importFiles")
-hiero.ui.insertMenuAction(saveAllAct, fileMenu.menu(), before="Import File(s)...")
 hiero.ui.insertMenuAction(saveNewAct, fileMenu.menu(), before="Import File(s)...")
+hiero.ui.insertMenuAction(saveAllAct, fileMenu.menu(), before="Import File(s)...")
+fileMenu.menu().insertSeparator(importAct)
