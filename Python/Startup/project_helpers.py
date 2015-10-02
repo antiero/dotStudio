@@ -1,5 +1,5 @@
 from PySide import QtGui
-from hiero.core.util import uniquify, version_get
+from hiero.core.util import uniquify, version_get, version_set
 import hiero.core
 import hiero.ui
 import nuke
@@ -26,11 +26,11 @@ hiero.core.events.registerInterest('kSelectionChanged/Spreadsheet', __trackActiv
 def activeProject():
   """hiero.ui.activeProject() -> returns the current Project
 
-  Note: There is not technically a notion of a 'current' Project in Hiero, as it is a multi-project App.
-  This method determines what is 'current' by going down the following rules...
+  Note: There is not technically a notion of a 'active' Project in Hiero/NukeStudio, as it is a multi-project App.
+  This method determines what is 'active' by going down the following rules...
 
-  # 1 - If the current Viewer (hiero.ui.currentViewer) contains a Clip or Sequence, this item is assumed to give the current Project
-  # 2 - If nothing is current in the Viewer, look to the active View, determine project from active selection 
+  # 1 - If the current Viewer (hiero.ui.currentViewer) contains a Clip or Sequence, this item is assumed to give the active Project
+  # 2 - If nothing is currently in the Viewer, look to the active View, determine project from active selection 
   # 3 - If no current selection can be determined, fall back to a globally tracked last selection from trackActiveProjectHandler
   # 4 - If all those rules fail, fall back to the last project in the list of hiero.core.projects()
   
