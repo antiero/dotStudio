@@ -117,7 +117,7 @@ def getWorkspaceNames():
   workspaceNames = []
   for action in layoutActions:
     objectName = action.objectName()
-    if objectName.startswith("foundry.workspace.") and objectName.find('.save')==-1:
+    if objectName.startswith("foundry.workspace.") and objectName.find('.save')==-1 and len(action.text())>0:
       workspaceNames += [action.text()]
 
   return workspaceNames
