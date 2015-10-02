@@ -4,7 +4,7 @@ import hiero.core
 import hiero.ui
 import nuke
 
-# A globally variable for storing the current Project.. could put this in hiero.ui.activeProject instead?
+# A globally variable for storing the current Project
 gTrackedActiveProject = None
 
 # This selection handler will track changes in items selected/deselected in the Bin/Timeline/Spreadsheet Views
