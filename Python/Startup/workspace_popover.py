@@ -1,25 +1,25 @@
-import PySide.QtCore
-import PySide.QtGui
+from PySide.QtCore import Qt, QRect
+from PySide import QtGui
 import hiero.ui
 import math
 
-class Pie(PySide.QtGui.QWidget):
+class Pie(QtGui.QWidget):
   def __init__(self):
-    PySide.QtGui.QWidget.__init__(self)
-    self.setAttribute( PySide.QtCore.Qt.WA_TranslucentBackground, True )
-    self.setWindowFlags( PySide.QtCore.Qt.Popup | PySide.QtCore.Qt.FramelessWindowHint )
+    QtGui.QWidget.__init__(self)
+    self.setAttribute( Qt.WA_TranslucentBackground, True )
+    self.setWindowFlags( Qt.Popup | Qt.FramelessWindowHint )
     self.setMouseTracking(True)
     self._actions = []
     self._highlightAction = None
     self._layout = None
     self._lineWidth = 2
 
-    font = PySide.QtGui.QFont()
+    font = QtGui.QFont()
     font.setPixelSize(16)
     self.setFont(font)
   
   def addAction(self, a):
-    PySide.QtGui.QWidget.addAction(self, a)
+    QtGui.QWidget.addAction(self, a)
     self._actions.append(a)
     self._layout = None
 
@@ -30,9 +30,9 @@ class Pie(PySide.QtGui.QWidget):
 
   def paintEvent(self, e):
     self.__layoutActions()
-    painter = PySide.QtGui.QPainter(self)
-    painter.setRenderHint(PySide.QtGui.QPainter.Antialiasing, True)
-    painter.setPen( PySide.QtCore.Qt.white )
+    painter = QtGui.QPainter(self)
+    painter.setRenderHint(QtGui.QPainter.Antialiasing, True)
+    painter.setPen( Qt.white )
     painter.setBrush( self.palette().window() )
     painter.drawEllipse( self.width()/2-10, self.height()/2-10, 20, 20 )
     painter.setFont(self.font())
@@ -45,12 +45,12 @@ class Pie(PySide.QtGui.QWidget):
       r = self._layout[a]
       if a == self._highlightAction:
         painter.setBrush( self.palette().highlight() )
-        painter.setPen(self.palette().color(PySide.QtGui.QPalette.HighlightedText))
+        painter.setPen(self.palette().color(QtGui.QPalette.HighlightedText))
       else:
         painter.setBrush( self.palette().window() )
-        painter.setPen(self.palette().color(PySide.QtGui.QPalette.Text))
+        painter.setPen(self.palette().color(QtGui.QPalette.Text))
       painter.drawRoundedRect(r, 8, 8)
-      painter.drawText(r, PySide.QtCore.Qt.AlignCenter, a.text())
+      painter.drawText(r, Qt.AlignCenter, a.text())
 
   def __layoutActions(self):
     if self._layout == None:
@@ -59,9 +59,9 @@ class Pie(PySide.QtGui.QWidget):
       count = len(actions)
       angleStep = 2.0*math.pi/float(count)
       angle = 0
-      fontMetrics = PySide.QtGui.QFontMetrics(self.font())
-      radius = 100
-      bounds = PySide.QtCore.QRect()
+      fontMetrics = QtGui.QFontMetrics(self.font())
+      radius = 120
+      bounds = QRect()
       for a in actions:
         r = fontMetrics.boundingRect(a.text()).adjusted(-8, -8, 8, 8)
         r = r.translated(radius*math.cos(angle), radius*math.sin(angle))
@@ -84,6 +84,17 @@ class Pie(PySide.QtGui.QWidget):
       if r.contains(pos):
         return a;
     return None
+
+  def keyPressEvent(self, e):
+    if e.key() == Qt.Key_Escape or e.key() == 42:
+      self.close()
+    elif e.key() == Qt.Key_Up or e.key() == Qt.Key_Left:
+      self.__decrementHighlightedAction()
+    elif e.key() == Qt.Key_Down or e.key() == Qt.Key_Right:
+      self.__incrementHighlightedAction()
+    elif e.key() == Qt.Key_Enter or Qt.Key_Return:
+      self.__triggerHighlightedAction()
+      self.close()
 
   def mousePressEvent(self, e):
     self.__setHighlightAction(self.__actionAtPoint(e.pos()))
@@ -109,6 +120,41 @@ class Pie(PySide.QtGui.QWidget):
       self._highlightAction = a
       self.update()
 
+  def __triggerHighlightedAction(self):
+    if self._highlightAction:
+      self._highlightAction.trigger()
+
+
+  def __decrementHighlightedAction(self):
+    if not self._highlightAction:
+      action = self._actions[0]
+      self.__setHighlightAction(action)
+    else:
+      if self._highlightAction in self._actions:
+        index = self._actions.index(self._highlightAction)
+        if index-1 < 0:
+          index = len(self._actions)-1
+        else:
+          index = index-1
+
+        self.__setHighlightAction(self._actions[index])
+
+
+  def __incrementHighlightedAction(self):
+    if not self._highlightAction:
+      action = self._actions[0]
+      self.__setHighlightAction(action)
+    else:
+      if self._highlightAction in self._actions:
+        index = self._actions.index(self._highlightAction)
+        if index+1 > len(self._actions)-1:
+          index = 0
+        else:
+          index = index+1
+
+        self.__setHighlightAction(self._actions[index])
+
+
 def getWorkspaceNames():
   """Returns a list of available Workspace names"""
   layoutMenu  = hiero.ui.findMenuAction("foundry.workspace.Conforming").parent()
@@ -124,7 +170,7 @@ def getWorkspaceNames():
 
 # This is just a convenience method for returning QActions with a title, triggered method and icon.
 def makeWorkspaceAction(title, method):
-  action = PySide.QtGui.QAction(title,None)
+  action = QtGui.QAction(title,None)
 
   # We do this magic, so that the title string from the action is used to trigger the version change
   def methodWrapper():
@@ -146,10 +192,11 @@ def showPieMenu():
     action = makeWorkspaceAction(workspaceName, hiero.ui.setWorkspace)
     _pie.addAction( action )
 
-  _pie.showAt(PySide.QtGui.QCursor.pos())
+  _pie.showAt(QtGui.QCursor.pos())
+  _pie.activateWindow()
 
 # Add the workspace Chooser to the Window menu for now...
-action = PySide.QtGui.QAction("Workspace Chooser", None)
-action.setShortcut(PySide.QtGui.QKeySequence("Ctrl+`"))
+action = QtGui.QAction("Workspace Chooser", None)
+action.setShortcut(QtGui.QKeySequence("Meta+Tab"))
 action.triggered.connect(showPieMenu)
 hiero.ui.addMenuAction("Window", action)
