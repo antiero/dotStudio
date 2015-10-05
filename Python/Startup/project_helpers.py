@@ -154,7 +154,7 @@ class SaveNewProjectVersion(QtGui.QAction):
     if len(self.selectedProjects) > 0:
       projects = self.selectedProjects
     else:
-      projects = list(hiero.ui.activeProject)
+      projects = [hiero.ui.activeProject()]
 
     if len(projects)<1:
       return
