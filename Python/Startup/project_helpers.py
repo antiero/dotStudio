@@ -148,10 +148,10 @@ class SaveNewProjectVersion(QtGui.QAction):
     QtGui.QAction.__init__(self, "Save New Version...", None)
     self.triggered.connect(self.saveNewVersion)
     hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
-    self.selectedProjects  = None
+    self.selectedProjects  = []
 
   def saveNewVersion(self):
-    if len(self.selectedProjects) is not None:
+    if len(self.selectedProjects) > 0:
       projects = self.selectedProjects
     else:
       projects = list(hiero.ui.activeProject)
