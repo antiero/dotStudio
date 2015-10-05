@@ -188,7 +188,7 @@ class SaveNewProjectVersion(QtGui.QAction):
             print 'Unable to save Project: %s. Check file permissions.' % (oldName)
 
   def eventHandler(self, event):
-    self.selectedProjects = None
+    self.selectedProjects = []
     if hasattr(event.sender, 'selection') and event.sender.selection() is not None and len( event.sender.selection() ) != 0:
       selection = event.sender.selection()
       self.selectedProjects = uniquify([item.project() for item in selection])
