@@ -1,6 +1,5 @@
 """
 UI elements for interaction with Frame.io from within Nuke Studio
-
 """
 from PySide import QtGui
 from PySide.QtCore import Qt, QUrl, QRegExp, QCoreApplication
@@ -9,10 +8,10 @@ import hiero.core
 from hiero.ui import activeView, createMenuAction, mainWindow
 import frameio
 import os
-cwd = os.path.dirname(os.path.realpath(__file__))
-#gIconPath = os.path.abspath(os.path.join(cwd, "icons"))
-gIconPath = "/Users/ant/.nuke/Python/Startup/frameio_exporter/icons/"
 
+# Global path for icons
+cwd = os.path.dirname(os.path.realpath(__file__))
+gIconPath = os.path.abspath(os.path.join(cwd, "icons"))
 gGoogleAccountsEnabled = False # until we get oauth2 login figured out
 
 class FnFrameioMenu(QtGui.QMenu):
@@ -21,7 +20,7 @@ class FnFrameioMenu(QtGui.QMenu):
         hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
         self._actionUploadSelection = createMenuAction("Share to Frame.io...", 
                                                                 self.FrameioUploadSelectionAction, 
-                                                                icon=os.path.join(gIconPath + "logo-gray.png"))
+                                                                icon=os.path.join(gIconPath, "logo-unconnected.png"))
         self.addAction(self._actionUploadSelection)
 
     def FrameioUploadSelectionAction(self):
@@ -32,7 +31,7 @@ class FnFrameioMenu(QtGui.QMenu):
 
         print "Presenting the Frame.io view controller with %s" % str(selection)
 
-        hiero.core.frameioDelegate.showFrameioWidgetWithSelection(selection=selection)
+        hiero.core.frameioDelegate.showFrameioDialogWithSelection(selection=selection)
 
     def eventHandler(self, event):
         # Check if this actions are not to be enabled
@@ -41,11 +40,11 @@ class FnFrameioMenu(QtGui.QMenu):
           # Something has gone wrong, we shouldn't only be here if raised
           # by the timeline view which will give a selection.
           return
-        event.menu.addMenu(self)    
+        event.menu.addMenu(self)
 
-class FnFrameioWidget(QtGui.QWidget):
+class FnFrameioDialog(QtGui.QDialog):
     """
-    Main Frame.io widget for handling interaction with
+    Main Frame.io dialog for handling interaction with
     Frame.io
     """
 
@@ -58,7 +57,7 @@ class FnFrameioWidget(QtGui.QWidget):
     eConnectionError = "Connection error. Check internet access!"
 
     def __init__(self, delegate, username=None):
-        super(FnFrameioWidget, self).__init__()
+        QtGui.QDialog.__init__(self)
 
         global gIconPath
 
@@ -75,8 +74,8 @@ class FnFrameioWidget(QtGui.QWidget):
         self.setStyleSheet('QWidget {background-color: #3B3E4A;} QLineEdit {color: #D0D5DC; border-color:#6F757F; border-width: 1px; border-radius: 4px; border-style: solid;} QLabel {color: #D0D5DC;}')
         self.setWindowTitle("Frame.io Uploader")
 
-        #self.setAttribute( Qt.WA_TranslucentBackground, True )  
-        self.setWindowFlags( Qt.FramelessWindowHint )
+        #self.setAttribute( Qt.WA_TranslucentBackground, True )
+        self.setWindowFlags( Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint )
         self.setMouseTracking(True)
         self.draggable = True
         self.dragging_threshold = 0
@@ -92,14 +91,14 @@ class FnFrameioWidget(QtGui.QWidget):
         
         self.closeButton = QtGui.QPushButton("")
         self.closeButton.setStyleSheet('QPushButton {border: none;}')
-        icon = QtGui.QIcon(os.path.join(gIconPath + "close.png"))
+        icon = QtGui.QIcon(os.path.join(gIconPath, "close.png"))
 
         self.closeButton.setIcon(icon)
         self.closeButton.clicked.connect(self.close)
         self.toolBar.addWidget(self.closeButton)
         layout.addWidget(self.toolBar)
 
-        pixmap = QtGui.QPixmap(os.path.join(gIconPath + "logo-64px.png"))
+        pixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-64px.png"))
         lbl = QtGui.QLabel("")
         lbl.setPixmap(pixmap)
         lbl.setAlignment(Qt.AlignCenter)    
@@ -157,10 +156,11 @@ class FnFrameioWidget(QtGui.QWidget):
         self.submitButton.setFlat(True)
         self.submitButton.setFont(font)
         self.submitButton.clicked.connect(self._submitButtonPressed)
-        self.submitButton.setStyleSheet('QPushButton {width: 370px; height: 60px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #83DEBD; color: white;}')
+        self.submitButton.setStyleSheet('QPushButton {width: 370px; height: 60px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #83DEBD; color: white;}'
+                                        'QPushButton:hover{background-color: #9974BA; }'
+                                        'QPushButton:pressed{background-color: #83DEBD; border-width: 1px}')
 
         self.loginViewLayout.addWidget(self.submitButton)
-
         self.loginView.setLayout(self.loginViewLayout)
 
         self.stackView.addWidget(self.loginView)
@@ -172,7 +172,7 @@ class FnFrameioWidget(QtGui.QWidget):
         self.uploadDropzoneLayout = QtGui.QVBoxLayout(self)
         self.uploadDropzoneLayout.setAlignment(Qt.AlignCenter)
 
-        pixmap = QtGui.QPixmap(os.path.join(gIconPath + "uploadDropzone-64px.png"))
+        pixmap = QtGui.QPixmap(os.path.join(gIconPath, "uploadDropzone-64px.png"))
         uploadIcon = QtGui.QLabel("")
         uploadIcon.setPixmap(pixmap)
         uploadIcon.setAlignment(Qt.AlignCenter)
@@ -233,6 +233,9 @@ class FnFrameioWidget(QtGui.QWidget):
         self.uploadBottomButtonLayout.addWidget(self.uploadTaskButton)
         self.uploadBottomButtonWidget.setLayout(self.uploadBottomButtonLayout)
 
+        self.projectWidget = QtGui.QWidget()
+        self.projectWidgetLayout = QtGui.QHBoxLayout(self)
+
         self.projectDropdown = QtGui.QComboBox()
         self.projectDropdown.setFont(font)
         self.projectDropdown.setEditable(True)
@@ -240,13 +243,17 @@ class FnFrameioWidget(QtGui.QWidget):
         self.projectDropdown.setEditable(False)
         self.projectDropdown.setStyleSheet('QComboBox {width: 350px; height: 50px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #4F535F; color: white;}')
 
-        # We don't really need these FCP X style buttons because this acts upon a Selection
-        #self.uploadViewLayout.addWidget(self.uploadTopButtonWidget)
-
+        self.projectRefreshButton = QtGui.QPushButton("Refresh")
+        self.projectRefreshButton.setStyleSheet('QPushButton {width: 50px; height: 50px; border-width: 0px; border-radius: 25px; border-style: solid; background-color: #767C8E; color: white;}')
+        self.projectRefreshButton.clicked.connect(self._refreshProjectList)
+        self.projectWidgetLayout.addWidget(self.projectDropdown)
+        self.projectWidgetLayout.addWidget(self.projectRefreshButton)
+        self.projectWidget.setLayout(self.projectWidgetLayout)
+        
         ### Enable when annotation uploads are supported
         #self.uploadViewLayout.addWidget(self.exportAnnotationsCheckbox)
-
-        self.uploadViewLayout.addWidget(self.projectDropdown)
+        
+        self.uploadViewLayout.addWidget(self.projectWidget)
         self.uploadViewLayout.addWidget(self.uploadBottomButtonWidget)
 
         self.uploadView.setLayout(self.uploadViewLayout)
@@ -262,18 +269,24 @@ class FnFrameioWidget(QtGui.QWidget):
         self.setLayout(layout)
         self.emailLineEdit.setFocus()
 
-    def show(self, selection):
+    def show(self, selection=None):
         if selection:
             self._clips = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Clip)]
             self._sequences = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Sequence)]
 
-        return super(FnFrameioWidget, self).show()
+        return super(FnFrameioDialog, self).show()
+
+    def keyPressEvent(self, e):
+        """Handle J, L key events and close if Escape is pressed"""
+        print "KEY: " + str(e.key())
+        if e.key():
+            self.close()
 
     def mousePressEvent(self, event):
         if self.draggable and event.button() == Qt.LeftButton:
             self.__mousePressPos = event.globalPos()                # global
             self.__mouseMovePos = event.globalPos() - self.pos()    # local
-        super(FnFrameioWidget, self).mousePressEvent(event)
+        super(FnFrameioDialog, self).mousePressEvent(event)
  
     def mouseMoveEvent(self, event):
         if self.draggable and event.buttons() & Qt.LeftButton:
@@ -283,10 +296,12 @@ class FnFrameioWidget(QtGui.QWidget):
                 diff = globalPos - self.__mouseMovePos
                 self.move(diff)
                 self.__mouseMovePos = globalPos - self.pos()
-        super(FnFrameioWidget, self).mouseMoveEvent(event)
+        super(FnFrameioDialog, self).mouseMoveEvent(event)
 
-    def setStatus(self, text):
+    def setStatus(self, text, debug=True):
         self.statusLabel.setText(text)
+        if debug:
+            print text
 
     def selectedProject(self):
         """Returns the currently selected Project name"""
@@ -327,12 +342,17 @@ class FnFrameioWidget(QtGui.QWidget):
         self._updateProjectsList()
         self.stackView.setCurrentWidget(self.uploadView)
 
+
+    def _refreshProjectList(self):
+        # Refreshes the user data
+        self.delegate.frameioSession.reloadUserdata()
+        self._updateProjectsList()
+
     def _updateProjectsList(self):
         #Updates the Project list with list of project strings
         self.projectDropdown.clear()
-
-        print str(self.delegate.frameioSession.projectdict().values())
         projects = self.delegate.frameioSession.projectdict().values()
+        print "_updateProjectsList with: " + str(projects)
         for project in projects:
             self.projectDropdown.addItem(project)
 

@@ -17,5 +17,7 @@ hiero.core.frameioDelegate = FrameioDelegate()
 from FnFrameioUI import FnFrameioMenu
 frameioMenu = FnFrameioMenu()
 
-import FnFrameioUploadExporter
-import FnFrameioUploadExporterUI
+#import FnFrameioUploadExporter
+#import FnFrameioUploadExporterUI
+import FnFrameioTranscodeExporter
+import FnFrameioTranscodeExporterUI

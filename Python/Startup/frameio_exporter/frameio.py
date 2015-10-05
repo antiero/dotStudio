@@ -92,7 +92,7 @@ class Session:
             if projectdict[p] == projectname:
                 self.projectid = p
     
-    def login(self,username,password):
+    def login(self,username, password):
         """Login to frame.io."""
         logging.info('Logging in as ' + username )
         self.username = username
@@ -269,7 +269,7 @@ class Filereference:
 class Upload:
     """Defines an Upload connected to an established frame.io API Session"""
 
-    def __init__(self,filepaths,frameiosession,folderid=''):
+    def __init__(self, filepaths, frameiosession, folderid=''):
         """"Constructs the Upload based on: 
                 Args:
             filepaths (list): paths of the files to upload
@@ -277,6 +277,8 @@ class Upload:
             folderid (string): folder to upload to
                 Defaults to the session's current project's root folder"""
         self.filepaths = filepaths
+
+        print "Upload: Got filepaths: %s" % self.filepaths
         self.projectid = frameiosession.getProjectid()
         if folderid == '':
             self.folderid = frameiosession.getRootfolderkey()
@@ -357,7 +359,7 @@ class Upload:
         for path in self.filedata.keys():
             self.multipart_urls[path] = uploaddata['file_references'][ index[path] ]['multipart_urls']
             self.filereferenceid[path] = uploaddata['file_references'][ index[path] ]['id']
-            logging.info('filereferenceid :' + self.filereferenceid[path] )
+            print 'filereferenceid :' + self.filereferenceid[path]
         
     def uploadpart(self, path, partindex):
         """Uploads the given part of the given file. """
@@ -388,6 +390,7 @@ class Upload:
     def mergeparts(self , path):
         """Merges all the parts for a given file. """
         if not path in self.filereferenceid.keys():
+            print "mergeparts returning False"
             return False
         else:
             logging.info( 'Merging parts' ) 
@@ -401,6 +404,7 @@ class Upload:
     def workerthread(self , path):
         """Starts the worker thread for the given file """
         if not path in self.filereferenceid.keys():
+            print "workerthread returning False"
             return False
         else:
             logging.info( 'Starting worker thread' ) 
@@ -414,6 +418,7 @@ class Upload:
     def cancel(self , path):
         """Cancels the upload for the given file. """
         if not path in self.filereferenceid.keys():
+            print "cancel returning False"
             return False
         else:
             file_references = {'0' : { 'id' : self.filereferenceid[path] }}
@@ -433,6 +438,7 @@ def uploadlist(path):
     for l in uploadfile.readlines():
         l = l.replace('\\' , '\\\\').rstrip('\n')
         uploadlist.append(os.path.abspath(l))
+
     return uploadlist
      
 if __name__=="__main__":
