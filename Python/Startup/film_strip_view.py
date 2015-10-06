@@ -50,7 +50,7 @@ class MyListView(QtGui.QListView):
         seq = hiero.ui.activeSequence()
         trackItems = self.createTrackItemStripForSequence(seq)
         numItems = len(trackItems)
-        print "Got %i trackItems" % numItems
+        #print "Got %i trackItems" % numItems
         images = []
         for i in range(0, numItems):
             try:
@@ -95,6 +95,9 @@ class FilmStripPanel(QtGui.QWidget):
         self.setLayout(layout)
 
     def createTrackItemStripForSequence(self, sequence):
+        if not sequence:
+            return []
+
         T = sequence.duration()
         trackItems = []
         for frame in range(0,T):
@@ -111,7 +114,6 @@ class FilmStripPanel(QtGui.QWidget):
         seq = hiero.ui.activeSequence()
         trackItems = self.createTrackItemStripForSequence(seq)
         numItems = len(trackItems)
-        print "Got %i trackItems" % numItems
         images = []
         for i in range(0, numItems):
             try:
@@ -128,8 +130,8 @@ class FilmStripPanel(QtGui.QWidget):
         self.listModel = MyListModel(images, self)
         self.contactSheet.setModel(self.listModel)
 
-filmStrip = FilmStripPanel()
-hiero.ui.registerPanel( "uk.co.thefoundry.filmstrip", filmStrip )
+#filmStrip = FilmStripPanel()
+#hiero.ui.registerPanel( "uk.co.thefoundry.filmstrip", filmStrip )
 
-wm = hiero.ui.windowManager()
-wm.addWindow( filmStrip )
+#wm = hiero.ui.windowManager()
+#wm.addWindow( filmStrip )

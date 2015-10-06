@@ -58,7 +58,6 @@ class MyListView(QtGui.QListView):
         seq = hiero.ui.activeSequence()
         trackItems = self.createTrackItemStripForSequence(seq)
         numItems = len(trackItems)
-        print "Got %i trackItems" % numItems
         images = []
         for i in range(0, numItems):
             try:
@@ -101,8 +100,6 @@ class FnCutDetectorPanel(QtGui.QWidget):
         """
         Returns a vector of decision knobValues, over a range of 'first' to 'last' frames at which there is a '1'
         """
-
-        print "Returning value for knob %s over range %i to %i frames" %  (knob.name(), first, last)
 
         decArray = [0] * int((last-first)+1)
         for x in range(first,last):
@@ -165,7 +162,6 @@ class FnCutDetectorPanel(QtGui.QWidget):
         print "File dropped:\n" + finalPath
 
         askResult = nuke.ask("Detect cuts for Clip: %s" % finalPath)
-        print askResult
         if askResult:
             self.clipPath = finalPath.replace('\n','')
             self.createTimelineFromDroppedClip(self.clipPath)
@@ -179,11 +175,7 @@ class FnCutDetectorPanel(QtGui.QWidget):
         self.first = self.inputNode['first'].value()
         self.last = self.inputNode['last'].value()
         nuke.execute("CutDetector.CurveTool1", self.first, self.last)
-
-        #nuke.executeBackgroundNuke(nuke.EXE_PATH, [nuke.toNode("CutDetector.CurveTool1")], 
-        #                           nuke.FrameRanges("%i-%i" % (self.first, self.last)),
-        #                           ['main'], {'maxThreads':4, 'maxCache':'4G'})
-        
+       
 
     def _spacingSliderChanged(self, value=0):
         self.contactSheet.setSpacing(value)
@@ -218,7 +210,6 @@ class FnCutDetectorPanel(QtGui.QWidget):
     def getCutDetectorImagesForCurrentClip(self):
         cuts = self._generateCutPoints()
         numCuts = len(cuts)
-        print "getCutDetectorImagesForCurrentClip: CUTS: %s" % str(cuts)
         self.createSequenceFromCurrentClip()
 
         images = []
