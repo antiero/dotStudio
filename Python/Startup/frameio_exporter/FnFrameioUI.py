@@ -56,18 +56,19 @@ class FnFrameioDialog(QtGui.QDialog):
     eStatusLoggingIn = "Logging in..."
     eConnectionError = "Connection error. Check internet access!"
 
-    def __init__(self, delegate, username=None):
+    def __init__(self, delegate, username=None, usingExportDialog=False):
         QtGui.QDialog.__init__(self)
-
         global gIconPath
-
         self._clips = []
         self._sequences = []
+
+        # The Dialog can work in two modes, as a popover from the Bin View or via the main App Export window
+        self.usingExportDialog = usingExportDialog
 
         self.username = username
 
         # FrameioDelegate
-        self.delegate = delegate #kwargs.get("delegate", None)
+        self.delegate = delegate
 
         # setGeometry(x_pos, y_pos, width, height)
         self.setGeometry(240, 160, 726, 552)
@@ -98,7 +99,15 @@ class FnFrameioDialog(QtGui.QDialog):
         self.toolBar.addWidget(self.closeButton)
         layout.addWidget(self.toolBar)
 
-        pixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-64px.png"))
+        print "Icon path: " + str(os.path.join(gIconPath, "logo-unconnected.png"))
+        self.unconnectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-unconnected.png"))
+        self.connectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-connected.png"))
+        self.connectionIndicatorLabel = QtGui.QLabel("Connection", parent=self)
+        #self.updateConnectionIndicator()
+
+        self.toolBar.addWidget(self.connectionIndicatorLabel)
+
+        pixmap = QtGui.QPixmap(os.path.join(gIconPath, "frameio.png"))
         lbl = QtGui.QLabel("")
         lbl.setPixmap(pixmap)
         lbl.setAlignment(Qt.AlignCenter)    
@@ -269,12 +278,34 @@ class FnFrameioDialog(QtGui.QDialog):
         self.setLayout(layout)
         self.emailLineEdit.setFocus()
 
+
+    def updateConnectionIndicator(self):
+        """Updates the frame.io session authenticated indicator label"""
+        print "Updating connection indicator"
+        if self.delegate.frameioSession.sessionAuthenticated:
+            print "connected!"
+            #self.connectionIndicatorLabel.setPixmap(self.connectedIndicatorPixmap)
+            #self.connectionIndicatorLabel.setText('<img src="/workspace/dotStudio/Python/Startup/frameio_exporter/icons/logo-connected.png">Connected.')
+            self.connectionIndicatorLabel.setText('Connected.')
+
+        else:
+            print "unconnected!"
+            #self.connectionIndicatorLabel.setPixmap(self.unconnectedIndicatorPixmap)
+            #self.connectionIndicatorLabel.setText('<img src="/workspace/dotStudio/Python/Startup/frameio_exporter/icons/logo-unconnected.png">Not Connected.')
+            self.connectionIndicatorLabel.setText('Not Connected.')
+
     def show(self, selection=None):
         if selection:
             self._clips = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Clip)]
             self._sequences = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Sequence)]
 
+        self.updateConnectionIndicator()
+
         return super(FnFrameioDialog, self).show()
+
+    def close(self):
+        print "Current Project: " + str(self.currentProject())
+        return super(FnFrameioDialog, self).close()
 
     def keyPressEvent(self, e):
         """Handle J, L key events and close if Escape is pressed"""
@@ -303,12 +334,12 @@ class FnFrameioDialog(QtGui.QDialog):
         if debug:
             print text
 
-    def selectedProject(self):
+    def currentProject(self):
         """Returns the currently selected Project name"""
         return self.projectDropdown.currentText()
 
     def _uploadButtonPushed(self):
-        project = self.selectedProject()
+        project = self.currentProject()
         self.setStatus("Clips: %s\n, Sequences %s" % (str(self._clips), str(self._sequences)))
 
         # Should move logic below out of UI here and just pass the items
@@ -382,8 +413,12 @@ class FnFrameioDialog(QtGui.QDialog):
             else:
                 self.password = passwordText
 
+        print "_submitButtonPressed 1"
         if self.username and self.password:
+            print "about to atetemp login"
             self.delegate.attemptLogin(self.username, self.password)
+
+        print "_submitButtonPressed 2"
 
     def keyPressEvent(self, e):
         """Close the popover if Escape is pressed"""

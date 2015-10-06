@@ -36,6 +36,10 @@ import sys
 import urllib2put
 import json, os, mimetypes, urllib, logging
 from urllib2 import Request, urlopen, HTTPError, URLError
+from hiero.core import events
+
+# This will be used to communicate when a connection change event has occurred.
+events.registerEventType("kFrameioConnectionChanged")
 
 class Session:
     """Defines an established frame.io API Connection."""
@@ -49,6 +53,7 @@ class Session:
         self.password = password
         self.sessionAuthenticated = False
         self.userdata = {}
+        self.projectid = ""
         
     def __str__(self):
         return json.dumps(self.userdata , indent=4, separators=(',', ': ') )
@@ -91,6 +96,13 @@ class Session:
         for p in projectdict:
             if projectdict[p] == projectname:
                 self.projectid = p
+
+    def sessionAuthenticated(self):
+        return self.sessionAuthenticated
+
+    def setSessionAuthenticated(self, authenticated):
+        self.sessionAuthenticated = authenticated
+        events.sendEvent("kFrameioConnectionChanged", None)
     
     def login(self,username, password):
         """Login to frame.io."""
@@ -103,7 +115,7 @@ class Session:
         if logindata.has_key("errors"):
             print "login failed: %s"%(logindata["errors"])
             logging.error("login: %s"%(logindata["errors"]))
-            self.sessionAuthenticated = False
+            self.setSessionAuthenticated(False)
             return
 
         logging.info( logindata['messages'][0]) 
@@ -113,8 +125,19 @@ class Session:
         print "login; logindata['y']: " + str(logindata['y'])
 
         print "sessionAuthenticated..."
-        self.sessionAuthenticated = True
+        self.setSessionAuthenticated(True)
+
         return [logindata['x'] , logindata['y']]
+
+    def logout(self):
+        """Logout to frame.io."""
+        logging.info('Logging out')
+        self.username = ""
+        self.password = ""
+        self.projectid = ""
+        self.userdata = {}
+        self.setSessionAuthenticated(False)
+        return
     
     def reloadUserdata(self):
         """Reloads the userdata from the server"""
@@ -360,6 +383,9 @@ class Upload:
             self.multipart_urls[path] = uploaddata['file_references'][ index[path] ]['multipart_urls']
             self.filereferenceid[path] = uploaddata['file_references'][ index[path] ]['id']
             print 'filereferenceid :' + self.filereferenceid[path]
+
+        print "*** uploaddata: " + str(uploaddata)
+        return uploaddata
         
     def uploadpart(self, path, partindex):
         """Uploads the given part of the given file. """
@@ -378,7 +404,7 @@ class Upload:
             logging.info(responsedata.get('messages' , [''])[0])
             logging.info('part completed for ' + path + ': ' + url)
             return True
-        except URLError,c:
+        except (URLError, KeyError) as c:
             logging.info('upload failed for ' + path + ': ' + url)
             logging.info('https://api.frame.io/file_references/%s/part_complete' %  self.filereferenceid[path] )
             logging.info(json.dumps(values , indent=4, separators=(',', ': ') ))

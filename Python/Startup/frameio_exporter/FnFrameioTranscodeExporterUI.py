@@ -9,7 +9,6 @@ import FnFrameioTranscodeExporter
 
 from hiero.ui.FnUIProperty import *
 from hiero.exporters import FnExternalRenderUI
-
 from FnFrameioUI import FnFrameioDialog, gIconPath
 
 class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
@@ -18,10 +17,30 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     #super(FrameioTranscodeExporterUI, self).__init__(preset)
     FnExternalRenderUI.NukeRenderTaskUI.__init__(self, preset, FnFrameioTranscodeExporter.FrameioTranscodeExporter, "FrameIO Upload")
     self._tags = []
-   
+    self.frameIOLoginLogoutButton = None
+
+    # This tells the authentication indicator to update when the status changes
+    print "Registering event"
+    hiero.core.events.registerInterest("kFrameioConnectionChanged", self.handleConnectionStatusChangeEvent)
+
+
+  def handleConnectionStatusChangeEvent(self, event):
+    if self.frameIOLoginLogoutButton:
+        self.updateFrameIOLoginUI()
+
+  def updateFrameIOLoginUI(self):
+    if hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
+        username = hiero.core.frameioDelegate.username
+        self.frameIOLoginLogoutButton.setText("LOGOUT...")
+        self.frameIOConnectionStatusLabel.setText("Frame.io connected (%s)" % username)
+    else:
+        self.frameIOLoginLogoutButton.setText("LOGIN...")
+        self.frameIOConnectionStatusLabel.setText("Please login to Frame.io")
+
   def populateUI (self, widget, exportTemplate):
 
-    print "POPULATING UI"
+    print "POPULATING FRAME.IO UI"
+
     #### BUILD CUSTOM FRAME.IO UI HERE
     layout = QtGui.QFormLayout()
     layout.setContentsMargins(9, 0, 9, 0)
@@ -31,32 +50,30 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     uploadTypeComboBox.addItem("ProRes 422 HQ")
     uploadTypeComboBox.addItem("Raw Footage")
 
-    self.frameioWidget = FnFrameioDialog(hiero.core.frameioDelegate)
+    self.frameioWidget = hiero.core.frameioDelegate.frameioMainViewController
 
     # Frame.io - Authenticated indicator
     self.frameIOConnectionWidget = QtGui.QWidget()
     self.frameIOConnectionWidgetLayout = QtGui.QHBoxLayout()
-    self.frameioAuthenticatedLabel = QtGui.QLabel("Frame.io Session not authenticated")
-    self.unconnectedPixmap = QtGui.QPixmap(os.path.join(gIconPath, 'logo-unconnected.png'))
-    self.connectedPixmap = QtGui.QPixmap(os.path.join(gIconPath, 'logo-connected.png'))
-    self.frameioAuthenticatedLabel.setPixmap(self.unconnectedPixmap)
-    self.frameioAuthenticatedLabel.setText("Frame.io Session not authenticated")
-    self.frameIOLoginButton = QtGui.QPushButton("LOGIN...")
-    self.frameIOLoginButton.setStyleSheet(self.frameioWidget.submitButton.styleSheet())
-    self.frameIOLoginButton.setFixedWidth(60)
-    self.frameIOLoginButton.clicked.connect(self._frameIOUserDetailsClicked)
-    self.frameIOConnectionWidgetLayout.addWidget(self.frameioAuthenticatedLabel)
-    self.frameIOConnectionWidgetLayout.addWidget(self.frameIOLoginButton)
+
+    self.frameIOLoginLogoutButton = QtGui.QPushButton("LOGIN...")
+    self.frameIOLoginLogoutButton.clicked.connect(self._frameIOUserDetailsClicked)
+    self.frameIOConnectionStatusLabel = QtGui.QLabel("Not connected")
+
+
+
+    self.frameIOConnectionWidgetLayout.addWidget(self.frameIOConnectionStatusLabel)
+    self.frameIOConnectionWidgetLayout.addWidget(self.frameIOLoginLogoutButton)
+
+    self.updateFrameIOLoginUI()
+
     self.frameIOConnectionWidget.setLayout(self.frameIOConnectionWidgetLayout)
-    layout.addRow("", self.frameIOConnectionWidget)
+    layout.addRow("Frame.io Connection Status:", self.frameIOConnectionWidget)
 
-    #layout.addRow("", self.frameioWidget.emailLineEdit)
-    #layout.addRow("", self.frameioWidget.passwordLineEdit)    
-    #layout.addRow("Projects:", frameioWidget.projectDropdown)
+    self.frameioWidget.updateConnectionIndicator()
 
-    #button = self.frameioWidget.submitButton
-    #button.clicked.connect(self.frameioWidget.show)
-    #   layout.addRow("", button)
+    self.frameIOUploadSourceCheckbox = QtGui.QCheckBox()
+    layout.addRow("Upload source QuickTime Clips?:", self.frameIOUploadSourceCheckbox)
     layout.addRow("Upload Type:", uploadTypeComboBox)    
     self.buildCodecUI(layout, includeAuxProperties=True)
     
@@ -102,8 +119,14 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     #dialog = FnAdditionalNodesDialog.AdditionalNodesDialog(self._preset.properties()["additionalNodesData"], self._tags)
     #if dialog.exec_():
     print "Show the Frame.io login"
-    if self.frameioWidget.exec_():
-        print self.frameioWidget.projectDropdown.currentText()
+    if self.frameIOLoginLogoutButton.text() == "LOGIN...":
+        if self.frameioWidget.exec_():
+            currentProject = self.frameioWidget.projectDropdown.currentText()
+            print "The Current Project was: " + currentProject
+            self._preset.properties()["frameio_project"] = currentProject
+
+    else:
+        hiero.core.frameioDelegate.disconnectCurrentSession()
     pass
 
   def _additionalNodesEnableClicked(self, state):

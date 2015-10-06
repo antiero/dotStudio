@@ -145,9 +145,12 @@ class FrameioDelegate(object):
 
         self.frameioMainViewController = FnFrameioUI.FnFrameioDialog(delegate = self, username = self.username)
 
+        # This tells the authentication indicator to update when the status changes
+        hiero.core.events.registerInterest("kFrameioConnectionChanged", self.handleConnectionStatusChangeEvent)
+
     def showFrameioDialogWithSelection(self, selection):
-        """Saves the Username to the uistate.ini"""
-        print "showUploadViewController : %s" % str(selection)
+        """Shows the dialog"""
+
         self.frameioMainViewController.show(selection)
 
         if not self.frameioSession.sessionAuthenticated:
@@ -164,21 +167,33 @@ class FrameioDelegate(object):
 
     def attemptLogin(self, username = '', password = ""):
         """Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable"""
-
+        print "Attempting login..."
         self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
 
         self.frameioSession = frameio.Session(username, password)
         result = self.frameioSession.login(username, password)
 
         if self.frameioSession.sessionAuthenticated:
-            print "sessionAuthenticated..."
             self.setUserName(username)
             self.frameioMainViewController.showUploadView()
 
         return True
 
+    def disconnectCurrentSession(self):
+        """
+        Disconnects the current session if authenticated]
+        """
+        if self.frameioSession.sessionAuthenticated:
+            self.frameioSession.logout()
+            self.frameioSession = None
+
+    def handleConnectionStatusChangeEvent(self, event):
+        """Called when a change in the session authentication occurs"""
+        self.frameioMainViewController.updateConnectionIndicator()
+   
+
     def uploadFile(self, filePath, project, fileReferenceID = None):
-        """Starts upload task for a given filePath"""
+        """Starts upload task for a given filePath. Returns a frame.io file reference"""
 
         uploads = {}
         if not os.path.isfile(filePath):
@@ -205,4 +220,5 @@ class FrameioDelegate(object):
             nukeFrameioFileReferenceTask = NukeFrameioFileReferenceTask(uploads, self.frameioSession)
             print "Preparing uploads Thread about to start"
             threading.Thread( None, nukeFrameioFileReferenceTask.prepareUploads ).start()
-            #threading.Thread( None, NukeFrameioFileReferenceTasker, args = (uploads, self.frameioSession ) ).start()
+
+            return fileReferenceID
