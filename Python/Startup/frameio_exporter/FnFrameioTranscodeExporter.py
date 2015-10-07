@@ -38,8 +38,6 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
   def startTask(self):   
     # For Clips which are already QuickTime movies, we just upload them without Transcoding
 
-    
-
     if not self.frameioDelegate.frameioSession.sessionAuthenticated:
       self.setError("Please Log in to Frame.io before Exporting")
       self._progress = 1.0
@@ -62,16 +60,22 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
         self.uploadOnly = True
         self._progress = 0.5
         print "Got a QuickTime Clip, upload it to Frame.io, filePath: %s, frameioProject: %s" % (self.fileToUpload, self.frameioProject)
-        self.fileToUpload = self.frameioDelegate.uploadFile(originalFileName, self.frameioProject)
+        self.fileToUpload = originalFileName
         self._progress = 1.0
         self._finished = True
         return
         
       else:
         FnTranscodeExporter.TranscodeExporter.startTask(self)
+        self.fileToUpload = self.resolvedExportPath()
     else:
       print "Got a Sequence or Shot, need to transcode first"
+      # The file to upload is the resolved export path
+      self.fileToUpload = self.resolvedExportPath()
       FnTranscodeExporter.TranscodeExporter.startTask(self)
+      
+    print "self.fileToUpload: " + str(self.fileToUpload)
+    print "self.frameioProject: " + str(self.frameioProject)
 
   def updateItem (self, originalItem, localtime):
     """updateItem - This is called by the processor prior to taskStart, crucially on the main thread.\n
@@ -149,6 +153,13 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     print "Finish Task"
     if self._logFile:
       FnTranscodeExporter.TranscodeExporter.finishTask(self)
+
+
+    if self.fileToUpload and self.frameioProject:
+      print "Uploading to Frame.io"
+      self._progress = 0.5
+      self.frameioDelegate.uploadFile(self.fileToUpload, self.frameioProject)
+
     return
 
 
