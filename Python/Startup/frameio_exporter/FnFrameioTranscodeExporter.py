@@ -271,6 +271,13 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
       FnTranscodeExporter.TranscodeExporter.finishTask(self)
 
 
+    if self.nukeFrameioFileReferenceTask:
+      if self.nukeFrameioFileReferenceTask.nukeUploadTask:
+        if self.nukeFrameioFileReferenceTask.nukeUploadTask.uploadCompleted:
+          self._progress = 1.0
+          self._finished = True
+          return
+
     if self.fileToUpload and self.frameioProject:
       print "Uploading to Frame.io"
       self._progress = 0.5
@@ -346,6 +353,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     if self.nukeFrameioFileReferenceTask:
       if self.nukeFrameioFileReferenceTask.nukeUploadTask:
         if self.nukeFrameioFileReferenceTask.nukeUploadTask.progress() >=1:
+          self._progress = 1.0
           self._finished = True
 
         return 0.5 + (self.nukeFrameioFileReferenceTask.nukeUploadTask.progress() / 2.0)
