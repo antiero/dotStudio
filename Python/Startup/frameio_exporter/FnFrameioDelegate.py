@@ -14,7 +14,7 @@ import hiero.core
 from hiero.core import ApplicationSettings
 import nuke
 from PySide.QtCore import QCoreApplication
-import os, logging, threading
+import os, logging
 from FnFrameioTranscodeExporter import NukeFrameioFileReferenceTask
 
 class FrameioDelegate(object):
@@ -75,7 +75,6 @@ class FrameioDelegate(object):
         """
         if self.frameioSession.sessionAuthenticated:
             self.frameioSession.logout()
-            self.frameioSession = None
 
     def handleConnectionStatusChangeEvent(self, event):
         """Called when a change in the session authentication occurs"""

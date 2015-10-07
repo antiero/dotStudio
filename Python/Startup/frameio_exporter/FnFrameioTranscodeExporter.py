@@ -34,7 +34,8 @@ class NukeFrameioFileReferenceTask(object):
 
     def prepareUploads(self):
         self.totalprogress = len(self.uploads)*2+1
-        hiero.core.frameioDelegate.frameioMainViewController.setStatus("Preparing Uploads...")
+        print "* NukeFrameioFileReferenceTask: Preparing Uploads %s" % str(self.uploads)
+
         subfolders = self.frameiosession.getSubfolderdict(self.frameiosession.getRootfolderkey())
 
         if self.foldername in subfolders.values():
@@ -63,11 +64,13 @@ class NukeFrameioFileReferenceTask(object):
         for filepath in self.uploads.keys():
             progress = 100/self.totalprogress*i
             self.setProgress( progress )
-            hiero.core.frameioDelegate.frameioMainViewController.setStatus("NukeFrameioFileReferenceTask Completion: %.1f %%" % float(progress))
-            hiero.core.frameioDelegate.frameioMainViewController.setStatus('Starting upload: ' + filepath)
+            print "** NukeFrameioFileReferenceTask Completion: %.1f %%" % float(progress)
+            print '** NukeFrameioFileReferenceTask: Starting upload: ' + filepath
             self.uploads[filepath]['folderid'] = folderid
+
+            print "*** NukeFrameioFileReferenceTask: %s" % str(self.uploads)
             self.nukeUploadTask = NukeFrameioUploadTask(self.frameioUploadContext, filepath)
-            print "self.nukeUploadTask is: " + str(self.nukeUploadTask)
+            print "NukeFrameioFileReferenceTask: self.nukeUploadTask is: " + str(self.nukeUploadTask)
             threading.Thread( None, self.nukeUploadTask.uploadFile).start()
             i+=1
 
@@ -96,10 +99,10 @@ class NukeFrameioUploadTask(object):
         self.uploadCompleted = False
 
     def uploadFile(self):
+        print "NukeFrameioUploadTask: uploadFile called"
         self.setProgress(4)
         parts=self.upload.getPartcount(self.filepath)
         for i in xrange(parts):
-            #task.setMessage('Uploading ' + os.path.basename(self.filepath) +  ' (part ' + str(i+1) + '/' + str(parts) + ')')
             print 'Uploading ' + os.path.basename(self.filepath) +  ' (part ' + str(i+1) + '/' + str(parts) + ')'
             self.upload.uploadpart(self.filepath,i)
             progress = 4 + 92/parts*(i+1)
@@ -109,7 +112,7 @@ class NukeFrameioUploadTask(object):
         self.upload.mergeparts(self.filepath)
         self.setProgress(100)
         self.upload.workerthread(self.filepath)
-        hiero.core.frameioDelegate.frameioMainViewController.setStatus("Upload Completed!")
+        print "Upload Completed!"
         self.uploadCompleted = True
 
     def progress(self):
@@ -128,7 +131,7 @@ class NukeFrameioUploadTask(object):
           self.uploadProgress = 0.0
 
         msg = "Current upload is %.1f %%" % self.uploadProgress
-        hiero.core.frameioDelegate.frameioMainViewController.setStatus(msg)
+        print msg
         
 
     def cancelUpload(self):
@@ -144,8 +147,6 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
   def __init__(self, initDict):
     """Sub-class Transcode Exporter to handle uploading of files to Frame.io services"""
     FnTranscodeExporter.TranscodeExporter.__init__( self, initDict )
-
-    self.frameioDelegate = hiero.core.frameioDelegate
     self.nukeFrameioFileReferenceTask = None
     self.originalItem = None
     self.originalItemTag = None
@@ -160,7 +161,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
   def startTask(self):   
     # For Clips which are already QuickTime movies, we just upload them without Transcoding
 
-    if not self.frameioDelegate.frameioSession.sessionAuthenticated:
+    if not hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
       self.setError("Please Log in to Frame.io before Exporting")
       self._progress = 1.0
       self._finished = True
@@ -269,37 +270,42 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     print "Finish Task"
     if self._logFile:
       FnTranscodeExporter.TranscodeExporter.finishTask(self)
+      return
 
+    if not self.frameioUploadCompleted():
+      if self.fileToUpload and self.frameioProject:
+        print "Uploading to Frame.io"
+        self._progress = 0.5
 
-    if self.nukeFrameioFileReferenceTask:
-      if self.nukeFrameioFileReferenceTask.nukeUploadTask:
-        if self.nukeFrameioFileReferenceTask.nukeUploadTask.uploadCompleted:
-          self._progress = 1.0
-          self._finished = True
-          return
+        print "Setting finished to False"
+        self._finished = False
 
-    if self.fileToUpload and self.frameioProject:
-      print "Uploading to Frame.io"
-      self._progress = 0.5
-
-      print "Setting finished to False"
-      self._finished = False
-
-      print "calling uploadFile..."
-      self.uploadFile(self.fileToUpload, self.frameioProject)
+        print "calling uploadFile..."
+        self.uploadFile(self.fileToUpload, self.frameioProject)
+    else:
+      self._progress = 1.0
+      self._finished = True
 
     return
 
+  def frameioUploadCompleted(self):
+    if self.nukeFrameioFileReferenceTask:
+      if self.nukeFrameioFileReferenceTask.nukeUploadTask:
+        if self.nukeFrameioFileReferenceTask.nukeUploadTask.uploadCompleted:
+          return True
+
+    return False
+
   def uploadFile(self, filePath, project, fileReferenceID = None):
       """Starts upload task for a given filePath. Returns a frame.io file reference"""
-
+      print "FrameioTranscodeExporter: uploadFile called"
       uploads = {}
       if not os.path.isfile(filePath):
           return
 
-      if self.frameioDelegate.frameioSession.sessionAuthenticated:
+      if hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
           print "Setting project to be: " + str(project)
-          self.frameioDelegate.frameioSession.setProject(project)
+          hiero.core.frameioDelegate.frameioSession.setProject(project)
 
       # TO-DO: If a project item is passed with an existing fileReferenceID, check if the fileref exists
       if fileReferenceID:
@@ -317,7 +323,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
       print "*** UPLOADS PASSED TO NukeFrameioFileReferenceTask: %s" % str(uploads)
 
       if len(uploads.keys()) != 0:
-          self.nukeFrameioFileReferenceTask = NukeFrameioFileReferenceTask(uploads, self.frameioDelegate.frameioSession)
+          self.nukeFrameioFileReferenceTask = NukeFrameioFileReferenceTask(uploads, hiero.core.frameioDelegate.frameioSession)
           print "Preparing uploads Thread about to start"
           threading.Thread( None, self.nukeFrameioFileReferenceTask.prepareUploads ).start()
 
