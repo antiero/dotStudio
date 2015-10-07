@@ -384,7 +384,6 @@ class Upload:
             self.filereferenceid[path] = uploaddata['file_references'][ index[path] ]['id']
             print 'filereferenceid :' + self.filereferenceid[path]
 
-        print "*** uploaddata: " + str(uploaddata)
         return uploaddata
         
     def uploadpart(self, path, partindex):

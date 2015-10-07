@@ -121,6 +121,12 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     print "Show the Frame.io login"
     if self.frameIOLoginLogoutButton.text() == "LOGIN...":
         if self.frameioWidget.exec_():
+
+            if not hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
+                self.frameioWidget.showLoginView()
+            else:
+                self.frameioWidget.showUploadView()
+
             currentProject = self.frameioWidget.projectDropdown.currentText()
             print "The Current Project was: " + currentProject
             self._preset.properties()["frameio_project"] = currentProject
