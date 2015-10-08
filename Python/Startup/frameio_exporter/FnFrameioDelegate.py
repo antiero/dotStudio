@@ -11,6 +11,7 @@ nuke2frameio by Til Strobl, www.movingmedia.de
 import frameio
 import FnFrameioUI
 import hiero.core
+import threading
 from hiero.core import ApplicationSettings
 import nuke
 from PySide.QtCore import QCoreApplication
@@ -109,9 +110,10 @@ class FrameioDelegate(object):
 
         print "*** UPLOADS PASSED TO NukeFrameioFileReferenceTask: %s" % str(uploads)
 
+        hiero.core.uploadThreads = []
         if len(uploads.keys()) != 0:
             nukeFrameioFileReferenceTask = NukeFrameioFileReferenceTask(uploads, self.frameioSession)
             print "Preparing uploads Thread about to start"
             threading.Thread( None, nukeFrameioFileReferenceTask.prepareUploads ).start()
 
-            return fileReferenceID
+        return fileReferenceID

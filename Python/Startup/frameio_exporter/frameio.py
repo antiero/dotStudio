@@ -113,7 +113,6 @@ class Session:
         response_body = urlopen(request).read()
         logindata = json.loads(response_body)
         if logindata.has_key("errors"):
-            print "login failed: %s"%(logindata["errors"])
             logging.error("login: %s"%(logindata["errors"]))
             self.setSessionAuthenticated(False)
             return
@@ -121,10 +120,9 @@ class Session:
         logging.info( logindata['messages'][0]) 
         self.projectid = ''
 
-        print "login; logindata['x']: " + str(logindata['x'])
-        print "login; logindata['y']: " + str(logindata['y'])
+        logging.info( "login; logindata['x']: " + str(logindata['x']) )
+        logging.info( "login; logindata['y']: " + str(logindata['y']) )
 
-        print "sessionAuthenticated..."
         self.setSessionAuthenticated(True)
 
         return [logindata['x'] , logindata['y']]
@@ -301,7 +299,7 @@ class Upload:
                 Defaults to the session's current project's root folder"""
         self.filepaths = filepaths
 
-        print "Upload: Got filepaths: %s" % self.filepaths
+        logging.info("Upload: Got filepaths: %s" % self.filepaths)
         self.projectid = frameiosession.getProjectid()
         if folderid == '':
             self.folderid = frameiosession.getRootfolderkey()

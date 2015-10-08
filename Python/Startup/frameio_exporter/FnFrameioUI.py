@@ -29,8 +29,6 @@ class FnFrameioMenu(QtGui.QMenu):
         if not selection:
             return
 
-        print "Presenting the Frame.io view controller with %s" % str(selection)
-
         hiero.core.frameioDelegate.showFrameioDialogWithSelection(selection=selection)
 
     def eventHandler(self, event):
@@ -99,11 +97,10 @@ class FnFrameioDialog(QtGui.QDialog):
         self.toolBar.addWidget(self.closeButton)
         layout.addWidget(self.toolBar)
 
-        print "Icon path: " + str(os.path.join(gIconPath, "logo-unconnected.png"))
         self.unconnectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-unconnected.png"))
         self.connectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-connected.png"))
         self.connectionIndicatorLabel = QtGui.QLabel("Connection", parent=self)
-        #self.updateConnectionIndicator()
+        self.connectionIndicatorLabel.setAlignment(Qt.AlignRight)
 
         self.toolBar.addWidget(self.connectionIndicatorLabel)
 
@@ -167,7 +164,7 @@ class FnFrameioDialog(QtGui.QDialog):
         self.submitButton.clicked.connect(self._submitButtonPressed)
         self.submitButton.setStyleSheet('QPushButton {width: 370px; height: 60px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #83DEBD; color: white;}'
                                         'QPushButton:hover{background-color: #9974BA; }'
-                                        'QPushButton:pressed{background-color: #83DEBD; border-width: 1px}')
+                                        'QPushButton:pressed{background-color: #404040; border-width: 1px}')
 
         self.loginViewLayout.addWidget(self.submitButton)
         self.loginView.setLayout(self.loginViewLayout)
@@ -230,6 +227,7 @@ class FnFrameioDialog(QtGui.QDialog):
         self.uploadBottomButtonLayout.setAlignment(Qt.AlignCenter)
         self.uploadCancelButton = QtGui.QPushButton("Cancel")
         self.uploadCancelButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #767C8E; color: white;}')
+        self.uploadCancelButton.clicked.connect(self.close)
 
         self.uploadTaskButton = QtGui.QPushButton("Upload")
         self.uploadTaskButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; color: white;}')
@@ -280,17 +278,11 @@ class FnFrameioDialog(QtGui.QDialog):
 
     def updateConnectionIndicator(self):
         """Updates the frame.io session authenticated indicator label"""
-        print "Updating connection indicator"
         if self.delegate.frameioSession.sessionAuthenticated:
-            print "connected!"
-            #self.connectionIndicatorLabel.setPixmap(self.connectedIndicatorPixmap)
-            #self.connectionIndicatorLabel.setText('<img src="/workspace/dotStudio/Python/Startup/frameio_exporter/icons/logo-connected.png">Connected.')
+            print "Frame.io session connected!"
             self.connectionIndicatorLabel.setText('Connected.')
-
         else:
-            print "unconnected!"
-            #self.connectionIndicatorLabel.setPixmap(self.unconnectedIndicatorPixmap)
-            #self.connectionIndicatorLabel.setText('<img src="/workspace/dotStudio/Python/Startup/frameio_exporter/icons/logo-unconnected.png">Not Connected.')
+            print "Frame.io session unconnected!"
             self.connectionIndicatorLabel.setText('Not Connected.')
 
     def show(self, selection=None):
@@ -300,6 +292,10 @@ class FnFrameioDialog(QtGui.QDialog):
 
         self.updateConnectionIndicator()
 
+        # If we're usint the Export dialog, we always just show the Login view, not the Project view
+        if self.usingExportDialog:
+            self.showLoginView()
+
         return super(FnFrameioDialog, self).show()
 
     def keyPressEvent(self, e):
@@ -308,10 +304,6 @@ class FnFrameioDialog(QtGui.QDialog):
             self.close()        
         if e.key() in (Qt.Key_Return, Qt.Key_Enter):
             self._submitButtonPressed()
-
-    def close(self):
-        print "Current Project: " + str(self.currentProject())
-        return super(FnFrameioDialog, self).close()
 
 
     def mousePressEvent(self, event):
@@ -333,7 +325,7 @@ class FnFrameioDialog(QtGui.QDialog):
     def setStatus(self, text, debug=True):
         self.statusLabel.setText(text)
         if debug:
-            print text
+            print str(text)
 
     def currentProject(self):
         """Returns the currently selected Project name"""
@@ -358,7 +350,6 @@ class FnFrameioDialog(QtGui.QDialog):
             filesToUpload += [ movClip.mediaSource().fileinfos()[0].filename() ]
 
         for filePath in filesToUpload:
-            print  "_uploadButtonPushed: filePath to upload: %s" % filePath
             self.delegate.uploadFile(filePath, project)
  
     def showLoginView(self):
@@ -389,7 +380,6 @@ class FnFrameioDialog(QtGui.QDialog):
         #Updates the Project list with list of project strings
         self.projectDropdown.clear()
         projects = self.delegate.frameioSession.projectdict().values()
-        print "_updateProjectsList with: " + str(projects)
         for project in projects:
             self.projectDropdown.addItem(project)
 
@@ -419,10 +409,6 @@ class FnFrameioDialog(QtGui.QDialog):
             else:
                 self.password = passwordText
 
-        print "_submitButtonPressed 1"
         if self.username and self.password:
-            print "about to atetemp login"
             self.delegate.attemptLogin(self.username, self.password)
-
-        print "_submitButtonPressed 2"
 

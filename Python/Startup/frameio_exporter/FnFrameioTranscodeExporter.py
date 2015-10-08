@@ -34,8 +34,6 @@ class NukeFrameioFileReferenceTask(object):
 
     def prepareUploads(self):
         self.totalprogress = len(self.uploads)*2+1
-        print "* NukeFrameioFileReferenceTask: Preparing Uploads %s" % str(self.uploads)
-
         subfolders = self.frameiosession.getSubfolderdict(self.frameiosession.getRootfolderkey())
 
         if self.foldername in subfolders.values():
@@ -64,11 +62,7 @@ class NukeFrameioFileReferenceTask(object):
         for filepath in self.uploads.keys():
             progress = 100/self.totalprogress*i
             self.setProgress( progress )
-            #print "** NukeFrameioFileReferenceTask Completion: %.1f %%" % float(progress)
-            #print '** NukeFrameioFileReferenceTask: Starting upload: ' + filepath
             self.uploads[filepath]['folderid'] = folderid
-
-            #print "*** NukeFrameioFileReferenceTask: %s" % str(self.uploads)
             self.nukeUploadTask = NukeFrameioUploadTask(self.frameioUploadContext, filepath)
             #print "NukeFrameioFileReferenceTask: self.nukeUploadTask is: " + str(self.nukeUploadTask)
             threading.Thread( None, self.nukeUploadTask.uploadFile).start()
@@ -156,7 +150,6 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     self.uploadOnly = False # True if the item to be uploaded does not require transccoding
     self.fileToUpload = ""
     self.frameioProject =  "NukeStudio" # This should get set properly
-    self._logFile = None
     self.uploadCount = 0
 
   def startTask(self):   
@@ -172,34 +165,40 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
 
     self.frameioProject = self._preset.properties()["frameio_project"]
 
+    self.burnInRequired = bool(self._preset.properties()["burninDataEnabled"])
+    self.reformatRequired = self._preset.properties()["reformat"]["to_type"] != 'None'
+    
+    self.preRenderRequired = (self.burnInRequired or self.reformatRequired)
+
     # This only works if the export item is a Sequence
     if isinstance(self._item, hiero.core.Clip):        
-      print "Got a Clip, just upload it, with methods :%s" % (str(dir(self._item)))
 
       originalFileName = self._item.mediaSource().fileinfos()[0].filename()
       #filePath = self.resolvedExportPath()
       ext = os.path.splitext(originalFileName)[1].lower()
       if hiero.core.isQuickTimeFileExtension(ext):
-        
-        self.uploadOnly = True
-        self._progress = 0.5
-        print "Got a QuickTime Clip, upload it to Frame.io, filePath: %s, frameioProject: %s" % (self.fileToUpload, self.frameioProject)
-        self.fileToUpload = originalFileName
-        self._progress = 1.0
-        self._finished = True
-        return
+        if not self.preRenderRequired:
+          self.uploadOnly = True
+          self._progress = 0.5
+          self.fileToUpload = originalFileName
+          print "Got QuickTime Clip (%s) requiring no rendering, upload it to frameioProject (%s)" % (self.fileToUpload, self.frameioProject)
         
       else:
+        print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
         FnTranscodeExporter.TranscodeExporter.startTask(self)
         self.fileToUpload = self.resolvedExportPath()
     else:
       print "Got a Sequence or Shot, need to transcode first"
       # The file to upload is the resolved export path
       self.fileToUpload = self.resolvedExportPath()
+      print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
       FnTranscodeExporter.TranscodeExporter.startTask(self)
       
-    print "self.fileToUpload: " + str(self.fileToUpload)
-    print "self.frameioProject: " + str(self.frameioProject)
+    print "startTask: self.fileToUpload: " + str(self.fileToUpload)
+    print "startTask: self.frameioProject: " + str(self.frameioProject)
+    print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
+    self.fileToUpload = self.resolvedExportPath() 
+    FnTranscodeExporter.TranscodeExporter.startTask(self)
 
   def updateItem (self, originalItem, localtime):
     """updateItem - This is called by the processor prior to taskStart, crucially on the main thread.\n
@@ -269,25 +268,19 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     """
     # Close log file
     print "Finish Task"
-    if self._logFile:
-      FnTranscodeExporter.TranscodeExporter.finishTask(self)
-      return
 
     if not self.frameioUploadCompleted():
       if self.fileToUpload and self.frameioProject:
-        print "Uploading to Frame.io"
         self._progress = 0.5
-
-        print "Setting finished to False"
         self._finished = False
-
-        print "COUNT THIS CALL - calling uploadFile..."
-        self.uploadCount += 1
-        if self.uploadCount == 1:
+        if self.uploadCount == 0:
           self.uploadFile(self.fileToUpload, self.frameioProject)
+          self.uploadCount += 1
+          return
     else:
       self._progress = 1.0
       self._finished = True
+      FnTranscodeExporter.TranscodeExporter.finishTask(self)
 
     return
 
@@ -301,13 +294,11 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
 
   def uploadFile(self, filePath, project, fileReferenceID = None):
       """Starts upload task for a given filePath. Returns a frame.io file reference"""
-      print "FrameioTranscodeExporter: uploadFile called"
       uploads = {}
       if not os.path.isfile(filePath):
           return
 
       if hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
-          print "Setting project to be: " + str(project)
           hiero.core.frameioDelegate.frameioSession.setProject(project)
 
       # TO-DO: If a project item is passed with an existing fileReferenceID, check if the fileref exists
@@ -340,6 +331,12 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     #  - Parses the output ever frame until complete
     if not self.uploadOnly:
       return FnTranscodeExporter.TranscodeExporter.taskStep(self)
+    else:
+      if self.uploadCount == 0:
+        print "*** taskStep: self.uploadCount was 0, uploading..."
+        self.uploadFile(self.fileToUpload, self.frameioProject)
+        self.uploadCount+=1
+        return
 
     if self._finished:
       print "Transcode Finished!"
@@ -361,7 +358,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
 
     if self.nukeFrameioFileReferenceTask:
       if self.nukeFrameioFileReferenceTask.nukeUploadTask:
-        if self.nukeFrameioFileReferenceTask.nukeUploadTask.progress() >=1:
+        if self.nukeFrameioFileReferenceTask.nukeUploadTask.progress() >=1.0:
           self._progress = 1.0
           self._finished = True
 

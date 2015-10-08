@@ -19,8 +19,10 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     self._tags = []
     self.frameIOLoginLogoutButton = None
 
+    # For now, the uploader will only handle QuickTime Movie
+    self._preset.properties()["frameio_project"] = "mov"
+
     # This tells the authentication indicator to update when the status changes
-    print "Registering event"
     hiero.core.events.registerInterest("kFrameioConnectionChanged", self.handleConnectionStatusChangeEvent)
 
 
@@ -125,7 +127,6 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
   def _updateProjectComboBox(self):
     """Updates the project dropdown menu with projects from the Authenticated session"""
     projects = hiero.core.frameioDelegate.frameioSession.projectdict().values()
-    print "updating the project list with projects: %s" % str(projects)
     self.projectComboBox.clear()
     for project in projects:
         self.projectComboBox.addItem(str(project))
