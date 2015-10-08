@@ -3,7 +3,7 @@
 import os.path
 import hiero.ui
 
-from PySide import QtCore
+from PySide.QtCore import Qt
 from PySide import QtGui
 import FnFrameioTranscodeExporter
 
@@ -31,36 +31,38 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
   def updateFrameIOLoginUI(self):
     if hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
         username = hiero.core.frameioDelegate.username
-        self.frameIOLoginLogoutButton.setText("LOGOUT...")
-        self.frameIOConnectionStatusLabel.setText("Frame.io connected (%s)" % username)
+        self.frameIOLoginLogoutButton.setText("Logout...")
+        self.frameIOConnectionStatusLabel.setText("Connected (%s)" % username)
+        self._updateProjectComboBox()
+        self._preset.properties()["frameio_project"] = self.projectComboBox.currentText()
     else:
-        self.frameIOLoginLogoutButton.setText("LOGIN...")
-        self.frameIOConnectionStatusLabel.setText("Please login to Frame.io")
+        self.frameIOLoginLogoutButton.setText("Login...")
+        self.frameIOConnectionStatusLabel.setText("Unconnected")
 
   def populateUI (self, widget, exportTemplate):
-
-    print "POPULATING FRAME.IO UI"
-
     #### BUILD CUSTOM FRAME.IO UI HERE
     layout = QtGui.QFormLayout()
+    layout.setFormAlignment(Qt.AlignHCenter | Qt.AlignTop)
     layout.setContentsMargins(9, 0, 9, 0)
 
-    uploadTypeComboBox = QtGui.QComboBox()
-    uploadTypeComboBox.addItem("H.264")
-    uploadTypeComboBox.addItem("ProRes 422 HQ")
-    uploadTypeComboBox.addItem("Raw Footage")
-
+    
     self.frameioWidget = hiero.core.frameioDelegate.frameioMainViewController
+
+    # This diaog behaves differently in the Export dialog or Bin View
+    self.frameioWidget.usingExportDialog = True
+
+    self.projectComboBox = QtGui.QComboBox()
+    self.projectComboBox.addItem("Please login to Frame.io")
+    self.projectComboBox.currentIndexChanged.connect(self.projectDropdownChanged)
+
 
     # Frame.io - Authenticated indicator
     self.frameIOConnectionWidget = QtGui.QWidget()
     self.frameIOConnectionWidgetLayout = QtGui.QHBoxLayout()
 
-    self.frameIOLoginLogoutButton = QtGui.QPushButton("LOGIN...")
+    self.frameIOLoginLogoutButton = QtGui.QPushButton("Login...")
     self.frameIOLoginLogoutButton.clicked.connect(self._frameIOUserDetailsClicked)
     self.frameIOConnectionStatusLabel = QtGui.QLabel("Not connected")
-
-
 
     self.frameIOConnectionWidgetLayout.addWidget(self.frameIOConnectionStatusLabel)
     self.frameIOConnectionWidgetLayout.addWidget(self.frameIOLoginLogoutButton)
@@ -68,14 +70,11 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     self.updateFrameIOLoginUI()
 
     self.frameIOConnectionWidget.setLayout(self.frameIOConnectionWidgetLayout)
-    layout.addRow("Frame.io Connection Status:", self.frameIOConnectionWidget)
+    layout.addRow("", self.frameIOConnectionWidget)
+    layout.addRow("Project: ", self.projectComboBox)
 
-    self.frameioWidget.updateConnectionIndicator()
-
-    self.frameIOUploadSourceCheckbox = QtGui.QCheckBox()
-    layout.addRow("Upload source QuickTime Clips?:", self.frameIOUploadSourceCheckbox)
-    layout.addRow("Upload Type:", uploadTypeComboBox)    
-    self.buildCodecUI(layout, includeAuxProperties=True)
+    self.buildCodecUI(layout, includeAuxProperties=False)
+    self._codecTypeComboBox.setHidden(True)
     
     retimeToolTip = """Sets the retime method used if retimes are enabled.\n-Motion - Motion Estimation.\n-Blend - Frame Blending.\n-Frame - Nearest Frame"""
     key, value = "method", ("None", "Motion", "Frame", "Blend")
@@ -90,7 +89,7 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     burninCheckbox.setToolTip(burninToolTip)
     burninCheckbox.stateChanged.connect(self._burninEnableClicked)
     if self._preset.properties()["burninDataEnabled"]:
-      burninCheckbox.setCheckState(QtCore.Qt.Checked)
+      burninCheckbox.setCheckState(Qt.Checked)
     burninButton = QtGui.QPushButton("Edit")
     burninButton.setToolTip(burninToolTip)
     burninButton.clicked.connect(self._burninEditClicked)
@@ -105,38 +104,53 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     additionalNodesCheckbox.setToolTip(additionalNodesToolTip)
     additionalNodesCheckbox.stateChanged.connect(self._additionalNodesEnableClicked)
     if self._preset.properties()["additionalNodesEnabled"]:
-      additionalNodesCheckbox.setCheckState(QtCore.Qt.Checked)
+      additionalNodesCheckbox.setCheckState(Qt.Checked)
     additionalNodesButton = QtGui.QPushButton("Edit")
     additionalNodesButton.setToolTip(additionalNodesToolTip)
     additionalNodesButton.clicked.connect(self._additionalNodesEditClicked)
     additionalNodesLayout.addWidget(additionalNodesCheckbox)
     additionalNodesLayout.addWidget(additionalNodesButton)
     layout.addRow("Additional Nodes:", additionalNodesLayout)
+
+    try:
+        self._codecWidget.setHidden(True)
+    except:
+        pass
+
     widget.setLayout(layout)
+
+
+  def _updateProjectComboBox(self):
+    """Updates the project dropdown menu with projects from the Authenticated session"""
+    projects = hiero.core.frameioDelegate.frameioSession.projectdict().values()
+    print "updating the project list with projects: %s" % str(projects)
+    self.projectComboBox.clear()
+    for project in projects:
+        self.projectComboBox.addItem(str(project))
+
+
+  def projectDropdownChanged(self, index):
+    """Called when the Project dropdown changes"""
+    self._preset.properties()["frameio_project"] = self.projectComboBox.currentText()
 
     
   def _frameIOUserDetailsClicked(self):
     #dialog = FnAdditionalNodesDialog.AdditionalNodesDialog(self._preset.properties()["additionalNodesData"], self._tags)
     #if dialog.exec_():
     print "Show the Frame.io login"
-    if self.frameIOLoginLogoutButton.text() == "LOGIN...":
+    if self.frameIOLoginLogoutButton.text() == "Login...":
         if self.frameioWidget.exec_():
 
             if not hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
                 self.frameioWidget.showLoginView()
             else:
                 self.frameioWidget.showUploadView()
-
-            currentProject = self.frameioWidget.projectDropdown.currentText()
-            print "The Current Project was: " + currentProject
-            self._preset.properties()["frameio_project"] = currentProject
-
     else:
         hiero.core.frameioDelegate.disconnectCurrentSession()
     pass
 
   def _additionalNodesEnableClicked(self, state):
-    self._preset.properties()["additionalNodesEnabled"] = state == QtCore.Qt.Checked
+    self._preset.properties()["additionalNodesEnabled"] = state == Qt.Checked
     pass
     
   def _additionalNodesEditClicked(self):

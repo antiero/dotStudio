@@ -39,8 +39,10 @@ class FrameioDelegate(object):
         hiero.core.events.registerInterest("kFrameioConnectionChanged", self.handleConnectionStatusChangeEvent)
 
     def showFrameioDialogWithSelection(self, selection):
-        """Shows the dialog"""
+        """Shows the dialog from the Bin View"""
 
+        # We're not using the Export dialog, so use the normal flow
+        self.frameioMainViewController.usingExportDialog = False
         self.frameioMainViewController.show(selection)
 
         if not self.frameioSession.sessionAuthenticated:

@@ -174,31 +174,31 @@ class FnFrameioDialog(QtGui.QDialog):
 
         self.stackView.addWidget(self.loginView)
 
-        ### View to handle uploading of Clips via drag-drop into a dropzone
-        self.uploadDropzoneView = QtGui.QWidget()
-        self.uploadDropzoneView.setAcceptDrops(True) # Not hooked up.
+        ### TO-DO - handle uploading of Clips via drag-drop into a dropzone
+        # self.uploadDropzoneView = QtGui.QWidget()
+        # self.uploadDropzoneView.setAcceptDrops(True) # Not hooked up.
 
-        self.uploadDropzoneLayout = QtGui.QVBoxLayout(self)
-        self.uploadDropzoneLayout.setAlignment(Qt.AlignCenter)
+        # self.uploadDropzoneLayout = QtGui.QVBoxLayout(self)
+        # self.uploadDropzoneLayout.setAlignment(Qt.AlignCenter)
 
-        pixmap = QtGui.QPixmap(os.path.join(gIconPath, "uploadDropzone-64px.png"))
-        uploadIcon = QtGui.QLabel("")
-        uploadIcon.setPixmap(pixmap)
-        uploadIcon.setAlignment(Qt.AlignCenter)
-        self.uploadDropzoneLayout.addWidget(uploadIcon)
+        # pixmap = QtGui.QPixmap(os.path.join(gIconPath, "uploadDropzone-64px.png"))
+        # uploadIcon = QtGui.QLabel("")
+        # uploadIcon.setPixmap(pixmap)
+        # uploadIcon.setAlignment(Qt.AlignCenter)
+        # self.uploadDropzoneLayout.addWidget(uploadIcon)
 
-        self.uploadDropzoneLabel1 = QtGui.QLabel("Upload your files")
-        self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
-        self.uploadDropzoneLabel1.setFont(font)
-        self.uploadDropzoneLabel2 = QtGui.QLabel("Drag 'n Drop your files or Clips/Sequences here.")
-        self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
-        self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel1)
-        font.setPointSize(16)
-        self.uploadDropzoneLabel2.setFont(font)
-        self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel2)
+        # self.uploadDropzoneLabel1 = QtGui.QLabel("Upload your files")
+        # self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
+        # self.uploadDropzoneLabel1.setFont(font)
+        # self.uploadDropzoneLabel2 = QtGui.QLabel("Drag 'n Drop your files or Clips/Sequences here.")
+        # self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
+        # self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel1)
+        # font.setPointSize(16)
+        # self.uploadDropzoneLabel2.setFont(font)
+        # self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel2)
 
-        self.uploadDropzoneView.setLayout(self.uploadDropzoneLayout)
-        self.stackView.addWidget(self.uploadDropzoneView)
+        # self.uploadDropzoneView.setLayout(self.uploadDropzoneLayout)
+        # self.stackView.addWidget(self.uploadDropzoneView)
 
         ### View to handle uploading of Clips and Timelines View
         self.uploadView = QtGui.QWidget()
@@ -230,7 +230,6 @@ class FnFrameioDialog(QtGui.QDialog):
         self.uploadBottomButtonLayout.setAlignment(Qt.AlignCenter)
         self.uploadCancelButton = QtGui.QPushButton("Cancel")
         self.uploadCancelButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #767C8E; color: white;}')
-        self.uploadCancelButton.clicked.connect(self.showDropzoneUploadView)
 
         self.uploadTaskButton = QtGui.QPushButton("Upload")
         self.uploadTaskButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; color: white;}')
@@ -366,14 +365,19 @@ class FnFrameioDialog(QtGui.QDialog):
         # Sets the stackView to show the Login View
         self.stackView.setCurrentWidget(self.loginView)
 
-    def showDropzoneUploadView(self):
-        # Sets the stackView to show the Dropzone Upload View
-        self.stackView.setCurrentWidget(self.uploadDropzoneView)
+    # def showDropzoneUploadView(self):
+    #     # Sets the stackView to show the Dropzone Upload View
+    #     self.stackView.setCurrentWidget(self.uploadDropzoneView)
 
     def showUploadView(self):
         # Sets the stackView to show the Upload View
         self._updateProjectsList()
-        self.stackView.setCurrentWidget(self.uploadView)
+
+        # If the dialog is launched from the Export dialog don't progress to the next screen, just exit.
+        if not self.usingExportDialog:
+            self.stackView.setCurrentWidget(self.uploadView)
+        else:
+            self.close()
 
 
     def _refreshProjectList(self):
