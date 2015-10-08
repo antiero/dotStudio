@@ -93,11 +93,11 @@ class NukeFrameioUploadTask(object):
         self.uploadCompleted = False
 
     def uploadFile(self):
-        print "NukeFrameioUploadTask: uploadFile called"
+        #print "NukeFrameioUploadTask: uploadFile called"
         self.setProgress(4)
         parts=self.upload.getPartcount(self.filepath)
         for i in xrange(parts):
-            print 'Uploading ' + os.path.basename(self.filepath) +  ' (part ' + str(i+1) + '/' + str(parts) + ')'
+            #print 'Uploading ' + os.path.basename(self.filepath) +  ' (part ' + str(i+1) + '/' + str(parts) + ')'
             self.upload.uploadpart(self.filepath,i)
             progress = 4 + 92/parts*(i+1)
             self.setProgress(float(progress))
@@ -107,7 +107,7 @@ class NukeFrameioUploadTask(object):
         self.setProgress(100)
         self.upload.workerthread(self.filepath)
         self.uploadCompleted = True
-        print "Upload Completed!"
+        #print "Upload Completed!"
 
     def progress(self):
         """
@@ -124,17 +124,17 @@ class NukeFrameioUploadTask(object):
         else:
           self.uploadProgress = 0.0
 
-        msg = "Current upload is %.1f %%" % self.uploadProgress
-        print msg
+        #msg = "Current upload is %.1f %%" % self.uploadProgress
+        #print msg
         
 
     def cancelUpload(self):
         """
         Cancels the current upload Task
         """
-        print "Cancelling Upload task for %s" % self.filepath
+        #print "Cancelling Upload task for %s" % self.filepath
         self.upload.cancel(self.filepath)
-        print "Upload task for %s was cancelled" % self.filepath
+        #print "Upload task for %s was cancelled" % self.filepath
 
 
 class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
@@ -181,22 +181,22 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
           self.uploadOnly = True
           self._progress = 0.5
           self.fileToUpload = originalFileName
-          print "Got QuickTime Clip (%s) requiring no rendering, upload it to frameioProject (%s)" % (self.fileToUpload, self.frameioProject)
+          #print "Got QuickTime Clip (%s) requiring no rendering, upload it to frameioProject (%s)" % (self.fileToUpload, self.frameioProject)
         
       else:
-        print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
+        #print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
         FnTranscodeExporter.TranscodeExporter.startTask(self)
         self.fileToUpload = self.resolvedExportPath()
     else:
       print "Got a Sequence or Shot, need to transcode first"
       # The file to upload is the resolved export path
       self.fileToUpload = self.resolvedExportPath()
-      print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
+      #print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
       FnTranscodeExporter.TranscodeExporter.startTask(self)
       
-    print "startTask: self.fileToUpload: " + str(self.fileToUpload)
-    print "startTask: self.frameioProject: " + str(self.frameioProject)
-    print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
+    #print "startTask: self.fileToUpload: " + str(self.fileToUpload)
+    #print "startTask: self.frameioProject: " + str(self.frameioProject)
+    #print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
     self.fileToUpload = self.resolvedExportPath() 
     FnTranscodeExporter.TranscodeExporter.startTask(self)
 
@@ -266,8 +266,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     """
     Clean up after render.
     """
-    # Close log file
-    print "Finish Task"
+    # Close log and finish up
 
     if not self.frameioUploadCompleted():
       if self.fileToUpload and self.frameioProject:
@@ -310,15 +309,15 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
               if size1 == size2:
                   return
 
-      print "filePath: %s, fileReferenceID: %s " % (str(filePath), str(fileReferenceID))
+      #print "filePath: %s, fileReferenceID: %s " % (str(filePath), str(fileReferenceID))
 
       uploads[filePath] = {"annotations": '', "fileReferenceID": fileReferenceID}
 
-      print "*** UPLOADS PASSED TO NukeFrameioFileReferenceTask: %s" % str(uploads)
+      #print "*** UPLOADS PASSED TO NukeFrameioFileReferenceTask: %s" % str(uploads)
 
       if len(uploads.keys()) != 0:
           self.nukeFrameioFileReferenceTask = NukeFrameioFileReferenceTask(uploads, hiero.core.frameioDelegate.frameioSession)
-          print "Preparing uploads Thread about to start"
+          #print "Preparing uploads Thread about to start"
           threading.Thread( None, self.nukeFrameioFileReferenceTask.prepareUploads ).start()
 
           return fileReferenceID    
@@ -333,13 +332,11 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
       return FnTranscodeExporter.TranscodeExporter.taskStep(self)
     else:
       if self.uploadCount == 0:
-        print "*** taskStep: self.uploadCount was 0, uploading..."
+        #print "*** taskStep: self.uploadCount was 0, uploading..."
         self.uploadFile(self.fileToUpload, self.frameioProject)
         self.uploadCount+=1
         return
 
-    if self._finished:
-      print "Transcode Finished!"
 
   def forcedAbort (self):
     # Parent impliementation terminates nuke process
