@@ -303,15 +303,17 @@ class FnFrameioDialog(QtGui.QDialog):
 
         return super(FnFrameioDialog, self).show()
 
+    def keyPressEvent(self, e):
+        """Close the popover if Escape is pressed"""
+        if e.key() == Qt.Key_Escape:
+            self.close()        
+        if e.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self._submitButtonPressed()
+
     def close(self):
         print "Current Project: " + str(self.currentProject())
         return super(FnFrameioDialog, self).close()
 
-    def keyPressEvent(self, e):
-        """Handle J, L key events and close if Escape is pressed"""
-        print "KEY: " + str(e.key())
-        if e.key():
-            self.close()
 
     def mousePressEvent(self, event):
         if self.draggable and event.button() == Qt.LeftButton:
@@ -420,7 +422,3 @@ class FnFrameioDialog(QtGui.QDialog):
 
         print "_submitButtonPressed 2"
 
-    def keyPressEvent(self, e):
-        """Close the popover if Escape is pressed"""
-        if e.key() == Qt.Key_Escape:
-            self.close()
