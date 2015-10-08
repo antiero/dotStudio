@@ -64,13 +64,13 @@ class NukeFrameioFileReferenceTask(object):
         for filepath in self.uploads.keys():
             progress = 100/self.totalprogress*i
             self.setProgress( progress )
-            print "** NukeFrameioFileReferenceTask Completion: %.1f %%" % float(progress)
-            print '** NukeFrameioFileReferenceTask: Starting upload: ' + filepath
+            #print "** NukeFrameioFileReferenceTask Completion: %.1f %%" % float(progress)
+            #print '** NukeFrameioFileReferenceTask: Starting upload: ' + filepath
             self.uploads[filepath]['folderid'] = folderid
 
-            print "*** NukeFrameioFileReferenceTask: %s" % str(self.uploads)
+            #print "*** NukeFrameioFileReferenceTask: %s" % str(self.uploads)
             self.nukeUploadTask = NukeFrameioUploadTask(self.frameioUploadContext, filepath)
-            print "NukeFrameioFileReferenceTask: self.nukeUploadTask is: " + str(self.nukeUploadTask)
+            #print "NukeFrameioFileReferenceTask: self.nukeUploadTask is: " + str(self.nukeUploadTask)
             threading.Thread( None, self.nukeUploadTask.uploadFile).start()
             i+=1
 
@@ -112,8 +112,8 @@ class NukeFrameioUploadTask(object):
         self.upload.mergeparts(self.filepath)
         self.setProgress(100)
         self.upload.workerthread(self.filepath)
-        print "Upload Completed!"
         self.uploadCompleted = True
+        print "Upload Completed!"
 
     def progress(self):
         """
@@ -157,6 +157,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     self.fileToUpload = ""
     self.frameioProject =  "NukeStudio" # This should get set properly
     self._logFile = None
+    self.uploadCount = 0
 
   def startTask(self):   
     # For Clips which are already QuickTime movies, we just upload them without Transcoding
@@ -280,8 +281,10 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
         print "Setting finished to False"
         self._finished = False
 
-        print "calling uploadFile..."
-        self.uploadFile(self.fileToUpload, self.frameioProject)
+        print "COUNT THIS CALL - calling uploadFile..."
+        self.uploadCount += 1
+        if self.uploadCount == 1:
+          self.uploadFile(self.fileToUpload, self.frameioProject)
     else:
       self._progress = 1.0
       self._finished = True
