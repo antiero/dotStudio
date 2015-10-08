@@ -8,7 +8,7 @@ from PySide import QtGui
 import FnFrameioTranscodeExporter
 
 from hiero.ui.FnUIProperty import *
-from hiero.exporters import FnExternalRenderUI
+from hiero.exporters import FnExternalRenderUI, FnAdditionalNodesDialog
 from FnFrameioUI import FnFrameioDialog, gIconPath
 
 class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
@@ -75,6 +75,7 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
 
     self.buildCodecUI(layout, includeAuxProperties=False)
     self._codecTypeComboBox.setHidden(True)
+    layout.labelForField(self._codecTypeComboBox).hide()
     
     retimeToolTip = """Sets the retime method used if retimes are enabled.\n-Motion - Motion Estimation.\n-Blend - Frame Blending.\n-Frame - Nearest Frame"""
     key, value = "method", ("None", "Motion", "Frame", "Blend")
@@ -118,6 +119,7 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
         pass
 
     widget.setLayout(layout)
+    #widget.setStyleSheet(self.frameioWidget.styleSheet())
 
 
   def _updateProjectComboBox(self):
@@ -135,9 +137,6 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
 
     
   def _frameIOUserDetailsClicked(self):
-    #dialog = FnAdditionalNodesDialog.AdditionalNodesDialog(self._preset.properties()["additionalNodesData"], self._tags)
-    #if dialog.exec_():
-    print "Show the Frame.io login"
     if self.frameIOLoginLogoutButton.text() == "Login...":
         if self.frameioWidget.exec_():
 
