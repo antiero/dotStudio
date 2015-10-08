@@ -322,7 +322,7 @@ class FnFrameioDialog(QtGui.QDialog):
                 self.__mouseMovePos = globalPos - self.pos()
         super(FnFrameioDialog, self).mouseMoveEvent(event)
 
-    def setStatus(self, text, debug=True):
+    def setStatus(self, text, debug=False):
         self.statusLabel.setText(text)
         if debug:
             print str(text)
