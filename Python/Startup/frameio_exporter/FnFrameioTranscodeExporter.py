@@ -267,6 +267,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     # Get the last tag in the list and store its guid
     self._tag_guid = originalItem.tags()[-1].guid()
 
+    # Stash the original Tag away so that we can update it after the upload completes with a file reference id
     self.originalTag = originalItem.tags()[-1]
 
   def finishTask(self):
