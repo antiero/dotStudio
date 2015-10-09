@@ -31,6 +31,9 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
         self.updateFrameIOLoginUI()
 
   def updateFrameIOLoginUI(self):
+    if not hiero.core.frameioDelegate.frameioMainViewController.usingExportDialog:
+        return
+
     if hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
         username = hiero.core.frameioDelegate.username
         self.frameIOLoginLogoutButton.setText("Logout...")

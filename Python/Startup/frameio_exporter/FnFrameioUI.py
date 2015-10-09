@@ -56,12 +56,14 @@ class FnFrameioMenu(QtGui.QMenu):
         # Get Tags which contain a frameio_filereferenceid key
         for item in taggedSelection:
             itemTags = item.tags()
-            # It's possible that an item has multiple Frame.io Tags, get the one with the 
             frameIOTags = [tag for tag in itemTags if tag.metadata().hasKey("tag.description") and tag.metadata().value("tag.description") == "FrameIO Upload"]
+
+            if len(frameIOTags)==0:
+                break
+
             if len(frameIOTags)>1:
-                # Find the Tag with latest upload time
-                sortedTags = sorted(tags, key=lambda k: float(k.metadata().value("tag.frameio_upload_time")))
-                print sortedTags
+                # With multiple exports, it's possible that an item has multiple Frame.io Tags, get the one with the latest upload time
+                sortedTags = sorted(frameIOTags, key=lambda k: float(k.metadata().value("tag.frameio_upload_time")), reverse=True)
                 latestTag = sortedTags[0]
 
             else:
