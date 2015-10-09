@@ -160,8 +160,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     self.originalTag = None
 
   def startTask(self):   
-    # For Clips which are already QuickTime movies, we just upload them without Transcoding
-
+    # For Clips which are already QuickTime movies, we should just upload them without Transcoding...
     if not hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
       msg = "Please Log in to Frame.io before Exporting"
       self.setError(msg)
@@ -170,16 +169,13 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
       self._finished = True
       return
 
-    #print "Starting Task..."
-
     self.frameioProject = self._preset.properties()["frameio_project"]
 
-    self.burnInRequired = bool(self._preset.properties()["burninDataEnabled"])
+    # ANT - We could Handle Clip Exports specially here, and just upload instead of Transcoding
+    """self.burnInRequired = bool(self._preset.properties()["burninDataEnabled"])
     self.reformatRequired = self._preset.properties()["reformat"]["to_type"] != 'None'
-    
     self.preRenderRequired = (self.burnInRequired or self.reformatRequired)
 
-    # This only works if the export item is a Sequence
     if isinstance(self._item, hiero.core.Clip):        
 
       originalFileName = self._item.mediaSource().fileinfos()[0].filename()
@@ -196,18 +192,12 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
         #print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
         FnTranscodeExporter.TranscodeExporter.startTask(self)
         self.fileToUpload = self.resolvedExportPath()
-    else:
-      #print "Got a Sequence or Shot, need to transcode first"
-      # The file to upload is the resolved export path
-      self.fileToUpload = self.resolvedExportPath()
-      #print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
-      FnTranscodeExporter.TranscodeExporter.startTask(self)
-      
-    #print "startTask: self.fileToUpload: " + str(self.fileToUpload)
-    #print "startTask: self.frameioProject: " + str(self.frameioProject)
-    #print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
-    self.fileToUpload = self.resolvedExportPath() 
+    """
+
+    # The file to upload is the resolved export path
+    self.fileToUpload = self.resolvedExportPath()
     FnTranscodeExporter.TranscodeExporter.startTask(self)
+
 
   def updateItem (self, originalItem, localtime):
     """updateItem - This is called by the processor prior to taskStart, crucially on the main thread.\n
