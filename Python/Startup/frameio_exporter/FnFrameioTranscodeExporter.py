@@ -61,7 +61,7 @@ class NukeFrameioFileReferenceTask(object):
         self.filename = self.filereferenceDict.keys()[0]
         self.fileReferenceID = self.filereferenceDict[self.filename]
 
-        print "Setting NukeFrameioFileReferenceTask.fileReferenceID: " + str(self.fileReferenceID)
+        #print "Setting NukeFrameioFileReferenceTask.fileReferenceID: " + str(self.fileReferenceID)
 
         i+=1
         for filepath in self.uploads.keys():
@@ -69,7 +69,7 @@ class NukeFrameioFileReferenceTask(object):
             self.setProgress( progress )
             self.uploads[filepath]['folderid'] = folderid
             self.nukeUploadTask = NukeFrameioUploadTask(self.frameioUploadContext, filepath)
-            print "NukeFrameioUploadTask Thread about to start"
+            #print "NukeFrameioUploadTask Thread about to start"
             threading.Thread( None, self.nukeUploadTask.uploadFile).start()
             i+=1
 
@@ -169,7 +169,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
       self._finished = True
       return
 
-    print "Starting Task..."
+    #print "Starting Task..."
 
     self.frameioProject = self._preset.properties()["frameio_project"]
 
@@ -196,7 +196,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
         FnTranscodeExporter.TranscodeExporter.startTask(self)
         self.fileToUpload = self.resolvedExportPath()
     else:
-      print "Got a Sequence or Shot, need to transcode first"
+      #print "Got a Sequence or Shot, need to transcode first"
       # The file to upload is the resolved export path
       self.fileToUpload = self.resolvedExportPath()
       #print "Calling: FnTranscodeExporter.TranscodeExporter.startTask(self)"
@@ -212,7 +212,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     """updateItem - This is called by the processor prior to taskStart, crucially on the main thread.\n
       This gives the task an opportunity to modify the original item on the main thread, rather than the clone."""
 
-    print "updateItem called"
+    #print "updateItem called"
 
     timestamp = self.timeStampString(localtime)
     tagName = str("Transcode {0} {1}").format(self._preset.properties()["file_type"], timestamp)
@@ -275,18 +275,18 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     """
     # Close log and finish up
 
-    print "finishTask called, self.frameIOFileReferenceID is: " + str(self.frameIOFileReferenceID)
+    #print "finishTask called, self.frameIOFileReferenceID is: " + str(self.frameIOFileReferenceID)
 
     if not self.frameioUploadCompleted():
       if self.fileToUpload and self.frameioProject:
         self._progress = 0.5
         self._finished = False
         if self.uploadCount == 0:
-          print "*** finishTask: self.uploadCount was 0, uploading..."
+          #print "*** finishTask: self.uploadCount was 0, uploading..."
           self.uploadFile(self.fileToUpload, self.frameioProject)
           self.uploadCount += 1
         else:
-          print "*** finishTask: Upload Count is greater than 1..."
+          #print "*** finishTask: Upload Count is greater than 1..."
           self._finished = True
           FnTranscodeExporter.TranscodeExporter.finishTask(self)
           return
@@ -294,19 +294,16 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     else:
       #self._progress = 1.0
       #self._finished = True
-      print "Calling FnTranscodeExporter.TranscodeExporter.finishTask(self)"
+      #print "Calling FnTranscodeExporter.TranscodeExporter.finishTask(self)"
       FnTranscodeExporter.TranscodeExporter.finishTask(self)
       return
-
-    if self.frameIOFileReferenceID:
-      print "Now updating self.frameIOFileReferenceID: " + str(self.frameIOFileReferenceID)
 
     return
 
   def frameioUploadCompleted(self):
     if self.nukeFrameioFileReferenceTask:
       if self.nukeFrameioFileReferenceTask.nukeUploadTask:
-        print "caling frameioUploadCompleted, got a nukeUploadTask"
+        #print "calling frameioUploadCompleted, got a nukeUploadTask"
         if self.nukeFrameioFileReferenceTask.nukeUploadTask.uploadCompleted:
           return True
 
@@ -338,7 +335,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
           #print "Preparing uploads Thread about to start"
           
           threading.Thread( None, self.nukeFrameioFileReferenceTask.prepareUploads ).start()
-          print "FrameioTranscodeExporter.uploadFile: nukeFrameioFileReferenceTask.fileReferenceID is: " + str(self.nukeFrameioFileReferenceTask.fileReferenceID)
+          #print "FrameioTranscodeExporter.uploadFile: nukeFrameioFileReferenceTask.fileReferenceID is: " + str(self.nukeFrameioFileReferenceTask.fileReferenceID)
       
       return self.nukeFrameioFileReferenceTask.fileReferenceID
 
@@ -352,11 +349,11 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
       return FnTranscodeExporter.TranscodeExporter.taskStep(self)
     else:
       if self.uploadCount == 0:
-        print "*** taskStep: self.uploadCount was 0, uploading..."
+        #print "*** taskStep: self.uploadCount was 0, uploading..."
         self.uploadFile(self.fileToUpload, self.frameioProject)
         self.uploadCount+=1
       else:
-        print "taskStep: Upload Count is greater than 1..."
+        #print "taskStep: Upload Count is greater than 1..."
 
   def updateFrameIOTagWithReference(self):
     """
@@ -370,13 +367,13 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
   def postSequence(self):
     """postSequence()
     This function serves as hook for custom scripts to add functionality on completion of exporting the contents of the sequence"""
-    print "postSequence: now update the frame.io Tag of the original item"
+    #print "postSequence: now update the frame.io Tag of the original item"
     if self.nukeFrameioFileReferenceTask.fileReferenceID:
+
+      # We have to run this on the main thread...
       hiero.core.executeInMainThread(self.updateFrameIOTagWithReference)
     else:
-      print "Unable to update the original Tag item."
-      print self.originalTag.project()
-      print self.originalItem.project()
+      print "Unable to update the Frame.io Tag."
 
     self._finished = True
     return
