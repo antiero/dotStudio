@@ -352,8 +352,6 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
         #print "*** taskStep: self.uploadCount was 0, uploading..."
         self.uploadFile(self.fileToUpload, self.frameioProject)
         self.uploadCount+=1
-      else:
-        #print "taskStep: Upload Count is greater than 1..."
 
   def updateFrameIOTagWithReference(self):
     """
