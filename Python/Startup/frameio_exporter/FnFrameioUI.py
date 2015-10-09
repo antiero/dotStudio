@@ -8,6 +8,7 @@ import hiero.core
 from hiero.ui import activeView, createMenuAction, mainWindow
 import frameio
 import os
+import webbrowser
 
 # Global path for icons
 cwd = os.path.dirname(os.path.realpath(__file__))
@@ -18,18 +19,70 @@ class FnFrameioMenu(QtGui.QMenu):
     def __init__(self):
         QtGui.QMenu.__init__(self, "Frame.io", None)
         hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
-        self._actionUploadSelection = createMenuAction("Share to Frame.io...", 
-                                                                self.FrameioUploadSelectionAction, 
-                                                                icon=os.path.join(gIconPath, "logo-unconnected.png"))
+        hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
+        hiero.core.events.registerInterest("kShowContextMenu/kSpreadsheet", self.eventHandler)
+
+        self._actionUploadSelection = createMenuAction("Login...", self.showFrameIODialog, icon=os.path.join(gIconPath, "logo-unconnected.png"))
+        self._showSelectionInFrameIOAction = createMenuAction("Open in Frame.io", self.openSelectedInFrameIO, os.path.join(gIconPath, "frameio.png"))
+                                                                
+        self.addAction(self._showSelectionInFrameIOAction)
         self.addAction(self._actionUploadSelection)
 
-    def FrameioUploadSelectionAction(self):
-        """Presents the Frame.io Widget with the active selection of Bin items"""
+    def showFrameIODialog(self):
+        """
+        Presents the Frame.io Widget with the active selection of Bin items
+        (selection currently not used)
+        """
         selection = activeView().selection()
         if not selection:
             return
 
         hiero.core.frameioDelegate.showFrameioDialogWithSelection(selection=selection)
+
+
+    def openSelectedInFrameIO(self):
+        """
+        Tries to open the selected item in Frame.io
+        """
+        view = hiero.ui.activeView()
+        if not view or not hasattr(view, 'selection'):
+            return
+
+        taggedSelection = [item for item in view.selection() if hasattr(item, 'tags')]
+
+        if len(taggedSelection)==0:
+            return
+
+        # Get Tags which contain a frameio_filereferenceid key
+        for item in taggedSelection:
+            itemTags = item.tags()
+            # It's possible that an item has multiple Frame.io Tags, get the one with the 
+            frameIOTags = [tag for tag in itemTags if tag.metadata().hasKey("tag.description") and tag.metadata().value("tag.description") == "FrameIO Upload"]
+            if len(frameIOTags)>1:
+                # Find the Tag with latest upload time
+                sortedTags = sorted(tags, key=lambda k: float(k.metadata().value("tag.frameio_upload_time")))
+                print sortedTags
+                latestTag = sortedTags[0]
+
+            else:
+                latestTag = frameIOTags[0]
+
+            filereferenceid = latestTag.metadata().value("tag.frameio_filereferenceid")
+            print "filereferenceid: " + str(filereferenceid)
+
+            try:
+                print "Trying to open browser for filereferenceid %s" % filereferenceid
+                self.openFilereferenceIdInFrameIO(filereferenceid)
+            except:
+                print "Unable to open browser for filereferenceid %s" % filereferenceid
+
+    def openFilereferenceIdInFrameIO(self, filereferenceid):
+        """
+        Looks to the Tag on the selected item and opens the browser to show the item
+        """
+        url = "https://app.frame.io/?f=" + filereferenceid
+        webbrowser.open_new_tab(url)
+
 
     def eventHandler(self, event):
         # Check if this actions are not to be enabled
@@ -38,6 +91,7 @@ class FnFrameioMenu(QtGui.QMenu):
           # Something has gone wrong, we shouldn't only be here if raised
           # by the timeline view which will give a selection.
           return
+
         event.menu.addMenu(self)
 
 class FnFrameioDialog(QtGui.QDialog):
@@ -228,7 +282,7 @@ class FnFrameioDialog(QtGui.QDialog):
         self.uploadCancelButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; background-color: #767C8E; color: white;}')
         self.uploadCancelButton.clicked.connect(self.close)
 
-        self.uploadTaskButton = QtGui.QPushButton("Upload")
+        self.uploadTaskButton = QtGui.QPushButton("Done")
         self.uploadTaskButton.setStyleSheet('QPushButton {width: 170px; height: 70px; border-width: 0px; border-radius: 4px; border-style: solid; color: white;}')
         self.uploadTaskButton.clicked.connect(self._uploadButtonPushed)
         font.setPointSize(20)

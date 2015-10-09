@@ -219,7 +219,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     tagItem = hiero.core.Tag(tagName, os.path.join(gIconPath, "frameio.png"))
 
     tagItem.metadata().setValue("tag.pathtemplate", self._exportPath)
-    tagItem.metadata().setValue("tag.description", "Frame.io Upload " + self._preset.properties()["file_type"])
+    tagItem.metadata().setValue("tag.description", "FrameIO Upload")
 
     tagItem.metadata().setValue("tag.path", self.resolvedExportPath())
     tagItem.metadata().setValue("tag.localtime", str(localtime))
@@ -257,7 +257,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     appliedRetimesStr = "1" if applyingRetime else "0"
     tagItem.metadata().setValue("tag.appliedretimes", appliedRetimesStr)
 
-    tagItem.metadata().setValue("tag.frameio_upload_time", str(timestamp))
+    tagItem.metadata().setValue("tag.frameio_transcode_start", str(timestamp))
 
     self._tag_guid = tagItem.guid()
 
@@ -360,6 +360,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
     """
     try:
       self.originalTag.metadata().setValue("tag.frameio_filereferenceid", str(self.nukeFrameioFileReferenceTask.fileReferenceID) )
+      self.originalTag.metadata().setValue("tag.frameio_upload_time", str( time.time() ))
     except:
       print "Unable to update Frame.io Tag"
 
