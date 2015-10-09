@@ -48,7 +48,10 @@ class FnFrameioMenu(QtGui.QMenu):
         if not view or not hasattr(view, 'selection'):
             return
 
-        taggedSelection = [item for item in view.selection() if hasattr(item, 'tags')]
+        if isinstance(view, hiero.ui.BinView):
+            taggedSelection = [item.activeItem() for item in view.selection() if hasattr(item, 'activeItem') and hasattr(item.activeItem(), 'tags')]
+        else:
+            taggedSelection = [item for item in view.selection() if hasattr(item, 'tags')]
 
         if len(taggedSelection)==0:
             return
@@ -69,11 +72,13 @@ class FnFrameioMenu(QtGui.QMenu):
             else:
                 latestTag = frameIOTags[0]
 
+            if not latestTag.metadata().hasKey("tag.frameio_filereferenceid"):
+                return
+
             filereferenceid = latestTag.metadata().value("tag.frameio_filereferenceid")
-            print "filereferenceid: " + str(filereferenceid)
 
             try:
-                print "Trying to open browser for filereferenceid %s" % filereferenceid
+                #print "Trying to open browser for filereferenceid %s" % filereferenceid
                 self.openFilereferenceIdInFrameIO(filereferenceid)
             except:
                 print "Unable to open browser for filereferenceid %s" % filereferenceid
