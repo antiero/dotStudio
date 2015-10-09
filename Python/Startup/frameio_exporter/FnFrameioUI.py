@@ -99,8 +99,7 @@ class FnFrameioDialog(QtGui.QDialog):
 
         self.unconnectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-unconnected.png"))
         self.connectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-connected.png"))
-        self.connectionIndicatorLabel = QtGui.QLabel("Connection", parent=self)
-        self.connectionIndicatorLabel.setAlignment(Qt.AlignRight)
+        self.connectionIndicatorLabel = QtGui.QLabel("Unconnected")
 
         self.toolBar.addWidget(self.connectionIndicatorLabel)
 

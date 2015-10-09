@@ -20,7 +20,7 @@ comments = filereference.getComments()
 For commandline usage: python frameio.py -h
 
 
-written by Til Strobl
+Frame.io API code written by Til Strobl
 website: www.movingmedia.de
 
 Changelog:
@@ -29,6 +29,8 @@ Changelog:
 - Bugfix: Multipart file upload fails
 - Bugfix: Wrong collaborator names for comments
 
+NOTE: there is currently a dependency on hiero.core.events framework for kFrameioConnectionChanged event.
+This should be refactored and moved to the FnFrameioDelegate by observing changes in the authentication
 
 """
 
@@ -151,7 +153,7 @@ class Session:
         projects = self.userdata['user']['teams'][teamindex]['projects']
         return projects
         
-    def projectdict(self , teamindex = 0):
+    def projectdict(self, teamindex = 0):
         """Returns a dict containing { projectid : projectname } for the given teamindex. """
         projects = self.getProjects(teamindex)
         projectdict = {}
@@ -181,6 +183,7 @@ class Session:
         folderdata = json.loads(response_body)
         return folderdata['folders']
 
+
     def getFolderdata(self , folderid):
         """Returns the folderdata for the given folderid """
         values = { 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid }
@@ -189,7 +192,7 @@ class Session:
         folderdata = json.loads(response_body)
         return folderdata['folder']
     
-    def getSubfolderdict(self,folderid):
+    def getSubfolderdict(self, folderid):
         """Returns a dict containing { folderid : foldername } for the given folderid. """
         folderdata = self.getFolderdata(folderid)
         subfolders = {}
@@ -197,7 +200,7 @@ class Session:
             subfolders[folder['id']] = folder['name']
         return subfolders
 
-    def getFilereference(self,filereferenceid):
+    def getFilereference(self, filereferenceid):
         """Returns data for the given filereferenceid"""
         filereference = Filereference(filereferenceid,self)
         return filereference
@@ -205,7 +208,7 @@ class Session:
 class Filereference:
     """Represents an Filereference data object within an established frame.io session"""
 
-    def __init__(self,filereferenceid,frameiosession):
+    def __init__(self, filereferenceid, frameiosession):
         """Loads the data for the given id and session on construction. """
         self.filereferenceid = filereferenceid
         self.userid = frameiosession.getUserid()
@@ -219,7 +222,7 @@ class Filereference:
         self.loadData()
         
     def __str__(self):
-        return json.dumps(self.filereferencedata , indent=4, separators=(',', ': ') )
+        return json.dumps(self.filereferencedata, indent=4, separators=(',', ': ') )
     
     def loadData(self):
         """Load data for the reference from the server. """
@@ -324,7 +327,7 @@ class Upload:
             self.mergeparts(path)
             self.workerthread(path)
         
-    def getPartcount(self,path):
+    def getPartcount(self, path):
         """Returns the count of the uploadparts for the given file """
         return self.filedata[path]['parts']
     
@@ -336,7 +339,7 @@ class Upload:
         """Returns the chunksize for multipart upload """
         return 1024*1024*50
 
-    def sizeof_fmt(self,num, suffix='B'):
+    def sizeof_fmt(self, num, suffix='B'):
         """Returns the size in a readable form"""
         for unit in ['','K','M','G','T','P','E','Z']:
             if abs(num) < 1024.0:
@@ -364,7 +367,9 @@ class Upload:
             self.inspectfile(path)
         
     def filereference(self):
-        """Creates the filereferences on the server for all the files to upload. """
+        """Creates the filereferences on the server for all the files to upload.
+        Returns a filereference dictionary, e.g. {'/path/to/movie.mov': u'TiEXNSDx'}
+        """
         file_references = {}
         index = {}
         i = 0
@@ -380,9 +385,11 @@ class Upload:
         for path in self.filedata.keys():
             self.multipart_urls[path] = uploaddata['file_references'][ index[path] ]['multipart_urls']
             self.filereferenceid[path] = uploaddata['file_references'][ index[path] ]['id']
-            print 'filereferenceid :' + self.filereferenceid[path]
 
-        return uploaddata
+        # Til's code originally returned the uploaddata but we're more interested in returnin the filereference 
+        #return uploaddata
+
+        return self.filereferenceid
         
     def uploadpart(self, path, partindex):
         """Uploads the given part of the given file. """
@@ -410,7 +417,7 @@ class Upload:
             self.filereferenceid.pop(path)
             return False
             
-    def mergeparts(self , path):
+    def mergeparts(self, path):
         """Merges all the parts for a given file. """
         if not path in self.filereferenceid.keys():
             print "mergeparts returning False"
@@ -424,7 +431,7 @@ class Upload:
             logging.info(responsedata.get('messages' , [''])[0])
             return True
         
-    def workerthread(self , path):
+    def workerthread(self, path):
         """Starts the worker thread for the given file """
         if not path in self.filereferenceid.keys():
             print "workerthread returning False"
@@ -438,7 +445,7 @@ class Upload:
             logging.info(responsedata.get('messages' , [''])[0])
             return True
         
-    def cancel(self , path):
+    def cancel(self, path):
         """Cancels the upload for the given file. """
         if not path in self.filereferenceid.keys():
             print "cancel returning False"
