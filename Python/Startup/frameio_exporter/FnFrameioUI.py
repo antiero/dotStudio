@@ -2,13 +2,12 @@
 UI elements for interaction with Frame.io from within Nuke Studio
 """
 from PySide import QtGui
-from PySide.QtCore import Qt, QUrl, QRegExp, QCoreApplication
+from PySide.QtCore import Qt, QUrl, QRegExp, QCoreApplication, QSize
 from PySide.QtWebKit import QWebView
 import hiero.core 
-from hiero.ui import activeView, createMenuAction, mainWindow
+from hiero.ui import activeView, createMenuAction
 import frameio
 import os
-import webbrowser
 
 # Global path for icons
 cwd = os.path.dirname(os.path.realpath(__file__))
@@ -39,11 +38,23 @@ class FnFrameioMenu(QtGui.QMenu):
 
         hiero.core.frameioDelegate.showFrameioDialogWithSelection(selection=selection)
 
+    def addAnnotationsForSelection(self):
+        """
+        Adds the latest annotations stored from Frame.io for the selected items
+        """
+        taggedSelection = self.getFrameioTaggedItemsFromActiveView()
 
-    def openSelectedInFrameIO(self):
+        for item in taggedSelection:
+            commentdict = filereference.getComments()
+            if not commentdict:
+                return None
+
+
+    def getFrameioTaggedItemsFromActiveView(self):
         """
-        Tries to open the selected item in Frame.io
+        Returns a list of items in active Selection which are Tagged with Frame.io Tags
         """
+        taggedSelection = []
         view = hiero.ui.activeView()
         if not view or not hasattr(view, 'selection'):
             return
@@ -53,42 +64,25 @@ class FnFrameioMenu(QtGui.QMenu):
         else:
             taggedSelection = [item for item in view.selection() if hasattr(item, 'tags')]
 
-        if len(taggedSelection)==0:
-            return
+        return taggedSelection
+
+
+    def openSelectedInFrameIO(self):
+        """
+        Tries to open the selected item in Frame.io
+        """
+
+        taggedSelection = self.getFrameioTaggedItemsFromActiveView()
 
         # Get Tags which contain a frameio_filereferenceid key
         for item in taggedSelection:
-            itemTags = item.tags()
-            frameIOTags = [tag for tag in itemTags if tag.metadata().hasKey("tag.description") and tag.metadata().value("tag.description") == "FrameIO Upload"]
+            filereferenceid = hiero.core.frameioDelegate.getLatestFileReferenceIDForProjectItem(item)
 
-            if len(frameIOTags)==0:
-                break
-
-            if len(frameIOTags)>1:
-                # With multiple exports, it's possible that an item has multiple Frame.io Tags, get the one with the latest upload time
-                sortedTags = sorted(frameIOTags, key=lambda k: float(k.metadata().value("tag.frameio_upload_time")), reverse=True)
-                latestTag = sortedTags[0]
-
-            else:
-                latestTag = frameIOTags[0]
-
-            if not latestTag.metadata().hasKey("tag.frameio_filereferenceid"):
-                return
-
-            filereferenceid = latestTag.metadata().value("tag.frameio_filereferenceid")
-
-            try:
-                #print "Trying to open browser for filereferenceid %s" % filereferenceid
-                self.openFilereferenceIdInFrameIO(filereferenceid)
-            except:
-                print "Unable to open browser for filereferenceid %s" % filereferenceid
-
-    def openFilereferenceIdInFrameIO(self, filereferenceid):
-        """
-        Looks to the Tag on the selected item and opens the browser to show the item
-        """
-        url = "https://app.frame.io/?f=" + filereferenceid
-        webbrowser.open_new_tab(url)
+            if filereferenceid:
+                try:
+                    hiero.core.frameioDelegate.openFilereferenceIdInFrameIO(filereferenceid)
+                except:
+                    print "Unable to open browser for filereferenceid %s" % filereferenceid
 
 
     def eventHandler(self, event):
@@ -147,22 +141,32 @@ class FnFrameioDialog(QtGui.QDialog):
         layout.setAlignment(Qt.AlignCenter)
 
         self.toolBar = QtGui.QToolBar()
-        self.toolBar.setStyleSheet('QToolBar {background-color: #3B3E4A; border-width: 0px; border-radius: 0px; border-style: none;}')
+        self.toolBar.setStyleSheet('QToolBar {background-color: #3B3E4A; border-width: 0px; border-radius: 0px; border-style: none; text-align: center}')
+        self.toolBar.setIconSize( QSize(24,24) )
         
         self.closeButton = QtGui.QPushButton("")
         self.closeButton.setStyleSheet('QPushButton {border: none;}')
-        icon = QtGui.QIcon(os.path.join(gIconPath, "close.png"))
-
-        self.closeButton.setIcon(icon)
+        iconClose = QtGui.QIcon(os.path.join(gIconPath, "close.png"))
+        self.closeButton.setIcon(iconClose)
         self.closeButton.clicked.connect(self.close)
-        self.toolBar.addWidget(self.closeButton)
-        layout.addWidget(self.toolBar)
+      
+        iconLogout = QtGui.QIcon(os.path.join(gIconPath, "logout.png"))
+        self.logoutToolBarAction = createMenuAction("", self.logoutPressed, icon=iconLogout)
+        self.logoutToolBarAction.setVisible(False)
+        self.logoutToolBarAction.setToolTip("Click here to Log out")
 
         self.unconnectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-unconnected.png"))
         self.connectedIndicatorPixmap = QtGui.QPixmap(os.path.join(gIconPath, "logo-connected.png"))
         self.connectionIndicatorLabel = QtGui.QLabel("Unconnected")
 
+        spacer = QtGui.QWidget()
+        spacer.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+
+        self.toolBar.addWidget(self.closeButton)
+        self.toolBar.addWidget(spacer)
         self.toolBar.addWidget(self.connectionIndicatorLabel)
+        self.toolBar.addAction(self.logoutToolBarAction)
+        layout.addWidget(self.toolBar)
 
         pixmap = QtGui.QPixmap(os.path.join(gIconPath, "frameio.png"))
         lbl = QtGui.QLabel("")
@@ -338,12 +342,19 @@ class FnFrameioDialog(QtGui.QDialog):
 
     def updateConnectionIndicator(self):
         """Updates the frame.io session authenticated indicator label"""
+
+        print "updateConnectionIndicator called"
+
         if self.delegate.frameioSession.sessionAuthenticated:
             print "Frame.io session connected!"
-            self.connectionIndicatorLabel.setText('Connected.')
+            self.connectionIndicatorLabel.setText('Connected (%s)' % hiero.core.frameioDelegate.username )
+            print "Showing the logout button"
+            self.logoutToolBarAction.setVisible(True)
         else:
             print "Frame.io session unconnected!"
-            self.connectionIndicatorLabel.setText('Not Connected.')
+            self.connectionIndicatorLabel.setText('Not Connected')
+            print "Hiding the logout button"
+            self.logoutToolBarAction.setVisible(False)
 
     def show(self, selection=None):
         if selection:
@@ -357,6 +368,12 @@ class FnFrameioDialog(QtGui.QDialog):
             self.showLoginView()
 
         return super(FnFrameioDialog, self).show()
+
+    def logoutPressed(self):
+        try: 
+            hiero.core.frameioDelegate.disconnectCurrentSession()
+        except:
+            pass
 
     def keyPressEvent(self, e):
         """Close the popover if Escape is pressed"""

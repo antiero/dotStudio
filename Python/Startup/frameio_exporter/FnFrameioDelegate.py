@@ -16,6 +16,7 @@ from hiero.core import ApplicationSettings
 import nuke
 from PySide.QtCore import QCoreApplication
 import os, logging
+import webbrowser
 from FnFrameioTranscodeExporter import NukeFrameioFileReferenceTask
 
 class FrameioDelegate(object):
@@ -72,6 +73,46 @@ class FrameioDelegate(object):
 
         return True
 
+    def getLatestFileReferenceIDForProjectItem(self, item):
+        """
+        Looks for any Frame.io tags on item and returns the latest file reference
+        """
+        # Get Tags which contain a frameio_filereferenceid key
+
+        filereferenceid = None
+        itemTags = item.tags()
+        frameIOTags = [tag for tag in itemTags if tag.metadata().hasKey("tag.description") and tag.metadata().value("tag.description") == "FrameIO Upload"]
+
+        if len(frameIOTags)==0:
+            return filereferenceid
+
+        if len(frameIOTags)>1:
+            # With multiple exports, it's possible that an item has multiple Frame.io Tags, get the one with the latest upload time
+            sortedTags = sorted(frameIOTags, key=lambda k: float(k.metadata().value("tag.frameio_upload_time")), reverse=True)
+            latestTag = sortedTags[0]
+        else:
+            latestTag = frameIOTags[0]
+
+        if not latestTag.metadata().hasKey("tag.frameio_filereferenceid"):
+            return filereferenceid
+
+        filereferenceid = latestTag.metadata().value("tag.frameio_filereferenceid")        
+        return filereferenceid
+
+    def openFilereferenceIdInFrameIO(self, filereferenceid):
+        """
+        Looks to the Tag on the selected item and opens the browser to show the item
+        """
+        url = "https://app.frame.io/?f=" + filereferenceid
+        webbrowser.open_new_tab(url)
+
+    def createAnnotationsSubTrackItemForFileReference(self, filereferenceid):
+        """
+        Returns an Annotations Sub-TrackItem for a given trackItem
+        """
+        url = "https://app.frame.io/?f=" + filereferenceid
+        webbrowser.open_new_tab(url)                
+
     def disconnectCurrentSession(self):
         """
         Disconnects the current session if authenticated]
@@ -82,6 +123,8 @@ class FrameioDelegate(object):
     def handleConnectionStatusChangeEvent(self, event):
         """Called when a change in the session authentication occurs"""
         self.frameioMainViewController.updateConnectionIndicator()
+        if not self.frameioSession.sessionAuthenticated:
+            self.frameioMainViewController.showLoginView()
    
 
     def uploadFile(self, filePath, project, fileReferenceID = None):
