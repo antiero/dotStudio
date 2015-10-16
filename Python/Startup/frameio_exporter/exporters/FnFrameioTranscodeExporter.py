@@ -19,8 +19,10 @@ from hiero.exporters import FnTranscodeExporter, FnTranscodeExporterUI
 from hiero.exporters.FnTranscodeExporter import TranscodeExporter, TranscodePreset
 from hiero.exporters.FnExternalRender import NukeRenderTask
 
-import frameio
-from FnFrameioUI import gIconPath
+from frameio_exporter.core import frameio
+from frameio_exporter.core.paths import gIconPath
+
+import nuke
 
 class NukeFrameioFileReferenceTask(object):
     """Nuke task for creating the upload object and inspecting all the files"""
@@ -51,11 +53,11 @@ class NukeFrameioFileReferenceTask(object):
         self.frameioUploadContext = frameio.Upload( self.uploads.keys(), self.frameiosession, folderid )
         i = 1
         for filepath in self.uploads.keys():
-            hiero.core.frameioDelegate.frameioMainViewController.setStatus( "Prepare Uploads: " + str(100/self.progress*i))
-            hiero.core.frameioDelegate.frameioMainViewController.setStatus('Inspecting file: ' + filepath)
+            nuke.frameioDelegate.frameioMainViewController.setStatus( "Prepare Uploads: " + str(100/self.progress*i))
+            nuke.frameioDelegate.frameioMainViewController.setStatus('Inspecting file: ' + filepath)
             self.frameioUploadContext.inspectfile(filepath)
             i+=1
-        hiero.core.frameioDelegate.frameioMainViewController.setStatus( "prepareUploads progress:" + str(100/self.totalprogress*i) )
+        nuke.frameioDelegate.frameioMainViewController.setStatus( "prepareUploads progress:" + str(100/self.totalprogress*i) )
         
         self.filereferenceDict = self.frameioUploadContext.filereference()
         
@@ -161,7 +163,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
 
   def startTask(self):   
     # For Clips which are already QuickTime movies, we should just upload them without Transcoding...
-    if not hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
+    if not nuke.frameioDelegate.frameioSession.sessionAuthenticated:
       msg = "Please Log in to Frame.io before Exporting"
       self.setError(msg)
       print msg
@@ -304,12 +306,13 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
   def uploadFile(self, filePath, project, fileReferenceID = None):
       """Starts upload task for a given filePath. Returns a frame.io file reference"""
       uploads = {}
+      print "filePath: " + str(filePath)
       if not os.path.isfile(filePath):
           print "Output file could not be found. Frame.io upload not possible."
           return
 
-      if hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
-          hiero.core.frameioDelegate.frameioSession.setProject(project)
+      if nuke.frameioDelegate.frameioSession.sessionAuthenticated:
+          nuke.frameioDelegate.frameioSession.setProject(project)
 
       # TO-DO: If a project item is passed with an existing fileReferenceID, check if the fileref exists
       if fileReferenceID:
@@ -323,7 +326,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
       uploads[filePath] = {"annotations": '', "fileReferenceID": fileReferenceID}
 
       if len(uploads.keys()) != 0:
-          self.nukeFrameioFileReferenceTask = NukeFrameioFileReferenceTask(uploads, hiero.core.frameioDelegate.frameioSession)
+          self.nukeFrameioFileReferenceTask = NukeFrameioFileReferenceTask(uploads, nuke.frameioDelegate.frameioSession)
           #print "Preparing uploads Thread about to start"
           
           threading.Thread( None, self.nukeFrameioFileReferenceTask.prepareUploads ).start()

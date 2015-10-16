@@ -2,103 +2,18 @@
 UI elements for interaction with Frame.io from within Nuke Studio
 """
 from PySide import QtGui
-from PySide.QtCore import Qt, QUrl, QRegExp, QCoreApplication, QSize
-from PySide.QtWebKit import QWebView
-import hiero.core 
-from hiero.ui import activeView, createMenuAction
-import frameio
+from PySide.QtCore import Qt, QUrl, QRegExp, QSize
+from frameio_exporter.core import frameio
+from frameio_exporter.ui import createMenuAction
+from frameio_exporter.core.paths import gIconPath
 import os
+import nuke
 
-# Global path for icons
-cwd = os.path.dirname(os.path.realpath(__file__))
-gIconPath = os.path.abspath(os.path.join(cwd, "icons"))
 gGoogleAccountsEnabled = False # until we get oauth2 login figured out
-
-class FnFrameioMenu(QtGui.QMenu):
-    def __init__(self):
-        QtGui.QMenu.__init__(self, "Frame.io", None)
-        hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
-        hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
-        hiero.core.events.registerInterest("kShowContextMenu/kSpreadsheet", self.eventHandler)
-
-        self._actionUploadSelection = createMenuAction("Login...", self.showFrameIODialog, icon=os.path.join(gIconPath, "logo-unconnected.png"))
-        self._showSelectionInFrameIOAction = createMenuAction("Open in Frame.io", self.openSelectedInFrameIO, os.path.join(gIconPath, "frameio.png"))
-                                                                
-        self.addAction(self._showSelectionInFrameIOAction)
-        self.addAction(self._actionUploadSelection)
-
-    def showFrameIODialog(self):
-        """
-        Presents the Frame.io Widget with the active selection of Bin items
-        (selection currently not used)
-        """
-        selection = activeView().selection()
-        if not selection:
-            return
-
-        hiero.core.frameioDelegate.showFrameioDialogWithSelection(selection=selection)
-
-    def addAnnotationsForSelection(self):
-        """
-        Adds the latest annotations stored from Frame.io for the selected items
-        """
-        taggedSelection = self.getFrameioTaggedItemsFromActiveView()
-
-        for item in taggedSelection:
-            commentdict = filereference.getComments()
-            if not commentdict:
-                return None
-
-
-    def getFrameioTaggedItemsFromActiveView(self):
-        """
-        Returns a list of items in active Selection which are Tagged with Frame.io Tags
-        """
-        taggedSelection = []
-        view = hiero.ui.activeView()
-        if not view or not hasattr(view, 'selection'):
-            return
-
-        if isinstance(view, hiero.ui.BinView):
-            taggedSelection = [item.activeItem() for item in view.selection() if hasattr(item, 'activeItem') and hasattr(item.activeItem(), 'tags')]
-        else:
-            taggedSelection = [item for item in view.selection() if hasattr(item, 'tags')]
-
-        return taggedSelection
-
-
-    def openSelectedInFrameIO(self):
-        """
-        Tries to open the selected item in Frame.io
-        """
-
-        taggedSelection = self.getFrameioTaggedItemsFromActiveView()
-
-        # Get Tags which contain a frameio_filereferenceid key
-        for item in taggedSelection:
-            filereferenceid = hiero.core.frameioDelegate.getLatestFileReferenceIDForProjectItem(item)
-
-            if filereferenceid:
-                try:
-                    hiero.core.frameioDelegate.openFilereferenceIdInFrameIO(filereferenceid)
-                except:
-                    print "Unable to open browser for filereferenceid %s" % filereferenceid
-
-
-    def eventHandler(self, event):
-        # Check if this actions are not to be enabled
-
-        if not hasattr(event.sender, 'selection'):
-          # Something has gone wrong, we shouldn't only be here if raised
-          # by the timeline view which will give a selection.
-          return
-
-        event.menu.addMenu(self)
 
 class FnFrameioDialog(QtGui.QDialog):
     """
-    Main Frame.io dialog for handling interaction with
-    Frame.io
+    A shared Frame.io dialog for handling authentication and interaction with Frame.io
     """
 
     eStatusCheckEmail = "Checking E-mail."
@@ -109,9 +24,8 @@ class FnFrameioDialog(QtGui.QDialog):
     eStatusLoggingIn = "Logging in..."
     eConnectionError = "Connection error. Check internet access!"
 
-    def __init__(self, delegate, username=None, usingExportDialog=False):
+    def __init__(self, username=None, usingExportDialog=False):
         QtGui.QDialog.__init__(self)
-        global gIconPath
         self._clips = []
         self._sequences = []
 
@@ -119,9 +33,6 @@ class FnFrameioDialog(QtGui.QDialog):
         self.usingExportDialog = usingExportDialog
 
         self.username = username
-
-        # FrameioDelegate
-        self.delegate = delegate
 
         # setGeometry(x_pos, y_pos, width, height)
         self.setGeometry(240, 160, 726, 552)
@@ -283,9 +194,6 @@ class FnFrameioDialog(QtGui.QDialog):
         self.uploadTopButtonLayout.addWidget(self.uploadClipOptionButton)
         self.uploadTopButtonWidget.setLayout(self.uploadTopButtonLayout)
 
-        # This will control whether annotations are uploaded into Frame.io for the item
-        self.exportAnnotationsCheckbox = QtGui.QCheckBox("Export Tags+Annotations Text comments")
-
         self.uploadBottomButtonWidget = QtGui.QWidget()
         self.uploadBottomButtonLayout = QtGui.QHBoxLayout(self)
         self.uploadBottomButtonLayout.setAlignment(Qt.AlignCenter)
@@ -319,10 +227,7 @@ class FnFrameioDialog(QtGui.QDialog):
         self.projectWidgetLayout.addWidget(self.projectDropdown)
         self.projectWidgetLayout.addWidget(self.projectRefreshButton)
         self.projectWidget.setLayout(self.projectWidgetLayout)
-        
-        ### Enable when annotation uploads are supported
-        #self.uploadViewLayout.addWidget(self.exportAnnotationsCheckbox)
-        
+
         self.uploadViewLayout.addWidget(self.projectWidget)
         self.uploadViewLayout.addWidget(self.uploadBottomButtonWidget)
 
@@ -343,27 +248,20 @@ class FnFrameioDialog(QtGui.QDialog):
     def updateConnectionIndicator(self):
         """Updates the frame.io session authenticated indicator label"""
 
-        print "updateConnectionIndicator called"
-
-        if self.delegate.frameioSession.sessionAuthenticated:
+        if nuke.frameioDelegate.frameioSession.sessionAuthenticated:
             print "Frame.io session connected!"
-            self.connectionIndicatorLabel.setText('Connected (%s)' % hiero.core.frameioDelegate.username )
-            print "Showing the logout button"
+            self.connectionIndicatorLabel.setText('Connected (%s)' % nuke.frameioDelegate.username )
             self.logoutToolBarAction.setVisible(True)
         else:
             print "Frame.io session unconnected!"
             self.connectionIndicatorLabel.setText('Not Connected')
-            print "Hiding the logout button"
             self.logoutToolBarAction.setVisible(False)
 
-    def show(self, selection=None):
-        if selection:
-            self._clips = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Clip)]
-            self._sequences = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), hiero.core.Sequence)]
+    def show(self):
 
         self.updateConnectionIndicator()
 
-        # If we're usint the Export dialog, we always just show the Login view, not the Project view
+        # If we're using the Export dialog, we always just show the Login view, not the Project view
         if self.usingExportDialog:
             self.showLoginView()
 
@@ -371,7 +269,7 @@ class FnFrameioDialog(QtGui.QDialog):
 
     def logoutPressed(self):
         try: 
-            hiero.core.frameioDelegate.disconnectCurrentSession()
+            nuke.frameioDelegate.disconnectCurrentSession()
         except:
             pass
 
@@ -409,25 +307,8 @@ class FnFrameioDialog(QtGui.QDialog):
         return self.projectDropdown.currentText()
 
     def _uploadButtonPushed(self):
-        project = self.currentProject()
-        self.setStatus("Clips: %s\n, Sequences %s" % (str(self._clips), str(self._sequences)))
-
-        # Should move logic below out of UI here and just pass the items
-        movieClips = []
-        nonMovieClips = []
-        
-        if len(self._clips) > 0:
-            # Find out which Clips do not need to be transcoded
-            movieClips = [clip for clip in self._clips if hiero.core.isQuickTimeFileExtension(os.path.splitext(clip.mediaSource().filename())[-1])]
-            nonMovieClips = [clip for clip in self._clips if clip not in movieClips]
-
-        self.setStatus("Movie Clips: %s, nonMovieClips %s" % (str(movieClips), str(nonMovieClips)))
-        filesToUpload = []
-        for movClip in movieClips:
-            filesToUpload += [ movClip.mediaSource().fileinfos()[0].filename() ]
-
-        for filePath in filesToUpload:
-            self.delegate.uploadFile(filePath, project)
+        # Not currently implemented
+        print "uploadPushed"
  
     def showLoginView(self):
         # Sets the stackView to show the Login View
@@ -450,13 +331,13 @@ class FnFrameioDialog(QtGui.QDialog):
 
     def _refreshProjectList(self):
         # Refreshes the user data
-        self.delegate.frameioSession.reloadUserdata()
+        nuke.frameioDelegate.frameioSession.reloadUserdata()
         self._updateProjectsList()
 
     def _updateProjectsList(self):
         #Updates the Project list with list of project strings
         self.projectDropdown.clear()
-        projects = self.delegate.frameioSession.projectdict().values()
+        projects = nuke.frameioDelegate.frameioSession.projectdict().values()
         for project in projects:
             self.projectDropdown.addItem(project)
 
@@ -487,5 +368,5 @@ class FnFrameioDialog(QtGui.QDialog):
                 self.password = passwordText
 
         if self.username and self.password:
-            self.delegate.attemptLogin(self.username, self.password)
+            nuke.frameioDelegate.attemptLogin(self.username, self.password)
 

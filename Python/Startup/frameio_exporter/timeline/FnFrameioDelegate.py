@@ -8,8 +8,8 @@ Usage:
 
 nuke2frameio by Til Strobl, www.movingmedia.de
 """
-import frameio
-import FnFrameioUI
+from frameio_exporter.core import frameio
+from frameio_exporter.ui import FnFrameioUI
 import hiero.core
 import threading
 from hiero.core import ApplicationSettings
@@ -17,7 +17,9 @@ import nuke
 from PySide.QtCore import QCoreApplication
 import os, logging
 import webbrowser
-from FnFrameioTranscodeExporter import NukeFrameioFileReferenceTask
+from frameio_exporter.exporters.FnFrameioTranscodeExporter import NukeFrameioFileReferenceTask
+
+
 
 class FrameioDelegate(object):
     """Delegate for handling the Frame.io session and communicating with UI"""
@@ -35,7 +37,7 @@ class FrameioDelegate(object):
             if savedUserPreference:
                 self.username = savedUserPreference
 
-        self.frameioMainViewController = FnFrameioUI.FnFrameioDialog(delegate = self, username = self.username)
+        self.frameioMainViewController = FnFrameioUI.FnFrameioDialog(username = self.username)
 
         # This tells the authentication indicator to update when the status changes
         hiero.core.events.registerInterest("kFrameioConnectionChanged", self.handleConnectionStatusChangeEvent)
@@ -45,7 +47,7 @@ class FrameioDelegate(object):
 
         # We're not using the Export dialog, so use the normal flow
         self.frameioMainViewController.usingExportDialog = False
-        self.frameioMainViewController.show(selection)
+        self.frameioMainViewController.show()
 
         if not self.frameioSession.sessionAuthenticated:
             self.frameioMainViewController.showLoginView()

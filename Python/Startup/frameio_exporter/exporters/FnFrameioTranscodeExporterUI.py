@@ -9,7 +9,9 @@ import FnFrameioTranscodeExporter
 
 from hiero.ui.FnUIProperty import *
 from hiero.exporters import FnExternalRenderUI, FnAdditionalNodesDialog
-from FnFrameioUI import FnFrameioDialog, gIconPath
+from frameio_exporter.ui.FnFrameioUI import FnFrameioDialog
+
+import nuke
 
 class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
   def __init__(self, preset):
@@ -31,11 +33,11 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
         self.updateFrameIOLoginUI()
 
   def updateFrameIOLoginUI(self):
-    if not hiero.core.frameioDelegate.frameioMainViewController.usingExportDialog:
+    if not nuke.frameioDelegate.frameioMainViewController.usingExportDialog:
         return
 
-    if hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
-        username = hiero.core.frameioDelegate.username
+    if nuke.frameioDelegate.frameioSession.sessionAuthenticated:
+        username = nuke.frameioDelegate.username
         self.frameIOLoginLogoutButton.setText("Logout...")
         self.frameIOConnectionStatusLabel.setText("Connected (%s)" % username)
         self._updateProjectComboBox()
@@ -51,7 +53,7 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     layout.setContentsMargins(9, 0, 9, 0)
 
     
-    self.frameioWidget = hiero.core.frameioDelegate.frameioMainViewController
+    self.frameioWidget = nuke.frameioDelegate.frameioMainViewController
 
     # This diaog behaves differently in the Export dialog or Bin View
     self.frameioWidget.usingExportDialog = True
@@ -129,7 +131,7 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
 
   def _updateProjectComboBox(self):
     """Updates the project dropdown menu with projects from the Authenticated session"""
-    projects = hiero.core.frameioDelegate.frameioSession.projectdict().values()
+    projects = nuke.frameioDelegate.frameioSession.projectdict().values()
     self.projectComboBox.clear()
     for project in projects:
         self.projectComboBox.addItem(str(project))
@@ -144,12 +146,12 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     if self.frameIOLoginLogoutButton.text() == "Login...":
         if self.frameioWidget.exec_():
 
-            if not hiero.core.frameioDelegate.frameioSession.sessionAuthenticated:
+            if not nuke.frameioDelegate.frameioSession.sessionAuthenticated:
                 self.frameioWidget.showLoginView()
             else:
                 self.frameioWidget.showUploadView()
     else:
-        hiero.core.frameioDelegate.disconnectCurrentSession()
+        nuke.frameioDelegate.disconnectCurrentSession()
     pass
 
   def _additionalNodesEnableClicked(self, state):

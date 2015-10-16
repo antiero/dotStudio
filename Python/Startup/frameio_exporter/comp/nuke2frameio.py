@@ -24,9 +24,7 @@ Changelog:
 
 import os, logging, threading
 import nuke
-import frameio
-
-
+from frameio_exporter.core import frameio
 
 frameiosession = None
 
