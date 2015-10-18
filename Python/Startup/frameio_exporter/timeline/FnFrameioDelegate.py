@@ -69,7 +69,12 @@ class FrameioDelegate(object):
         self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
 
         self.frameioSession = frameio.Session(username, password)
-        result = self.frameioSession.login(username, password)
+        response = self.frameioSession.login(username, password)
+
+        # We failed to get a response
+        if None in response:
+            self.frameioMainViewController.setStatus(str(response[1][0]))
+            return
 
         events.sendEvent("kFrameioConnectionChanged", None)
 

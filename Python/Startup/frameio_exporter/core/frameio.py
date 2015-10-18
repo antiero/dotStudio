@@ -51,6 +51,8 @@ class Session:
         self.password = password
         self.sessionAuthenticated = False
         self.userdata = {}
+        self.teams = []
+        self.sharedProjects = []
         self.projectid = ""
         
     def __str__(self):
@@ -79,6 +81,13 @@ class Session:
     def getProjectname(self):
         """Returns the current project name. """
         return self.projectdict()[self.projectid]
+
+    def getTeamMembers(self, teamindex=0):
+        # user > teams[index] > members[index] 
+        if self.userdata == {}:
+            self.reloadUserdata()
+        members = self.userdata['user']['teams'][teamindex][members]
+        return members
     
     def getProjectid(self):
         """Returns the current project id. """
@@ -103,6 +112,9 @@ class Session:
         
     def login(self,username, password):
         """Login to frame.io."""
+        if not username or not password:
+            return
+
         logging.info('Logging in as ' + username )
         self.username = username
         values = {'a' : username , 'b' : password}
@@ -112,7 +124,7 @@ class Session:
         if logindata.has_key("errors"):
             logging.error("login: %s"%(logindata["errors"]))
             self.setSessionAuthenticated(False)
-            return
+            return [None, logindata["errors"]]
 
         logging.info( logindata['messages'][0]) 
         self.projectid = ''
@@ -147,6 +159,20 @@ class Session:
             self.reloadUserdata()
         projects = self.userdata['user']['teams'][teamindex]['projects']
         return projects
+
+    def getTeams(self):
+        """Returns the projectdata for the given teamindex. """
+        if self.userdata == {}:
+            self.reloadUserdata()
+        self.teams = self.userdata['user']['teams']
+        return self.teams
+
+    def getSharedProjects(self):
+        """Returns the projectdata for the given teamindex. """
+        if self.userdata == {}:
+            self.reloadUserdata()
+        self.sharedProjects = self.userdata['user']['shared_projects']
+        return self.sharedProjects
         
     def projectdict(self, teamindex = 0):
         """Returns a dict containing { projectid : projectname } for the given teamindex. """
