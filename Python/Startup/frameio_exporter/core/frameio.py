@@ -38,10 +38,6 @@ import sys
 import urllib2put
 import json, os, mimetypes, urllib, logging
 from urllib2 import Request, urlopen, HTTPError, URLError
-from hiero.core import events
-
-# This will be used to communicate when a connection change event has occurred.
-events.registerEventType("kFrameioConnectionChanged")
 
 class Session:
     """Defines an established frame.io API Connection."""
@@ -104,8 +100,7 @@ class Session:
 
     def setSessionAuthenticated(self, authenticated):
         self.sessionAuthenticated = authenticated
-        events.sendEvent("kFrameioConnectionChanged", None)
-    
+        
     def login(self,username, password):
         """Login to frame.io."""
         logging.info('Logging in as ' + username )

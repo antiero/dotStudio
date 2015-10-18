@@ -18,8 +18,10 @@ from PySide.QtCore import QCoreApplication
 import os, logging
 import webbrowser
 from frameio_exporter.exporters.FnFrameioTranscodeExporter import NukeFrameioFileReferenceTask
+from hiero.core import events
 
-
+# This will be used to communicate when a connection change event has occurred.
+events.registerEventType("kFrameioConnectionChanged")
 
 class FrameioDelegate(object):
     """Delegate for handling the Frame.io session and communicating with UI"""
@@ -68,6 +70,8 @@ class FrameioDelegate(object):
 
         self.frameioSession = frameio.Session(username, password)
         result = self.frameioSession.login(username, password)
+
+        events.sendEvent("kFrameioConnectionChanged", None)
 
         if self.frameioSession.sessionAuthenticated:
             self.setUserName(username)
@@ -121,6 +125,7 @@ class FrameioDelegate(object):
         """
         if self.frameioSession.sessionAuthenticated:
             self.frameioSession.logout()
+            events.sendEvent("kFrameioConnectionChanged", None)
 
     def handleConnectionStatusChangeEvent(self, event):
         """Called when a change in the session authentication occurs"""

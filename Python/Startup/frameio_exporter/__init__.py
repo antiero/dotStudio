@@ -25,7 +25,7 @@ if ENV['hiero'] or ENV['studio']:
 
 # Now add comp actions
 
-#toolbar = nuke.menu('Nodes')
-#m = toolbar.addMenu('frame.io', icon='frameio.png')
-#m.addCommand('Upload selected', 'comp.nuke2frameio.uploadSelected()')
-#m.addCommand('Load comments', 'comp.nuke2frameio.loadSelectedcomments()')
+toolbar = nuke.menu('Nodes')
+m = toolbar.addMenu('frame.io', icon='frameio.png')
+m.addCommand('Upload selected', 'comp.nuke2frameio.uploadSelected()')
+m.addCommand('Load comments', 'comp.nuke2frameio.loadSelectedcomments()')
