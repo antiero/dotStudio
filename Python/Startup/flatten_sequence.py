@@ -62,7 +62,7 @@ class FlattenAction(QtGui.QAction):
 		shotOccuranceDictionary = self.buildVisibleShotListForSequence(sequence)
 
 		numShots = len(shotOccuranceDictionary)
-		progressTask = ProgressTask("Creating Flattened Track...")
+		progressTask = ProgressTask("Flattening Sequence...")
 		count = 1
 		for shot in shotOccuranceDictionary.keys():
 			shotOccurances = shotOccuranceDictionary[shot]
