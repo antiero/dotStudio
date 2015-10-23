@@ -4,16 +4,17 @@ import hiero.ui
 import nuke
 from PySide import QtGui
 from PySide import QtCore
+from foundry.ui import ProgressTask
 
-# To do:
+# TO-DO:
 # 1) Handle retimes properly - DONE
 # 2) Handle Transitions
 # 3) Handle Soft-effects
-# 4) Consider audio
-# 5) Collapse Tracks
-# 6) Handles
+# 4) Consider audio flattening?
+# 5) Collapse other Tracks - BLOCKED, currently hiding instead.
+# 6) Handles - DONE
 # 7) progressTask bars - DONE
-# 8) Blend Tracks
+# 8) Blend Tracks - HA! Good luck.
 
 # Consider usign hiero.core.VideoTrack.clearRange to razor on any clips straddling the start and end, and a delete of everything else.
 class FlattenAction(QtGui.QAction):
@@ -52,14 +53,16 @@ class FlattenAction(QtGui.QAction):
 		"""
 
 		# Create a placeholder Video Track
+		tempSequence = hiero.core.Sequence("temp")
 		razorTrack = hiero.core.VideoTrack("RazorTrack")
 		flattenedTrack = hiero.core.VideoTrack(trackName)
-		sequence.addTrack(razorTrack)
+		tempSequence.addTrack(razorTrack)
 
 		# Build a list of shots which are visible for the Sequence
 		shotOccuranceDictionary = self.buildVisibleShotListForSequence(sequence)
 
 		numShots = len(shotOccuranceDictionary)
+		progressTask = ProgressTask("Creating Flattened Track...")
 		count = 1
 		for shot in shotOccuranceDictionary.keys():
 			shotOccurances = shotOccuranceDictionary[shot]
@@ -87,11 +90,18 @@ class FlattenAction(QtGui.QAction):
 					razorTrack.removeItem(item)
 
 			# Make the progressTask bars update
+			progressTask.setProgress(int(100.0*(float(count)/float(numShots))))
 			count += 1
 
+			if progressTask.isCancelled():
+				del(tempSequence)
+				del(razorTrack)
+				progressTask.cancel()
+				return None			
 
-		# Delete the razorTrack, it's no longer needed...
-		sequence.removeTrack(razorTrack)
+		# Clean up unused items so they don't hang around...
+		del(tempSequence)
+		del(razorTrack)
 
 		return flattenedTrack
 
@@ -107,7 +117,6 @@ class FlattenAction(QtGui.QAction):
 		# {'shot1': [ [instance1_In, instance1_tOut], [instance2_In, instance2_tOut]... ] }
 
 		shotOccuranceDictionary = {}
-		shotList = []
 
 		# We will ignore the See through missing media method and pick the top-most, enabled piece of media, (even missing media)
 		for t in range(0, T):
@@ -133,9 +142,6 @@ class FlattenAction(QtGui.QAction):
 						else:
 							# If we're here, we've got a new shot instance, append a new 2-digit list...
 							shotOccuranceDictionary[visibleShot].append([t,t])
-
-					if visibleShot not in shotList:
-						shotList.append(visibleShot)
 
 		return shotOccuranceDictionary
 
