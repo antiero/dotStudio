@@ -1,4 +1,5 @@
-# flatten.py - creates a single-track, flattened version of multi-track timeline
+# flatten_sequence.py - creates a single-track, flattened version of multi-track timeline
+# Installation: Copy to > $HIERO_PLUGIN_PATH/Python/Startup
 import hiero.core
 import hiero.ui
 import nuke
@@ -16,9 +17,11 @@ from foundry.ui import ProgressTask
 # 7) progressTask bars - DONE
 # 8) Blend Tracks - HA! Good luck.
 
-# Consider usign hiero.core.VideoTrack.clearRange to razor on any clips straddling the start and end, and a delete of everything else.
 class FlattenAction(QtGui.QAction):
 	def __init__(self):
+		"""
+		QAction to create a single-track, flattened version of multi-track timeline in Hiero/NukeStudio
+		"""
 		QtGui.QAction.__init__(self, "Flatten Sequence", None)
 		self.triggered.connect(self.createFlattenedTrackFromActiveSequence)
 		hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
