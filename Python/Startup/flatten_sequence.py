@@ -25,6 +25,7 @@ class FlattenAction(QtGui.QAction):
         QtGui.QAction.__init__(self, "Flatten Sequence", None)
         self.triggered.connect(self.createFlattenedTrackFromActiveSequence)
         hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
+        hiero.core.events.registerInterest("kShowContextMenu/kSpreadsheet", self.eventHandler)
 
     def createFlattenedTrackFromActiveSequence(self):
 
@@ -99,12 +100,13 @@ class FlattenAction(QtGui.QAction):
             if progressTask.isCancelled():
                 del(tempSequence)
                 del(razorTrack)
-                progressTask.cancel()
+                del(progressTask)
                 return None         
 
         # Clean up unused items so they don't hang around...
         del(tempSequence)
         del(razorTrack)
+        del(progressTask)
 
         return flattenedTrack
 
@@ -120,6 +122,8 @@ class FlattenAction(QtGui.QAction):
         # {'shot1': [ [instance1_In, instance1_tOut], [instance2_In, instance2_tOut]... ] }
 
         shotOccuranceDictionary = {}
+
+        progressTask = ProgressTask("Analysing Sequence...")
 
         # We will ignore the See through missing media method and pick the top-most, enabled piece of media, (even missing media)
         for t in range(0, T):
@@ -145,6 +149,14 @@ class FlattenAction(QtGui.QAction):
                         else:
                             # If we're here, we've got a new shot instance, append a new 2-digit list...
                             shotOccuranceDictionary[visibleShot].append([t,t])
+
+            if progressTask.isCancelled():
+                del(progressTask)
+                return {}               
+
+            progressTask.setProgress(int(100.0*(float(t)/float(T))))
+
+        del(progressTask)
 
         return shotOccuranceDictionary
 
