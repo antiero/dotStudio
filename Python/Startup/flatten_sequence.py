@@ -42,13 +42,16 @@ class FlattenAction(QtGui.QAction):
         tracksToHide = sequence.videoTracks()
 
         if sequence:
+            proj = sequence.project()
+
             flattenedVideoTrack = self.makeFlattenedVideoTrackFromSequence(sequence)
 
             if flattenedVideoTrack:
-                sequence.addTrack(flattenedVideoTrack)
+                with proj.beginUndo("Add Flattened Track"):
+                    sequence.addTrack(flattenedVideoTrack)
 
-                for track in tracksToHide:
-                    track.setEnabled(False)
+                    for track in tracksToHide:
+                        track.setEnabled(False)
 
 
     def makeFlattenedVideoTrackFromSequence(self, sequence, trackName = 'Flattened'):
