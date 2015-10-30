@@ -112,7 +112,7 @@ class TagReportWriter(object):
     if len(selection)>1:
       return
 
-    sequences = [item.activeItem() for item in selection if isinstance(item.activeItem(), Sequence)]
+    sequences = [item.activeItem() for item in selection if hasattr(item, 'activeItem') and isinstance(item.activeItem(), Sequence)]
     if len(sequences)!=1:
       return
 
