@@ -69,6 +69,7 @@ class RemoveGapsAction(QtGui.QAction):
                 outTime = item.timelineOut()+1
                 if lastItem != None:
 
+                    linkedItems = item.linkedItems()
                     inTransition = item.inTransition()
                     outTransition = item.outTransition()
 
@@ -76,6 +77,10 @@ class RemoveGapsAction(QtGui.QAction):
                 
                     if gap != 0:
                         item.move(-gap)
+
+                        if len(linkedItems)>0:
+                            for lItem in linkedItems:
+                                lItem.move(-gap)
 
                         # There is currently a bug with move() method for transitions.
                         # We need to set the in and outpoints manually instead.
