@@ -120,6 +120,36 @@ class FlattenAction(QtGui.QAction):
 
         return flattenedTrack
 
+    def walkEdits(self, sequence):
+        """
+        Experimental code to walk the timeline faster by using the Next Edit action
+        """
+        try:
+            T0 = sequence.inTime()
+        except:
+            T0 = 0
+
+        try:
+            T1 = sequence.outTime()
+        except:
+            T1 = sequence.duration()
+
+        progressTask = ProgressTask("Walking Edits...")
+
+        cv = hiero.ui.currentViewer()
+        W = cv.window()
+        action = hiero.ui.findMenuAction("Next Edit")
+
+        t = T0
+        W.activateWindow()
+        while t <= T1:
+            # This returns a tuples of possible shots at time slice t
+            cv.setTime(t)
+            action.trigger()
+            t = cv.time()
+            progressAmount = int(100.0*(float(t-T0)/float(T1-T0)))
+            progressTask.setProgress(progressAmount)
+
     def buildVisibleShotListForSequence(self, sequence, includedItems = None):
 
         """
@@ -169,8 +199,11 @@ class FlattenAction(QtGui.QAction):
         # There may be large gaps with no shots etc.
         # Would be more efficient to use sets and some smarter maths.
         # We ignore the 'See through missing media' method and pick the top-most, enabled piece of media, (even missing media)
+        cv = hiero.ui.currentViewer()
         for t in range(T0, T1):
             # This returns a tuples of possible shots at time slice t
+            hiero.core.executeInMainThread(cv.setTime, t)
+
             shotsAtT = sequence.trackItemsAt(t)
 
             if len(shotsAtT)>0:
