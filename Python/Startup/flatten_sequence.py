@@ -202,8 +202,6 @@ class FlattenAction(QtGui.QAction):
         cv = hiero.ui.currentViewer()
         for t in range(T0, T1):
             # This returns a tuples of possible shots at time slice t
-            hiero.core.executeInMainThread(cv.setTime, t)
-
             shotsAtT = sequence.trackItemsAt(t)
 
             if len(shotsAtT)>0:
