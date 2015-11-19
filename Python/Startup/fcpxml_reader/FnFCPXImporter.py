@@ -1,5 +1,6 @@
 from fcpxml_parser import fcpxml_wrapper
 import hiero.ui
+import hiero.core
 from hiero.core.events import registerInterest, unregisterInterest, EventType
 import os
 
@@ -21,8 +22,8 @@ class FCPXImporter:
       clipTags = clip.tags()
       for tag in clipTags:
         tagMeta = tag.metadata()
-        if tagMeta.hasKey('tag.fcpx.id'):
-          tagID = tagMeta.value('tag.fcpx.id')
+        if tagMeta.hasKey('tag.fcpx_id'):
+          tagID = tagMeta.value('tag.fcpx_id')
           if tagID == asset_id:
             foundClip = clip
             break
@@ -34,7 +35,12 @@ class FCPXImporter:
     """Creates a hiero.core.Sequence from an fcpxml sequence_wrapper and adds it to the specified project"""
     sequenceName = sequenceWrapper.parentProject.name
     sequence = hiero.core.Sequence(sequenceName)
-    sequence.setFramerate(sequenceWrapper.framerate)
+    fps = sequenceWrapper.framerate
+    sequence.setFramerate(fps)
+    #print "tcStart: " + str(sequenceWrapper.timecode_start)
+    frameStart = hiero.core.Timecode().HMSFToFrames(fps, False, 0, 0, sequenceWrapper.timecode_start, 0)
+    sequence.setTimecodeStart(frameStart)
+
     sequenceClips = sequenceWrapper.clips
     for seqClip in sequenceClips:
       #print "Sequence Clip:" + str(seqClip)
@@ -46,8 +52,6 @@ class FCPXImporter:
           print "Unable to find Clip for asset_id. Should return an empty Clip"
           sourceClip = hiero.core.Clip(seqClip.asset.filepath)
 
-        #ti = hiero.core.TrackItem(seqClip.name, hiero.core.TrackItem.MediaType.kVideo)
-        #ti.setSource(sourceClip)
         trackItems = sequence.addClip(sourceClip, seqClip.timeline_in, videoTrackIndex=seqClip.lane)
 
         # This method returns linked audio and video TrackItems potentially...
@@ -86,19 +90,19 @@ class FCPXImporter:
       # Create a Tag with the FCP data
       T = hiero.core.Tag("fcpxml")
       tagMeta = T.metadata()
-      tagMeta.setValue("tag.fcpx.id", asset.id)
-      tagMeta.setValue("tag.fcpx.audio_channels", str(asset.audio_channels))
-      tagMeta.setValue("tag.fcpx.audio_rate", str(asset.audio_rate))
-      tagMeta.setValue("tag.fcpx.audio_sources", str(asset.audio_sources))
-      tagMeta.setValue("tag.fcpx.duration", str(asset.duration))
-      tagMeta.setValue("tag.fcpx.start_frame", str(asset.start_frame))
-      tagMeta.setValue("tag.fcpx.end_frame", str(asset.end_frame))
-      tagMeta.setValue("tag.fcpx.has_video", str(asset.has_video))
-      tagMeta.setValue("tag.fcpx.has_audio", str(asset.has_audio))
-      tagMeta.setValue("tag.fcpx.name", str(asset.name))
-      tagMeta.setValue("tag.fcpx.format", str(asset.format))
-      tagMeta.setValue("tag.fcpx.filepath", str(asset.filepath))
-      tagMeta.setValue("tag.fcpx.uid", str(asset.uid))
+      tagMeta.setValue("tag.fcpx_id", asset.id)
+      tagMeta.setValue("tag.fcpx_audio_channels", str(asset.audio_channels))
+      tagMeta.setValue("tag.fcpx_audio_rate", str(asset.audio_rate))
+      tagMeta.setValue("tag.fcpx_audio_sources", str(asset.audio_sources))
+      tagMeta.setValue("tag.fcpx_duration", str(asset.duration))
+      tagMeta.setValue("tag.fcpx_start_frame", str(asset.start_frame))
+      tagMeta.setValue("tag.fcpx_end_frame", str(asset.end_frame))
+      tagMeta.setValue("tag.fcpx_has_video", str(asset.has_video))
+      tagMeta.setValue("tag.fcpx_has_audio", str(asset.has_audio))
+      tagMeta.setValue("tag.fcpx_name", str(asset.name))
+      tagMeta.setValue("tag.fcpx_format", str(asset.format))
+      tagMeta.setValue("tag.fcpx_filepath", str(asset.filepath))
+      tagMeta.setValue("tag.fcpx_uid", str(asset.uid))
       C.addTag(T)
       assetsBin.addItem(hiero.core.BinItem(C))
 
@@ -107,7 +111,9 @@ class FCPXImporter:
       sequences = project.sequences
       for sequence in sequences:
         newSequence = self._createSequence(sequence, proj)
-        sequencesBin.addItem(hiero.core.BinItem(newSequence))  
+        sequencesBin.addItem(hiero.core.BinItem(newSequence))
+
+    return sequences
 
 ### Handle the dropping of an .fcpxml file into the Bin View
 class BinViewDropHandler:
