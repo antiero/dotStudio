@@ -1,10 +1,8 @@
-"""Alternative "tab node creator thingy" for The Foundry's Nuke
-
-homepage: https://github.com/dbr/tabtabtab-nuke
-license: http://unlicense.org/
 """
-
-__version__ = "1.8-dev"
+Soft-Effect Tab browser/picker thing for Hiero/NukeStudio
+Modified tabtabtab-nuke code from https://github.com/dbr/tabtabtab-nuke
+tabtabtab.py license: http://unlicense.org/
+"""
 
 import os
 import sys
@@ -16,13 +14,6 @@ try:
     import hiero.core
     import hiero.ui
 except ImportError:
-    # import sip
-    # for mod in ("QDate", "QDateTime", "QString", "QTextStream", "QTime", "QUrl", "QVariant"):
-    #     sip.setapi(mod, 2)
-
-    # from PyQt4 import QtCore, QtGui
-    # from PyQt4.QtCore import Qt
-    # QtCore.Signal = QtCore.pyqtSignal
     print "Failed To Import Qt and hiero modules"
 
 def find_soft_effects():
@@ -30,16 +21,20 @@ def find_soft_effects():
 
     effects = [action.data() for action in hiero.ui.findRegisteredActions("foundry.timeline.effect") if action.data()]
 
+    effects = sorted(effects)
+
     return effects
 
 class NodeModel(QtCore.QAbstractListModel):
-    def __init__(self, mlist, num_items = 15, filtertext = ""):
+    def __init__(self, mlist, num_items = 5, filtertext = ""):
         super(NodeModel, self).__init__()
 
         self.num_items = num_items
 
         self._all = mlist
         self._filtertext = filtertext
+
+        self._allEffects = find_soft_effects()
 
         # _items is the list of objects to be shown, update sets this
         self._items = []
@@ -50,21 +45,15 @@ class NodeModel(QtCore.QAbstractListModel):
         self.update()
 
     def update(self):
-        # filtertext = self._filtertext.lower()
+        
+        filtertext = self._filtertext.lower()
+        loweredEffects = [effect.lower() for effect in self._allEffects]
+        effectMatches = []
+        for effect in self._allEffects:
+            if effect.lower().find(filtertext) != -1:
+                effectMatches.append(effect)
 
-        # # Two spaces as a shortcut for [
-        # filtertext = filtertext.replace("  ", "[")
-
-        # scored = []
-        # for n in self._all:
-        #     # Turn "3D/Shader/Phong" into "Phong [3D/Shader]"
-        #     menupath = n['menupath'].replace("&", "")
-        #     uiname = "%s [%s]" % (menupath.rpartition("/")[2], menupath.rpartition("/")[0])
-
-        # # Store based on scores (descending), then alphabetically
-        # s = sorted(scored, key = lambda k: (-k['score'], k['text']))
-
-        self._items = find_soft_effects()#s
+        self._items = effectMatches
         self.modelReset.emit()
 
     def rowCount(self, parent = QtCore.QModelIndex()):
@@ -76,6 +65,7 @@ class NodeModel(QtCore.QAbstractListModel):
             raw = self._items[index.row()]
             return raw
 
+        # To-do: Use Effect icons in list?
         elif role == Qt.DecorationRole:
             return
             # weight = self._items[index.row()]['score']
@@ -167,8 +157,8 @@ class TabTabTabWidget(QtGui.QDialog):
         if winflags is not None:
             self.setWindowFlags(winflags)
 
-        self.setMinimumSize(200, 300)
-        self.setMaximumSize(200, 300)
+        self.setMinimumSize(200, 50)
+        self.setMaximumSize(200, 200)
 
         # Store callback
         self.cb_on_create = on_create
@@ -176,14 +166,8 @@ class TabTabTabWidget(QtGui.QDialog):
         # Input box
         self.input = TabyLineEdit()
 
-        # Node weighting
-        # self.weights = NodeWeights(os.path.expanduser("~/.nuke/tabtabtab_weights.json"))
-        # self.weights.load() # weights.save() called in close method
-
         # Returns a list the soft effects registered as the "data" property of the Effect QAction.
         self.effects = find_soft_effects()
-
-        #nodes = find_menu_items(nuke.menu("Nodes")) + find_menu_items(nuke.menu("Nuke"))
 
         # List of stuff, and associated model
         self.things_model = NodeModel(self.effects) #NodeModel(nodes)
@@ -236,8 +220,6 @@ class TabTabTabWidget(QtGui.QDialog):
         self.move(xpos, ypos)
 
     def showAt(self, pos):
-        # BUILD DATA WHEN SHOWN - is this the best time to do this?
-        #self.updateTableView()
         self.move(pos.x()-self.width()/2, pos.y()-self.height()/2)
         self.show()        
 
@@ -290,10 +272,6 @@ class TabTabTabWidget(QtGui.QDialog):
         create previously created node (instead of the most popular)
         """
 
-        # Load the weights everytime the panel is shown, to prevent
-        # overwritting weights from other Nuke instances
-        #self.weights.load()
-
         # Select all text to allow overwriting
         self.input.selectAll()
         self.input.setFocus()
@@ -337,48 +315,8 @@ class TabTabTabWidget(QtGui.QDialog):
                     effectItem.setTimelineOut(tOut)
                     track.addSubTrackItem(effectItem, 0)
 
-        #self.weights.increment(thing['menupath'])
         self.close()
 
-
-_tabtabtab_instance = None
-def main():
-    global _tabtabtab_instance
-
-    if _tabtabtab_instance is not None:
-        # TODO: Is there a better way of doing this? If a
-        # TabTabTabWidget is instanced, it goes out of scope at end of
-        # function and disappers instantly. This seems like a
-        # reasonable "workaround"
-
-        _tabtabtab_instance.under_cursor()
-        _tabtabtab_instance.show()
-        _tabtabtab_instance.raise_()
-        return
-
-    def on_create(thing):
-        try:
-            thing['menuobj'].invoke()
-        except ImportError:
-            print "Error creating %s" % thing
-
-    # t = TabTabTabWidget(on_create = on_create, winflags = Qt.FramelessWindowHint)
-
-    # # Make dialog appear under cursor, as Nuke's builtin one does
-    # t.under_cursor()
-
-    # # Show, and make front-most window (mostly for OS X)
-    # t.show()
-    # t.raise_()
-
-    # # Keep the TabTabTabWidget alive, but don't keep an extra
-    # # reference to it, otherwise Nuke segfaults on exit. Hacky.
-    # # https://github.com/dbr/tabtabtab-nuke/issues/4
-    # #import weakref
-    # hiero.ui.tabtabtab = t
-    #_tabtabtab_instance = weakref.proxy(t)
-
-print("Calling TabTabTabWidget main()")
 _popover = None
 _popoverShown = False
 
@@ -395,7 +333,6 @@ def toggleTabTabTab():
         _popoverShown = False
 
 action = QAction("Effect Browser", None)
-#action.setShortcut("Tab")
-action.setShortcut(QKeySequence("?"))
+action.setShortcut("Shift+E")
 action.triggered.connect(toggleTabTabTab)
 hiero.ui.addMenuAction("Window", action)
