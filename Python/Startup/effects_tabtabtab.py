@@ -19,11 +19,21 @@ except ImportError:
 def find_soft_effects():
     """Gets a list of soft effects registered in Hiero/NukeStudio"""
 
-    effects = [action.data() for action in hiero.ui.findRegisteredActions("foundry.timeline.effect") if action.data()]
+    effectActions = [action for action in hiero.ui.findRegisteredActions("foundry.timeline.effect") if action.data()]
 
-    effects = sorted(effects)
+    effectDict = {}
+    # Return a dictionary, where the keys are the effect data names, action and icon are stored
+    for effectAction in effectActions:
+        effectName = effectAction.data()
+        if effectName not in effectDict.keys():
+            effectDict[effectName] = {}
+        
+        effectDict[effectName]["action"] = effectAction
+        effectDict[effectName]["icon"] = effectAction.icon()
+        effectDict[effectName]["effectName"] = effectAction.data()
+        effectDict[effectName]["objectName"] = effectAction.objectName()
 
-    return effects
+    return effectDict
 
 class NodeModel(QtCore.QAbstractListModel):
     def __init__(self, mlist, num_items = 5, filtertext = ""):
@@ -36,6 +46,8 @@ class NodeModel(QtCore.QAbstractListModel):
 
         self._allEffects = find_soft_effects()
 
+        self._allEffectNames = sorted(self._allEffects.keys())
+
         # _items is the list of objects to be shown, update sets this
         self._items = []
         self.update()
@@ -47,9 +59,8 @@ class NodeModel(QtCore.QAbstractListModel):
     def update(self):
         
         filtertext = self._filtertext.lower()
-        loweredEffects = [effect.lower() for effect in self._allEffects]
         effectMatches = []
-        for effect in self._allEffects:
+        for effect in self._allEffectNames:
             if effect.lower().find(filtertext) != -1:
                 effectMatches.append(effect)
 
@@ -62,25 +73,13 @@ class NodeModel(QtCore.QAbstractListModel):
     def data(self, index, role = Qt.DisplayRole):
         if role == Qt.DisplayRole:
             # Return text to display
-            raw = self._items[index.row()]
+            raw = self._allEffects[ self._items[index.row()] ]['effectName']
             return raw
 
-        # To-do: Use Effect icons in list?
         elif role == Qt.DecorationRole:
-            return
-            # weight = self._items[index.row()]['score']
-
-            # hue = 0.4
-            # sat = weight
-
-            # if index.row() % 2 == 0:
-            #     col = QtGui.QColor.fromHsvF(hue, sat, 0.9)
-            # else:
-            #     col = QtGui.QColor.fromHsvF(hue, sat, 0.8)
-
-            # pix = QtGui.QPixmap(6, 12)
-            # pix.fill(col)
-            # return pix
+            icon = self._allEffects[ self._items[index.row()] ]['icon']
+            pix = icon.pixmap(12, 12)
+            return pix
 
         elif role == Qt.BackgroundRole:
             return
@@ -157,8 +156,8 @@ class TabTabTabWidget(QtGui.QDialog):
         if winflags is not None:
             self.setWindowFlags(winflags)
 
-        self.setMinimumSize(200, 50)
-        self.setMaximumSize(200, 200)
+        #self.setMinimumSize(200, 50)
+        #self.setMaximumSize(200, 50)
 
         # Store callback
         self.cb_on_create = on_create
