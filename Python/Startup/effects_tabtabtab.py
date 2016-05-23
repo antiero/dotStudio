@@ -142,7 +142,7 @@ class TabyLineEdit(QtGui.QLineEdit):
             self.pressed_arrow.emit("down")
             return True
 
-        elif is_keypress and event.key() == QtCore.Qt.Key_Escape:
+        elif is_keypress and event.key() in (QtCore.Qt.Key_Escape, 167):
             self.cancelled.emit()
             return True
 
@@ -332,6 +332,6 @@ def toggleTabTabTab():
         _popoverShown = False
 
 action = QAction("Effect Browser", None)
-action.setShortcut("Shift+E")
+action.setShortcut(QKeySequence(167))
 action.triggered.connect(toggleTabTabTab)
 hiero.ui.addMenuAction("Window", action)
