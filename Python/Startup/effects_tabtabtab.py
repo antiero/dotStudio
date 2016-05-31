@@ -316,22 +316,16 @@ class TabTabTabWidget(QtGui.QDialog):
 
         self.close()
 
-_popover = None
-_popoverShown = False
-
 def toggleTabTabTab():
-    global _popover
-    global _popoverShown
-    if not _popoverShown:
-        _popover = TabTabTabWidget(winflags = Qt.FramelessWindowHint)
-        v = hiero.ui.activeView()
-        _popover.showAt(QCursor.pos())
-        _popoverShown = True
+    if hiero.ui.tabtabtab.isHidden():
+        hiero.ui.tabtabtab.showAt(QCursor.pos())
     else:
-        _popover.hide()
-        _popoverShown = False
+        hiero.ui.tabtabtab.hide()
 
 action = QAction("Effect Browser", None)
 action.setShortcut(QKeySequence(167))
 action.triggered.connect(toggleTabTabTab)
 hiero.ui.addMenuAction("Window", action)
+
+# Keep a reference to the TabTabTabWidget in hiero.ui
+hiero.ui.tabtabtab = TabTabTabWidget(winflags = Qt.FramelessWindowHint)
