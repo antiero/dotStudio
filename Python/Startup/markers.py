@@ -348,8 +348,7 @@ class MarkersTableModel(QAbstractTableModel):
 
         if index.column() == 5:
             return Qt.AlignVCenter
-
-        return Qt.AlignLeft | Qt.AlignVCenter
+        return Qt.AlignCenter
  
     else:
         return
