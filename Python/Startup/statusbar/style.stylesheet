@@ -1,0 +1,28 @@
+QStatusBar {
+    min-height: 20px;
+    max-height: 20px;
+}
+
+QStatusBar::item {
+    border: 0px solid blue;
+}
+
+QStatusBar QLabel {
+    font: 8pt;
+}
+
+QStatusBar QPushButton {
+    border: 0px;
+    outline: none;
+}
+
+QStatusBar QPushButton:hover:!pressed {
+    border: 1px solid green;
+}
+
+/*QStatusBar QPushButton#show_button_memory:hover {
+    border: 1px solid red;
+    background: green;
+}*/
+
+
