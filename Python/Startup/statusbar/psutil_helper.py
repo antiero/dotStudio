@@ -25,8 +25,9 @@ class PSUtilProcessWrapper(object):
     return mem_percent
 
   def nukeCPUUsageAsPercentage(self):
-    """Returns Nuke's current CPU usage as percentage"""
-    cpu_percent = self.nukeProcess.cpu_percent()
+    """Returns Nuke's current CPU usage as percentage
+    Note: this currently returns the sum of ALL running processes with 'Nuke' in the name"""
+    cpu_percent = sum([proc.cpu_percent() for proc in psutil.process_iter() if "Nuke" in proc.name()])
     return cpu_percent
 
   def nukeMemoryUsageInGB(self):

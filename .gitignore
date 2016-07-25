@@ -2,3 +2,17 @@
 *.pyc
 
 Python/Startup/.idea/*
+
+Python/Startup/statusbar/.idea/.name
+
+Python/Startup/statusbar/.idea/encodings.xml
+
+*.iml
+
+*.idraw
+
+Python/Startup/statusbar/.idea/workspace.xml
+
+Python/Startup/statusbar/.idea/modules.xml
+
+Python/Startup/statusbar/.idea/misc.xml
