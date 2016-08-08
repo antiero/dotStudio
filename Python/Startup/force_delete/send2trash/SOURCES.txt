@@ -1,0 +1,15 @@
+CHANGES.rst
+MANIFEST.in
+README.rst
+setup.cfg
+setup.py
+Send2Trash.egg-info/PKG-INFO
+Send2Trash.egg-info/SOURCES.txt
+Send2Trash.egg-info/dependency_links.txt
+Send2Trash.egg-info/top_level.txt
+send2trash/__init__.py
+send2trash/compat.py
+send2trash/plat_gio.py
+send2trash/plat_osx.py
+send2trash/plat_other.py
+send2trash/plat_win.py
