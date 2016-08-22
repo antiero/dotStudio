@@ -10,6 +10,6 @@ This is still very much a Work in Progress and not production ready!
 
 Todo:
 
--Handle retimes properly
--Compound Clips
--Effects and Transitions
+  -Handle retimes properly
+  -Compound Clips
+  -Effects and Transitions
