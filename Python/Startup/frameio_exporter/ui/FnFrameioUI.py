@@ -2,14 +2,23 @@
 UI elements for interaction with Frame.io from within Nuke Studio
 """
 from PySide import QtGui
+from PySide.QtWebKit import QWebView
 from PySide.QtCore import Qt, QUrl, QRegExp, QSize
 from frameio_exporter.core import frameio
 from frameio_exporter.ui import createMenuAction
 from frameio_exporter.core.paths import gIconPath
+from frameio_exporter import auth
 import os
+import json
 import nuke
+import urllib2
+import json
+from urllib2 import Request, urlopen
+from oauth2client.client import flow_from_clientsecrets
+import httplib2
 
-gGoogleAccountsEnabled = False # until we get oauth2 login figured out
+
+gGoogleAccountsEnabled = True # until we get oauth2 login figured out
 
 class FnFrameioDialog(QtGui.QDialog):
     """
@@ -131,6 +140,9 @@ class FnFrameioDialog(QtGui.QDialog):
         self.passwordLineEdit.setFixedHeight(60)
         self.passwordLineEdit.setEchoMode(QtGui.QLineEdit.Password)
 
+        # Initially hide the password field, as we typically log in as Google Auth
+        self.passwordLineEdit.setVisible(False)
+
         self.loginViewLayout.addWidget(self.passwordLineEdit)        
 
         self.submitButton = QtGui.QPushButton("LET'S GO")
@@ -145,6 +157,10 @@ class FnFrameioDialog(QtGui.QDialog):
         self.loginView.setLayout(self.loginViewLayout)
 
         self.stackView.addWidget(self.loginView)
+
+
+        # This WebView is used for Google OAuth2 Login
+        self.webView = QWebView()
 
         ### TO-DO - handle uploading of Clips via drag-drop into a dropzone
         # self.uploadDropzoneView = QtGui.QWidget()
@@ -245,6 +261,7 @@ class FnFrameioDialog(QtGui.QDialog):
         self.emailLineEdit.setFocus()
 
 
+
     def updateConnectionIndicator(self):
         """Updates the frame.io session authenticated indicator label"""
 
@@ -341,18 +358,57 @@ class FnFrameioDialog(QtGui.QDialog):
         for project in projects:
             self.projectDropdown.addItem(project)
 
+    # TO-DO: Break this out to a separate file
+
+    def urlChanged(self, url):
+        # The code We want to generate an oauth2 access token is contained in the title of the HTML page.
+        # When the URL has changed, inspect the Title, and see if it contains a 'code=' fragment
+
+        print "urlChanged: " + str(url)
+        title = self.webView.title()
+        print "title of Web view is: " + str(title)
+        # TODO - Should get something like: u'Success code=4/HyK1mzApexLDkplXcc4yj6NPWm3KxrxdsAPZWANJM**'
+        if title.find("code=") != -1:
+            self.accessCode = self.webView.title().split('code=')[-1]
+            print "oauth access code found to be: " + self.accessCode
+            print "Closing WebView, should now continue with oauth2 authentication process..."
+            self.webView.close()
+
+            if self.oauth_flow:
+                self.oauth_credentials = self.oauth_flow.step2_exchange(self.accessCode)
+                self.http_auth = self.oauth_credentials.authorize(httplib2.Http())
+                self.oauth_values = values = {"email": self.email, "access_token" : self.oauth_credentials.access_token}
+                request = Request('https://api.frame.io/sessions/validate_token', data=json.dumps(values), headers=JSON_HEADER) 
+
+    def prepareWebViewForGoogleLogin(self):
+        f = "/workspace/dotStudio/Python/Startup/frameio_exporter/auth/client_secret.json"
+        flow = flow_from_clientsecrets(f, scope='https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+                                   redirect_uri='urn:ietf:wg:oauth:2.0:oob')
+        authorize_url = flow.step1_get_authorize_url()
+        URL = QUrl.fromPercentEncoding(str(authorize_url))
+        self.webView.urlChanged.connect(self.urlChanged)
+        self.webView.load(URL)
+
     def _submitButtonPressed(self):
         """Called when Submit button is pressed."""
         emailText = self.emailLineEdit.text()
-        passwordText = self.passwordLineEdit.text()
-        res = self.nameval.validate(emailText, 0)
 
-        # If Gmail oauth2 is not implemented...
-        if not gGoogleAccountsEnabled:
-            if "gmail.com" in emailText or "googlemail.com" in emailText:
-                    self.setStatus(self.eStatusGmailUnsupported)
-                    self.emailLineEdit.setFocus()
-                    return
+        # Initially check the type of email and determine if it's a Google Email...
+        email_type = auth.check_email_type(emailText)
+
+        print "Email type is:" + email_type
+
+        if email_type == auth.AUTH_MODE_OAUTH:
+            self.prepareWebViewForGoogleLogin()
+            print "Now showing Google WebView..."
+            self.webView.show()
+        elif email_type == auth.AUTH_MODE_EMAIL:
+            self.passwordLineEdit.setVisible(True)
+        return
+
+        if self.passwordLineEdit.isVisible():
+            passwordText = self.passwordLineEdit.text()
+        res = self.nameval.validate(emailText, 0)
 
         if res[0] != QtGui.QValidator.State.Acceptable:
                 self.setStatus(self.eStatusEmailInvalid)
