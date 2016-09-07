@@ -373,9 +373,9 @@ class FnFrameioDialog(QtGui.QDialog):
         print "handleTitleChange, Current URL is: " + str(self.webView.url())
         print "handleTitleChange, title is: " + str(title)
 
-        # TODO - Should get something like: u'Success code=4/HyK1mzApexLDkplXcc4yj6NPWm3KxrxdsAPZWANJM**'
+        # A successful login should give something like: u'Success code=4/HyK1mzApexLDkplXcc4yj6NPWm3KxrxdsAPZWANJM**'
         if title.find("code=") != -1:
-            self.accessCode = title.split('code=')[-1]
+            self.accessCode = title.split('Success code=')[-1]
             print "oauth access code found to be: " + self.accessCode
             print "Closing WebView, should now continue with oauth2 authentication process..."
             self.webView.setVisible(False)
@@ -389,7 +389,18 @@ class FnFrameioDialog(QtGui.QDialog):
 
                 print "Validating token with frame.io..."
                 response_body = urlopen(request).read()
-                print str(response_body)
+
+                response_json = json.loads(response_body)
+                print str(response_json)
+
+                # A successsful validation should resul in response should like this:
+                # {"x":"XX84d854-f3d9-4a73-b31f-c6c304372ceb","y":"XXa8bbd5-1ac8-4c97-b121-3b2757827f14","messages":["Successfully logged in as Joe Blogs"]}
+                # A failed login will have an "errors" key.
+
+                if response_json.has_key("errors"):
+                    print "TODO: Handle Error with authentication here"
+                elif response_json.has_key("messages"):
+                    print "Success message: " + str(response_json['messages'])
 
 
     def prepareWebViewForGoogleLogin(self):
@@ -403,7 +414,6 @@ class FnFrameioDialog(QtGui.QDialog):
         print "Now showing Google WebView..."
         self.webView.setVisible(True)
         self.webView.load(URL)
-        print "TITLE AFTER LOAD: " + str(self.webView.title())
 
     def _submitButtonPressed(self):
         """Called when Submit button is pressed."""
@@ -416,11 +426,11 @@ class FnFrameioDialog(QtGui.QDialog):
 
         if email_type == auth.AUTH_MODE_OAUTH:
             self.prepareWebViewForGoogleLogin()
+            return
 
-            #self.webView.show()
         elif email_type == auth.AUTH_MODE_EMAIL:
             self.passwordLineEdit.setVisible(True)
-        return
+
 
         if self.passwordLineEdit.isVisible():
             passwordText = self.passwordLineEdit.text()
