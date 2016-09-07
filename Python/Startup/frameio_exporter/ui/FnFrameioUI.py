@@ -154,13 +154,17 @@ class FnFrameioDialog(QtGui.QDialog):
                                         'QPushButton:pressed{background-color: #404040; border-width: 1px}')
 
         self.loginViewLayout.addWidget(self.submitButton)
+
+        # This WebView is used for Google OAuth2 Login
+        self.webView = QWebView(parent=self)
+        self.loginViewLayout.addWidget(self.webView)
+        self.webView.setVisible(False)
         self.loginView.setLayout(self.loginViewLayout)
 
         self.stackView.addWidget(self.loginView)
 
 
-        # This WebView is used for Google OAuth2 Login
-        self.webView = QWebView()
+
 
         ### TO-DO - handle uploading of Clips via drag-drop into a dropzone
         # self.uploadDropzoneView = QtGui.QWidget()
@@ -345,6 +349,8 @@ class FnFrameioDialog(QtGui.QDialog):
         else:
             self.close()
 
+    def currentEmailText(self):
+        return self.emailLineEdit.text()
 
     def _refreshProjectList(self):
         # Refreshes the user data
@@ -360,34 +366,44 @@ class FnFrameioDialog(QtGui.QDialog):
 
     # TO-DO: Break this out to a separate file
 
-    def urlChanged(self, url):
+    def handleTitleChange(self, title):
         # The code We want to generate an oauth2 access token is contained in the title of the HTML page.
         # When the URL has changed, inspect the Title, and see if it contains a 'code=' fragment
 
-        print "urlChanged: " + str(url)
-        title = self.webView.title()
-        print "title of Web view is: " + str(title)
+        print "handleTitleChange, Current URL is: " + str(self.webView.url())
+        print "handleTitleChange, title is: " + str(title)
+
         # TODO - Should get something like: u'Success code=4/HyK1mzApexLDkplXcc4yj6NPWm3KxrxdsAPZWANJM**'
         if title.find("code=") != -1:
-            self.accessCode = self.webView.title().split('code=')[-1]
+            self.accessCode = title.split('code=')[-1]
             print "oauth access code found to be: " + self.accessCode
             print "Closing WebView, should now continue with oauth2 authentication process..."
-            self.webView.close()
+            self.webView.setVisible(False)
+            #self.webView.close()
 
             if self.oauth_flow:
                 self.oauth_credentials = self.oauth_flow.step2_exchange(self.accessCode)
                 self.http_auth = self.oauth_credentials.authorize(httplib2.Http())
-                self.oauth_values = values = {"email": self.email, "access_token" : self.oauth_credentials.access_token}
-                request = Request('https://api.frame.io/sessions/validate_token', data=json.dumps(values), headers=JSON_HEADER) 
+                self.oauth_values = values = {"email": self.currentEmailText(), "access_token" : self.oauth_credentials.access_token}
+                request = Request('https://api.frame.io/sessions/validate_token', data=json.dumps(values), headers=auth.jsonheader())
+
+                print "Validating token with frame.io..."
+                response_body = urlopen(request).read()
+                print str(response_body)
+
 
     def prepareWebViewForGoogleLogin(self):
         f = "/workspace/dotStudio/Python/Startup/frameio_exporter/auth/client_secret.json"
-        flow = flow_from_clientsecrets(f, scope='https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+        self.oauth_flow = flow_from_clientsecrets(f, scope='https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
                                    redirect_uri='urn:ietf:wg:oauth:2.0:oob')
-        authorize_url = flow.step1_get_authorize_url()
+        authorize_url = self.oauth_flow.step1_get_authorize_url()
         URL = QUrl.fromPercentEncoding(str(authorize_url))
-        self.webView.urlChanged.connect(self.urlChanged)
+        self.webView.setUrl(URL)
+        self.webView.titleChanged.connect(self.handleTitleChange)
+        print "Now showing Google WebView..."
+        self.webView.setVisible(True)
         self.webView.load(URL)
+        print "TITLE AFTER LOAD: " + str(self.webView.title())
 
     def _submitButtonPressed(self):
         """Called when Submit button is pressed."""
@@ -400,8 +416,8 @@ class FnFrameioDialog(QtGui.QDialog):
 
         if email_type == auth.AUTH_MODE_OAUTH:
             self.prepareWebViewForGoogleLogin()
-            print "Now showing Google WebView..."
-            self.webView.show()
+
+            #self.webView.show()
         elif email_type == auth.AUTH_MODE_EMAIL:
             self.passwordLineEdit.setVisible(True)
         return
