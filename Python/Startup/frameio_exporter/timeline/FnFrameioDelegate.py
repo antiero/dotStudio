@@ -27,19 +27,19 @@ class FrameioDelegate(object):
     """Delegate for handling the Frame.io session and communicating with UI"""
     def __init__(self, *args, **kwargs):
 
-        self.frameioSession = frameio.Session("", "") 
+        self.frameioSession = frameio.Session("") 
         self.appSettings = ApplicationSettings()
 
-        self.username = kwargs.get("username", None)
+        self.email = kwargs.get("username", None)
         self.project = None # Populate with the last 
 
         # See if username exists already in uistate.ini
-        if not self.username:
+        if not self.email:
             savedUserPreference = self.appSettings.value("FrameioUsername")
             if savedUserPreference:
-                self.username = savedUserPreference
+                self.email = savedUserPreference
 
-        self.frameioMainViewController = FnFrameioUI.FnFrameioDialog(username = self.username)
+        self.frameioMainViewController = FnFrameioUI.FnFrameioDialog(email = self.email)
 
         # This tells the authentication indicator to update when the status changes
         hiero.core.events.registerInterest("kFrameioConnectionChanged", self.handleConnectionStatusChangeEvent)
@@ -60,16 +60,20 @@ class FrameioDelegate(object):
 
     def setUserName(self, username):
         """Saves the Username to the uistate.ini"""
-        self.username = username
-        self.appSettings.setValue("FrameioUsername", self.username)
+        self.email = username
+        self.appSettings.setValue("FrameioUsername", self.email)
 
-    def attemptLogin(self, username = '', password = ""):
+    def attemptLogin(self, email = ''):
         """Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable"""
         print "Attempting login..."
         self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
 
-        self.frameioSession = frameio.Session(username, password)
-        response = self.frameioSession.login(username, password)
+        # inialise a new Frame.io Session, based on email address
+        self.frameioSession = frameio.Session(email)
+
+        # A Frame.io Session is constructed via an email address.
+        # The loginHandler object of the Session handles the login process.
+        response = self.frameioSession.attemptLogin()
 
         # We failed to get a response
         if None in response:

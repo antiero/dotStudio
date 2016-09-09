@@ -3,72 +3,44 @@
 
 """
 This module offers functions for file and data exchange with the frame.io services via python.
-
-Usage examples:
-
-import frameio
-
-frameiosession = frameio.Session(user , pw)
-frameiosession.setProjectid(project)
-
-upload = frameio.Upload( filelist , frameiosession )
-upload.upload()
-
-filereference = frameiosession.getFilereference(filereferenceid)
-comments = filereference.getComments()
-
-For commandline usage: python frameio.py -h
-
-
-Frame.io API code written by Til Strobl
-website: www.movingmedia.de
-
-Changelog:
-150901
-- New feature: save comments to csv
-- Bugfix: Multipart file upload fails
-- Bugfix: Wrong collaborator names for comments
-
-NOTE: there is currently a dependency on hiero.core.events framework for kFrameioConnectionChanged event.
-This should be refactored and moved to the FnFrameioDelegate by observing changes in the authentication
-
+API code contributors Til Strobl (www.movingmedia.de)
 """
 
 import sys
 import urllib2put
 import json, os, mimetypes, urllib, logging
 from urllib2 import Request, urlopen, HTTPError, URLError
+from frameio_exporter.auth import check_email_type, AUTH_MODE_EMAIL, AUTH_MODE_OAUTH, BasicLoginHandler, OAuthLoginHandler
 
 class Session:
     """Defines an established frame.io API Connection."""
     
-    def __init__(self, username = None, password = None):
-        """Logins on construction with given username and password"""
-        if username and password:
-            self.userid, self.token = self.login(username, password)
+    def __init__(self, email):
+        """A Frame.io session object, constructed via an email address"""
 
-        self.username = username
-        self.password = password
+        # This is either a Basic or OAuth type of Login handler.
+        self.loginHandler = None
         self.sessionAuthenticated = False
         self.userdata = {}
         self.teams = []
         self.sharedProjects = []
         self.projectid = ""
+        self.email_type = None
         
     def __str__(self):
         return json.dumps(self.userdata , indent=4, separators=(',', ': ') )
     
     def getUsername(self):
         """Returns the user user name. """
-        return self.username
+        return self.email
         
     def getUserid(self):
         """Returns the user user id. """
-        return self.userid
+        return self.loginHandler.frameio_user_id
         
     def getToken(self):
         """Returns the user token. """
-        return self.token
+        return self.loginHandler.frameio_token
         
     def getRootfolderkey(self, projectid = ''):
         """Returns the root folder key for the given projectid or the current project of the session. """
@@ -110,36 +82,36 @@ class Session:
     def setSessionAuthenticated(self, authenticated):
         self.sessionAuthenticated = authenticated
         
-    def login(self,username, password):
-        """Login to frame.io."""
-        if not username or not password:
+    def attemptLogin(self):
+        """Attempts to Login to Frame.io via the Session's loginHandler"""
+        if not self.email:
+            logging.error("No email address was specified. Please try again with an email.")
             return
 
-        logging.info('Logging in as ' + username )
-        self.username = username
-        values = {'a' : username , 'b' : password}
-        request = Request('https://api.frame.io/login', data=json.dumps(values), headers=jsonheader())
-        response_body = urlopen(request).read()
-        logindata = json.loads(response_body)
-        if logindata.has_key("errors"):
-            logging.error("login: %s"%(logindata["errors"]))
-            self.setSessionAuthenticated(False)
-            return [None, logindata["errors"]]
+        logging.info('Email: ', self.email)
 
-        logging.info( logindata['messages'][0]) 
-        self.projectid = ''
+        # Initially check the type of email and determine if it's a Google Email...
+        self.email_type = check_email_type(self.email)
 
-        logging.info( "login; logindata['x']: " + str(logindata['x']) )
-        logging.info( "login; logindata['y']: " + str(logindata['y']) )
+        if self.email_type == AUTH_MODE_EMAIL:
+            self.loginHandler = BasicLoginHandler(self.email)
 
-        self.setSessionAuthenticated(True)
+        elif self.email_type == AUTH_MODE_OAUTH:
+            self.loginHandler = OAuthLoginHandler(self.email)
+        else:
+            logging.error("Unable to determine email type")
+            return
 
-        return [logindata['x'] , logindata['y']]
+        logging.info('self.email_type: ', self.email_type)
+
+        authenticated = self.loginHandler.login()
+
+        self.setSessionAuthenticated(authenticated)
 
     def logout(self):
         """Logout to frame.io."""
         logging.info('Logging out')
-        self.username = ""
+        self.email = ""
         self.password = ""
         self.projectid = ""
         self.userdata = {}

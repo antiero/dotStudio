@@ -33,7 +33,7 @@ class FnFrameioDialog(QtGui.QDialog):
     eStatusLoggingIn = "Logging in..."
     eConnectionError = "Connection error. Check internet access!"
 
-    def __init__(self, username=None, usingExportDialog=False):
+    def __init__(self, email=None, usingExportDialog=False):
         QtGui.QDialog.__init__(self)
         self._clips = []
         self._sequences = []
@@ -41,7 +41,7 @@ class FnFrameioDialog(QtGui.QDialog):
         # The Dialog can work in two modes, as a popover from the Bin View or via the main App Export window
         self.usingExportDialog = usingExportDialog
 
-        self.username = username
+        self.email = email
 
         # setGeometry(x_pos, y_pos, width, height)
         self.setGeometry(240, 160, 726, 552)
@@ -119,8 +119,8 @@ class FnFrameioDialog(QtGui.QDialog):
         self.emailLineEdit.setAlignment(Qt.AlignCenter)  
         self.emailLineEdit.setFixedWidth(370)
         self.emailLineEdit.setFixedHeight(60)
-        if self.username:
-            self.emailLineEdit.setText(self.username)
+        if self.email:
+            self.emailLineEdit.setText(self.email)
 
         # Validator for checking email address is valid
         namerx = QRegExp("\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,4}\\b")
@@ -162,9 +162,6 @@ class FnFrameioDialog(QtGui.QDialog):
         self.loginView.setLayout(self.loginViewLayout)
 
         self.stackView.addWidget(self.loginView)
-
-
-
 
         ### TO-DO - handle uploading of Clips via drag-drop into a dropzone
         # self.uploadDropzoneView = QtGui.QWidget()
@@ -364,63 +361,16 @@ class FnFrameioDialog(QtGui.QDialog):
         for project in projects:
             self.projectDropdown.addItem(project)
 
-    # TO-DO: Break this out to a separate file
-
-    def handleTitleChange(self, title):
-        # The code We want to generate an oauth2 access token is contained in the title of the HTML page.
-        # When the URL has changed, inspect the Title, and see if it contains a 'code=' fragment
-
-        print "handleTitleChange, Current URL is: " + str(self.webView.url())
-        print "handleTitleChange, title is: " + str(title)
-
-        # A successful login should give something like: u'Success code=4/HyK1mzApexLDkplXcc4yj6NPWm3KxrxdsAPZWANJM**'
-        if title.find("code=") != -1:
-            self.accessCode = title.split('Success code=')[-1]
-            print "oauth access code found to be: " + self.accessCode
-            print "Closing WebView, should now continue with oauth2 authentication process..."
-            self.webView.setVisible(False)
-            #self.webView.close()
-
-            if self.oauth_flow:
-                self.oauth_credentials = self.oauth_flow.step2_exchange(self.accessCode)
-                self.http_auth = self.oauth_credentials.authorize(httplib2.Http())
-                self.oauth_values = values = {"email": self.currentEmailText(), "access_token" : self.oauth_credentials.access_token}
-                request = Request('https://api.frame.io/sessions/validate_token', data=json.dumps(values), headers=auth.jsonheader())
-
-                print "Validating token with frame.io..."
-                response_body = urlopen(request).read()
-
-                response_json = json.loads(response_body)
-                print str(response_json)
-
-                # A successsful validation should resul in response should like this:
-                # {"x":"XX84d854-f3d9-4a73-b31f-c6c304372ceb","y":"XXa8bbd5-1ac8-4c97-b121-3b2757827f14","messages":["Successfully logged in as Joe Blogs"]}
-                # A failed login will have an "errors" key.
-
-                if response_json.has_key("errors"):
-                    print "TODO: Handle Error with authentication here"
-                elif response_json.has_key("messages"):
-                    print "Success message: " + str(response_json['messages'])
-
-
-    def prepareWebViewForGoogleLogin(self):
-        f = "/workspace/dotStudio/Python/Startup/frameio_exporter/auth/client_secret.json"
-        self.oauth_flow = flow_from_clientsecrets(f, scope='https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
-                                   redirect_uri='urn:ietf:wg:oauth:2.0:oob')
-        authorize_url = self.oauth_flow.step1_get_authorize_url()
-        URL = QUrl.fromPercentEncoding(str(authorize_url))
-        self.webView.setUrl(URL)
-        self.webView.titleChanged.connect(self.handleTitleChange)
-        print "Now showing Google WebView..."
-        self.webView.setVisible(True)
-        self.webView.load(URL)
-
     def _submitButtonPressed(self):
         """Called when Submit button is pressed."""
         emailText = self.emailLineEdit.text()
 
-        # Initially check the type of email and determine if it's a Google Email...
-        email_type = auth.check_email_type(emailText)
+        # Create a new Frame.io Session Object
+        nuke.frameioDelegate.frameioSession.email = emailText
+
+        nuke.frameioDelegate.frameioSession.attemptLogin()
+
+
 
         print "Email type is:" + email_type
 
@@ -430,7 +380,6 @@ class FnFrameioDialog(QtGui.QDialog):
 
         elif email_type == auth.AUTH_MODE_EMAIL:
             self.passwordLineEdit.setVisible(True)
-
 
         if self.passwordLineEdit.isVisible():
             passwordText = self.passwordLineEdit.text()
@@ -442,13 +391,13 @@ class FnFrameioDialog(QtGui.QDialog):
                 return
         else:
             self.setStatus(self.eStatusCheckEmail)
-            self.username = emailText
+            self.email = emailText
             if len(passwordText) < 6:
                 self.setStatus(self.eStatusPasswordInvalid)
                 return
             else:
                 self.password = passwordText
 
-        if self.username and self.password:
-            nuke.frameioDelegate.attemptLogin(self.username, self.password)
+        if self.email and self.password:
+            nuke.frameioDelegate.attemptLogin()
 

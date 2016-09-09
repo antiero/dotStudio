@@ -42,3 +42,5 @@ def check_email_type(email_address):
     elif response_json.has_key('action_key'):
         user_type = response_json['action_key']
         return user_type
+
+from login import BasicLoginHandler, OAuthLoginHandler
