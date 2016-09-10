@@ -146,21 +146,11 @@ class TabyLineEdit(QtGui.QLineEdit):
             self.cancelled.emit()
             return True
 
-        else:
-            return super(TabyLineEdit, self).event(event)
-
-
 class TabTabTabWidget(QtGui.QDialog):
-    def __init__(self, on_create = None, parent = None, winflags = None):
+    def __init__(self, parent = None):
         super(TabTabTabWidget, self).__init__(parent = parent)
-        if winflags is not None:
-            self.setWindowFlags(winflags)
 
-        #self.setMinimumSize(200, 50)
-        #self.setMaximumSize(200, 50)
-
-        # Store callback
-        self.cb_on_create = on_create
+        self.setWindowFlags(Qt.FramelessWindowHint)
 
         # Input box
         self.input = TabyLineEdit()
@@ -249,13 +239,12 @@ class TabTabTabWidget(QtGui.QDialog):
         self.things.setCurrentIndex(self.things_model.index(new))
 
     def event(self, event):
-        """Close when window becomes inactive (click outside of window)
+        """
+        Close when window becomes inactive (click outside of window)
         """
         if event.type() == QtCore.QEvent.WindowDeactivate:
             self.close()
             return True
-        else:
-            return super(TabTabTabWidget, self).event(event)
 
     def update(self, text):
         """On text change, selects first item and updates filter text
@@ -328,4 +317,4 @@ action.triggered.connect(toggleTabTabTab)
 hiero.ui.addMenuAction("Window", action)
 
 # Keep a reference to the TabTabTabWidget in hiero.ui
-hiero.ui.tabtabtab = TabTabTabWidget(winflags = Qt.FramelessWindowHint)
+hiero.ui.tabtabtab = TabTabTabWidget()
