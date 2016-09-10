@@ -5,7 +5,7 @@
 This module offers functions for file and data exchange with the frame.io services via python.
 API code contributors Til Strobl (www.movingmedia.de)
 """
-
+from PySide.QtCore import Slot
 import sys
 import urllib2put
 import json, os, mimetypes, urllib, logging
@@ -98,6 +98,7 @@ class Session:
 
         elif self.email_type == AUTH_MODE_OAUTH:
             self.loginHandler = OAuthLoginHandler(self.email)
+            self.loginHandler.loggedInSignal.connect(self.on_frameio_credentials_received)
         else:
             logging.error("Unable to determine email type")
             return
@@ -107,6 +108,10 @@ class Session:
         authenticated = self.loginHandler.login()
 
         self.setSessionAuthenticated(authenticated)
+
+    @Slot(dict)
+    def on_frameio_credentials_received(self, credentialsDict):
+        print "GOT CREDS: " + str(credentialsDict)
 
     def logout(self):
         """Logout to frame.io."""

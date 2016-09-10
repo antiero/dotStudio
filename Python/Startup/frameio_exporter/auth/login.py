@@ -7,10 +7,12 @@ from urllib2 import Request, urlopen
 from oauth2client.client import flow_from_clientsecrets
 import httplib2
 import logging
+from frameio_exporter.auth import jsonheader
 
 class FrameIOLoginHandler(QObject):
 
-    loginStateChanged = Signal()
+    # When Login is successful, pass a dict with frame.io credentials
+    loggedInSignal = Signal(dict)
 
     def __init__(self, email):
 
@@ -73,7 +75,7 @@ class BasicLoginHandler(FrameIOLoginHandler):
 class OAuthWebWidget(QWebView):
 
     # Signal we'll use when an authorisation code is received
-    authCodeReceived = Signal(str)
+    authCodeReceivedSignal = Signal(str)
 
     def __init__(self, authorize_url):
         """
@@ -85,6 +87,8 @@ class OAuthWebWidget(QWebView):
 
         QWebView.__init__(self)
         self.URL = QUrl.fromPercentEncoding(str(authorize_url))
+
+        print "Setting url to be:" + str(self.URL)
         self.setUrl(self.URL)
 
         self.titleChanged.connect(self.handleTitleChange)
@@ -98,7 +102,7 @@ class OAuthWebWidget(QWebView):
         # A successful login should give something like: u'Success code=4/HyK1mzApexLDkplXcc4yj6NPWm3KxrxdsAPZWANJM**'
         if title.find("code=") != -1:
             self.access_code = title.split('Success code=')[-1]
-            self.authCodeReceived.emit(self.access_code)
+            self.authCodeReceivedSignal.emit(self.access_code)
             return self.access_code
 
 class OAuthLoginHandler(FrameIOLoginHandler):
@@ -109,7 +113,9 @@ class OAuthLoginHandler(FrameIOLoginHandler):
         This method relies on user entering Google Account credentials via Webview
         """
 
-        FrameIOLoginHandler.__init__(self, email)
+        super(FrameIOLoginHandler, self).__init__()
+
+        self.email = email
 
         # A flow_from_clientsecrets object
         self.oauth_flow = None
@@ -126,6 +132,14 @@ class OAuthLoginHandler(FrameIOLoginHandler):
         # The webview widget presented for Google OAuth Session Authentication
         self.webviewWidget = QWebView()
 
+    # A slot to handle the authorisation code when received
+    @Slot(str)
+    def on_access_code_received(self, code):
+        print "SLOT received:" + str(code)
+        self.oauth_access_code = code
+        self.oauth_webview.close()
+        self.handleOAuthFlowStep2()
+
     def prepareWebViewWidgetForGoogleLogin(self):
         f = "/workspace/dotStudio/Python/Startup/frameio_exporter/auth/client_secret.json"
 
@@ -140,18 +154,20 @@ class OAuthLoginHandler(FrameIOLoginHandler):
         authorize_url = self.oauth_flow.step1_get_authorize_url()
 
         # We can pre-populate the email field by appending login_hint
-        authorize_url += '&login_hint=abc@gmail.com'
+        authorize_url += '&login_hint=%s' % self.email
 
         self.oauth_webview = OAuthWebWidget(authorize_url)
         logging.info("Now showing Google WebView...")
         self.oauth_webview.show()
 
+        self.oauth_webview.authCodeReceivedSignal.connect(self.on_access_code_received)
+
     def handleOAuthFlowStep2(self):
         if self.oauth_flow:
-            self.oauth_credentials = self.oauth_flow.step2_exchange(self.accessCode)
+            self.oauth_credentials = self.oauth_flow.step2_exchange(self.oauth_access_code)
             self.http_auth = self.oauth_credentials.authorize(httplib2.Http())
-            self.oauth_values = values = {"email": self.currentEmailText(), "access_token" : self.oauth_credentials.access_token}
-            request = Request('https://api.frame.io/sessions/validate_token', data=json.dumps(values), headers=auth.jsonheader())
+            self.oauth_values = values = {"email": self.email, "access_token" : self.oauth_credentials.access_token}
+            request = Request('https://api.frame.io/sessions/validate_token', data=json.dumps(values), headers=jsonheader())
 
             logging.info("Validating token with frame.io...")
             response_body = urlopen(request).read()
@@ -166,12 +182,15 @@ class OAuthLoginHandler(FrameIOLoginHandler):
             if response_json.has_key("errors"):
                 print "TODO: Handle Error with authentication here"
             elif response_json.has_key("messages"):
-                logging.info("Success message: " + str(response_json['messages']))
+                print "Success message: " + str(response_json['messages'])
                 self.frameio_user_id = response_json['x']
-                self.frameio_token = response_json['y']        
+                self.frameio_token = response_json['y']
+
+                # Emit a Logged in Signal, passing x-y frame.io creds
+                self.loggedInSignal.emit({'user_id': self.frameio_user_id,
+                                          'token'  : self.frameio_token}
+                                        )
     
     def login(self):
         self.prepareWebViewWidgetForGoogleLogin()
 
-        # TO-DO: Get signal from Webview when access code is available, then continue...
-        

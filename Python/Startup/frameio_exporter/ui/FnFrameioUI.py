@@ -370,15 +370,23 @@ class FnFrameioDialog(QtGui.QDialog):
 
         nuke.frameioDelegate.frameioSession.attemptLogin()
 
+        email_type = None
+        if nuke.frameioDelegate.frameioSession.loginHandler:
+            email_type = nuke.frameioDelegate.frameioSession.email_type
 
 
-        print "Email type is:" + email_type
-
-        if email_type == auth.AUTH_MODE_OAUTH:
-            self.prepareWebViewForGoogleLogin()
+        if not email_type:
+            print 'Email type not received...'
+            return
+        else:
+            print "Email type: ", str(email_type)
             return
 
-        elif email_type == auth.AUTH_MODE_EMAIL:
+        if email_type == auth.AUTH_MODE_OAUTH:
+            print "Email type is OAuth"
+            return
+
+        if email_type == auth.AUTH_MODE_EMAIL:
             self.passwordLineEdit.setVisible(True)
 
         if self.passwordLineEdit.isVisible():

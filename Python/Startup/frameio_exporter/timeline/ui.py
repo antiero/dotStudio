@@ -37,9 +37,14 @@ class FnTimelineFrameioMenu(QtGui.QMenu):
         Presents the Frame.io Widget with the active selection of Bin items
         (selection currently not used)
         """
-        selection = activeView().selection()
-        if not selection:
+        view = activeView()
+
+        if not view:
             return
+
+        selection = None
+        if hasattr(view, 'selection'):
+            selection = view.selection()
 
         nuke.frameioDelegate.showFrameioDialogWithSelection(selection=selection)
 
