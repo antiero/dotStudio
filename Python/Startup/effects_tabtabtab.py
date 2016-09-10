@@ -146,6 +146,9 @@ class TabyLineEdit(QtGui.QLineEdit):
             self.cancelled.emit()
             return True
 
+        else:
+            return False
+
 class TabTabTabWidget(QtGui.QDialog):
     def __init__(self, parent = None):
         super(TabTabTabWidget, self).__init__(parent = parent)
@@ -245,6 +248,8 @@ class TabTabTabWidget(QtGui.QDialog):
         if event.type() == QtCore.QEvent.WindowDeactivate:
             self.close()
             return True
+        else:
+            return False            
 
     def update(self, text):
         """On text change, selects first item and updates filter text
