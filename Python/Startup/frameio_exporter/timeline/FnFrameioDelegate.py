@@ -14,11 +14,12 @@ import hiero.core
 import threading
 from hiero.core import ApplicationSettings
 import nuke
-from PySide.QtCore import QCoreApplication
+from PySide.QtCore import QCoreApplication, Slot
 import os, logging
 import webbrowser
 from frameio_exporter.exporters.FnFrameioTranscodeExporter import NukeFrameioFileReferenceTask
 from hiero.core import events
+from frameio_exporter.auth import check_email_type, AUTH_MODE_EMAIL, AUTH_MODE_OAUTH, BasicLoginHandler, OAuthLoginHandler
 
 # This will be used to communicate when a connection change event has occurred.
 events.registerEventType("kFrameioConnectionChanged")
@@ -51,7 +52,7 @@ class FrameioDelegate(object):
         self.frameioMainViewController.usingExportDialog = False
         self.frameioMainViewController.show()
 
-        if not self.frameioSession.sessionAuthenticated:
+        if not self.frameioSession.sessionHasValidCredentials:
             self.frameioMainViewController.showLoginView()
         else:
             self.frameioMainViewController.showUploadView()
@@ -63,30 +64,59 @@ class FrameioDelegate(object):
         self.email = username
         self.appSettings.setValue("FrameioUsername", self.email)
 
+    @Slot(dict)
+    def on_frameio_credentials_received(self, credentialsDict):
+        print "GOT CREDS: " + str(credentialsDict)
+        self.frameioSession.sessionHasValidCredentials = True
+        self.frameioMainViewController.showUploadView()
+
     def attemptLogin(self, email = ''):
-        """Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable"""
+        """
+        Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable
+        """
         print "Attempting login..."
         self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
+
+        if not email:
+            logging.error("No email address was specified. Please try again with an email.")
+            return
 
         # inialise a new Frame.io Session, based on email address
         self.frameioSession = frameio.Session(email)
 
         # A Frame.io Session is constructed via an email address.
         # The loginHandler object of the Session handles the login process.
-        response = self.frameioSession.attemptLogin()
+        print 'Email: ', email
 
-        # We failed to get a response
-        if None in response:
-            self.frameioMainViewController.setStatus(str(response[1][0]))
+        # Initially check the type of email and determine if it's a Google Email...
+        self.frameioSession.email_type = check_email_type(email)
+
+        if self.frameioSession.email_type == AUTH_MODE_EMAIL:
+            self.frameioSession.loginHandler = BasicLoginHandler(email)
+
+        elif self.frameioSession.email_type == AUTH_MODE_OAUTH:
+            self.frameioSession.loginHandler = OAuthLoginHandler(email)
+            self.frameioSession.loginHandler.loggedInSignal.connect(self.on_frameio_credentials_received)
+        else:
+            logging.error("Unable to determine email type")
             return
 
-        events.sendEvent("kFrameioConnectionChanged", None)
+        logging.info('self.email_type: ', self.frameioSession.email_type)
 
-        if self.frameioSession.sessionAuthenticated:
-            self.setUserName(username)
-            self.frameioMainViewController.showUploadView()
+        self.frameioSession.loginHandler.login()
 
-        return True
+        # We failed to get a response
+        # if None in response:
+        #     self.frameioMainViewController.setStatus(str(response[1][0]))
+        #     return
+
+        # events.sendEvent("kFrameioConnectionChanged", None)
+
+        # if self.frameioSession.sessionHasValidCredentials:
+        #     self.setUserName(username)
+        #     self.frameioMainViewController.showUploadView()
+
+        # return True
 
     def getLatestFileReferenceIDForProjectItem(self, item):
         """
@@ -132,14 +162,14 @@ class FrameioDelegate(object):
         """
         Disconnects the current session if authenticated]
         """
-        if self.frameioSession.sessionAuthenticated:
+        if self.frameioSession.sessionHasValidCredentials:
             self.frameioSession.logout()
             events.sendEvent("kFrameioConnectionChanged", None)
 
     def handleConnectionStatusChangeEvent(self, event):
         """Called when a change in the session authentication occurs"""
         self.frameioMainViewController.updateConnectionIndicator()
-        if not self.frameioSession.sessionAuthenticated:
+        if not self.frameioSession.sessionHasValidCredentials:
             self.frameioMainViewController.showLoginView()
    
 
@@ -150,7 +180,7 @@ class FrameioDelegate(object):
         if not os.path.isfile(filePath):
             return
 
-        if self.frameioSession.sessionAuthenticated:
+        if self.frameioSession.sessionHasValidCredentials:
             print "Setting project to be: " + str(project)
             self.frameioSession.setProject(project)
 

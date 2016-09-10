@@ -5,7 +5,6 @@
 This module offers functions for file and data exchange with the frame.io services via python.
 API code contributors Til Strobl (www.movingmedia.de)
 """
-from PySide.QtCore import Slot
 import sys
 import urllib2put
 import json, os, mimetypes, urllib, logging
@@ -13,19 +12,20 @@ from urllib2 import Request, urlopen, HTTPError, URLError
 from frameio_exporter.auth import check_email_type, AUTH_MODE_EMAIL, AUTH_MODE_OAUTH, BasicLoginHandler, OAuthLoginHandler
 
 class Session:
-    """Defines an established frame.io API Connection."""
+    """Defines an established frame.io API User Session."""
     
     def __init__(self, email):
         """A Frame.io session object, constructed via an email address"""
 
         # This is either a Basic or OAuth type of Login handler.
         self.loginHandler = None
-        self.sessionAuthenticated = False
+        self.sessionHasValidCredentials = False
         self.userdata = {}
         self.teams = []
         self.sharedProjects = []
         self.projectid = ""
         self.email_type = None
+        self.email = email
         
     def __str__(self):
         return json.dumps(self.userdata , indent=4, separators=(',', ': ') )
@@ -76,57 +76,10 @@ class Session:
             if projectdict[p] == projectname:
                 self.projectid = p
 
-    def sessionAuthenticated(self):
-        return self.sessionAuthenticated
-
-    def setSessionAuthenticated(self, authenticated):
-        self.sessionAuthenticated = authenticated
-        
-    def attemptLogin(self):
-        """Attempts to Login to Frame.io via the Session's loginHandler"""
-        if not self.email:
-            logging.error("No email address was specified. Please try again with an email.")
-            return
-
-        logging.info('Email: ', self.email)
-
-        # Initially check the type of email and determine if it's a Google Email...
-        self.email_type = check_email_type(self.email)
-
-        if self.email_type == AUTH_MODE_EMAIL:
-            self.loginHandler = BasicLoginHandler(self.email)
-
-        elif self.email_type == AUTH_MODE_OAUTH:
-            self.loginHandler = OAuthLoginHandler(self.email)
-            self.loginHandler.loggedInSignal.connect(self.on_frameio_credentials_received)
-        else:
-            logging.error("Unable to determine email type")
-            return
-
-        logging.info('self.email_type: ', self.email_type)
-
-        authenticated = self.loginHandler.login()
-
-        self.setSessionAuthenticated(authenticated)
-
-    @Slot(dict)
-    def on_frameio_credentials_received(self, credentialsDict):
-        print "GOT CREDS: " + str(credentialsDict)
-
-    def logout(self):
-        """Logout to frame.io."""
-        logging.info('Logging out')
-        self.email = ""
-        self.password = ""
-        self.projectid = ""
-        self.userdata = {}
-        self.setSessionAuthenticated(False)
-        return
-    
     def reloadUserdata(self):
         """Reloads the userdata from the server"""
-        values = {'mid' : self.userid , 't' : self.token }
-        request = Request('https://api.frame.io/users/%s/data' % self.userid, data=json.dumps(values), headers=jsonheader())
+        values = {'mid' : self.loginHandler.frameio_user_id, 't': self.loginHandler.frameio_token }
+        request = Request('https://api.frame.io/users/%s/data' % self.loginHandler.frameio_user_id, data=json.dumps(values), headers=jsonheader())
         response_body = urlopen(request).read()
         self.userdata = json.loads(response_body)
 
@@ -175,7 +128,7 @@ class Session:
         for name in namelist:
             folders[str(i)] = {'name' : name}
             i+=1
-        values = { 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid , 'folders' : folders}
+        values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid , 'folders' : folders}
         request = Request('https://api.frame.io/folders/%s/folders' % folderid , data=json.dumps(values), headers=jsonheader())
         response_body = urlopen(request).read()
         folderdata = json.loads(response_body)
@@ -184,7 +137,7 @@ class Session:
 
     def getFolderdata(self , folderid):
         """Returns the folderdata for the given folderid """
-        values = { 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid }
+        values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid }
         request = Request('https://api.frame.io/folders/%s' % folderid , data=json.dumps(values), headers=jsonheader())
         response_body = urlopen(request).read()
         folderdata = json.loads(response_body)
@@ -209,8 +162,8 @@ class Filereference:
     def __init__(self, filereferenceid, frameiosession):
         """Loads the data for the given id and session on construction. """
         self.filereferenceid = filereferenceid
-        self.userid = frameiosession.getUserid()
-        self.token = frameiosession.getToken()
+        self.loginHandler.frameio_user_id = frameiosession.getUserid()
+        self.loginHandler.frameio_token = frameiosession.getToken()
         self.projectid = frameiosession.getProjectid()
         self.filereferencedata = {}
         self.userdict = {}
@@ -224,8 +177,8 @@ class Filereference:
     
     def loadData(self):
         """Load data for the reference from the server. """
-        logging.info( 'Sending request: https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.filereferenceid , self.userid , self.token , self.projectid ) ) 
-        request = Request('https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.filereferenceid , self.userid , self.token , self.projectid ))
+        logging.info( 'Sending request: https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.filereferenceid , self.loginHandler.frameio_user_id , self.loginHandler.frameio_token , self.projectid ) ) 
+        request = Request('https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.filereferenceid , self.loginHandler.frameio_user_id , self.loginHandler.frameio_token , self.projectid ))
         response_body = urlopen(request).read()
         filereferencedata = json.loads(response_body)
         self.filereferencedata = filereferencedata.get('file_reference', {})
@@ -249,7 +202,7 @@ class Filereference:
     def identifyUsername(self, userid):
         """Returns the username for the given userid """
         if not userid in self.userdict.keys():
-            values = { 'mid' : self.userid , 't' :  self.token }
+            values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token }
             request = Request('https://api.frame.io/projects/%s/collaborators' % self.projectid , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             userdata = json.loads(response_body)
@@ -306,8 +259,8 @@ class Upload:
             self.folderid = frameiosession.getRootfolderkey()
         else:
             self.folderid = folderid
-        self.userid = frameiosession.getUserid()
-        self.token = frameiosession.getToken()
+        self.loginHandler.frameio_user_id = frameiosession.getUserid()
+        self.loginHandler.frameio_token = frameiosession.getToken()
         self.filereferenceid = {}
         self.multipart_urls = {}
         self.filedata = {}
@@ -375,7 +328,7 @@ class Upload:
             file_references[str(i)] = self.filedata[path]
             index[path] = i
             i+=1
-        values = { 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid , 'file_references' : file_references  }
+        values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid , 'file_references' : file_references  }
         request = Request('https://api.frame.io/folders/%s/file_references' % self.folderid, data=json.dumps(values), headers=jsonheader())
         response_body = urlopen(request).read()
         uploaddata = json.loads(response_body)
@@ -397,7 +350,7 @@ class Upload:
         in_file.seek(offset)
         datachunk = in_file.read( self.chunksize() )
         in_file.close()
-        values = { 'part_num' : partindex , 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid  }
+        values = { 'part_num' : partindex , 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid  }
         try:
             urllib2put.put(urllib.unquote( url ), datachunk, self.filedata[path]['filetype'])
             request = Request('https://api.frame.io/file_references/%s/part_complete' %  self.filereferenceid[path], data=json.dumps(values), headers=jsonheader())
@@ -422,7 +375,7 @@ class Upload:
             return False
         else:
             logging.info( 'Merging parts' ) 
-            values = { 'num_parts' : 'dummy' , 'upload_id' : 'dummy' , 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid }
+            values = { 'num_parts' : 'dummy' , 'upload_id' : 'dummy' , 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid }
             request = Request('https://api.frame.io/file_references/%s/merge_parts' % self.filereferenceid[path] , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             responsedata = json.loads(response_body)
@@ -436,7 +389,7 @@ class Upload:
             return False
         else:
             logging.info( 'Starting worker thread' ) 
-            values = { 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid , 'process' : 'new-upload' , 'file_reference_id' : self.filereferenceid[path]  }
+            values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid , 'process' : 'new-upload' , 'file_reference_id' : self.filereferenceid[path]  }
             request = Request('https://api.frame.io/worker/create_job' , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             responsedata = json.loads(response_body)
@@ -450,7 +403,7 @@ class Upload:
             return False
         else:
             file_references = {'0' : { 'id' : self.filereferenceid[path] }}
-            values = { 'mid' : self.userid , 't' :  self.token , 'aid' : self.projectid , 'file_references' : file_references }
+            values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid , 'file_references' : file_references }
             request = Request('https://api.frame.io/folders/%s/file_references/delete' % self.folderid , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             responsedata = json.loads(response_body)

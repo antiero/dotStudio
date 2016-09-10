@@ -36,7 +36,7 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     if not nuke.frameioDelegate.frameioMainViewController.usingExportDialog:
         return
 
-    if nuke.frameioDelegate.frameioSession.sessionAuthenticated:
+    if nuke.frameioDelegate.frameioSession.sessionHasValidCredentials:
         username = nuke.frameioDelegate.username
         self.frameIOLoginLogoutButton.setText("Logout...")
         self.frameIOConnectionStatusLabel.setText("Connected (%s)" % username)
@@ -146,7 +146,7 @@ class FrameioTranscodeExporterUI(FnExternalRenderUI.NukeRenderTaskUI):
     if self.frameIOLoginLogoutButton.text() == "Login...":
         if self.frameioWidget.exec_():
 
-            if not nuke.frameioDelegate.frameioSession.sessionAuthenticated:
+            if not nuke.frameioDelegate.frameioSession.sessionHasValidCredentials:
                 self.frameioWidget.showLoginView()
             else:
                 self.frameioWidget.showUploadView()

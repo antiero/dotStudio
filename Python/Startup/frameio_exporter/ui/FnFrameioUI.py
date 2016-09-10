@@ -122,6 +122,8 @@ class FnFrameioDialog(QtGui.QDialog):
         if self.email:
             self.emailLineEdit.setText(self.email)
 
+        self.emailLineEdit.setText("")
+
         # Validator for checking email address is valid
         namerx = QRegExp("\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,4}\\b")
         namerx.setCaseSensitivity(Qt.CaseInsensitive);
@@ -261,12 +263,10 @@ class FnFrameioDialog(QtGui.QDialog):
         self.setLayout(layout)
         self.emailLineEdit.setFocus()
 
-
-
     def updateConnectionIndicator(self):
         """Updates the frame.io session authenticated indicator label"""
 
-        if nuke.frameioDelegate.frameioSession.sessionAuthenticated:
+        if nuke.frameioDelegate.frameioSession.sessionHasValidCredentials:
             print "Frame.io session connected!"
             self.connectionIndicatorLabel.setText('Connected (%s)' % nuke.frameioDelegate.username )
             self.logoutToolBarAction.setVisible(True)
@@ -363,12 +363,9 @@ class FnFrameioDialog(QtGui.QDialog):
 
     def _submitButtonPressed(self):
         """Called when Submit button is pressed."""
-        emailText = self.emailLineEdit.text()
+        email = self.currentEmailText()
 
-        # Create a new Frame.io Session Object
-        nuke.frameioDelegate.frameioSession.email = emailText
-
-        nuke.frameioDelegate.frameioSession.attemptLogin()
+        nuke.frameioDelegate.attemptLogin(email)
 
         email_type = None
         if nuke.frameioDelegate.frameioSession.loginHandler:

@@ -163,7 +163,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
 
   def startTask(self):   
     # For Clips which are already QuickTime movies, we should just upload them without Transcoding...
-    if not nuke.frameioDelegate.frameioSession.sessionAuthenticated:
+    if not nuke.frameioDelegate.frameioSession.sessionHasValidCredentials:
       msg = "Please Log in to Frame.io before Exporting"
       self.setError(msg)
       print msg
@@ -311,7 +311,7 @@ class FrameioTranscodeExporter(FnTranscodeExporter.TranscodeExporter):
           print "Output file could not be found. Frame.io upload not possible."
           return
 
-      if nuke.frameioDelegate.frameioSession.sessionAuthenticated:
+      if nuke.frameioDelegate.frameioSession.sessionHasValidCredentials:
           nuke.frameioDelegate.frameioSession.setProject(project)
 
       # TO-DO: If a project item is passed with an existing fileReferenceID, check if the fileref exists
