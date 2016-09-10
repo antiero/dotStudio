@@ -36,7 +36,7 @@ class BasicLoginHandler(FrameIOLoginHandler):
         """
         A Frame.io login handled via username and password method.
         """
-        FrameIOLoginHandler.__init__(self, email)
+        super(FrameIOLoginHandler, self).__init__()
         self.frameio_password = ""
 
     def login(self):
