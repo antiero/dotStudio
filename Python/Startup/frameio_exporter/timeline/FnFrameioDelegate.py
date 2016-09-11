@@ -112,7 +112,7 @@ class FrameioDelegate(object):
             return
 
         # Connect loginHandler up to handle login success
-        if self.frameiosession.loginHandler:
+        if self.frameioSession.loginHandler:
             self.frameioSession.loginHandler.loggedInSignal.connect(self.on_frameio_credentials_received)
 
         logging.info('self.email_type: ', self.frameioSession.email_type)
