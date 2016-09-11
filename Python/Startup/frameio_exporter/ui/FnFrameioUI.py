@@ -3,7 +3,7 @@ UI elements for interaction with Frame.io from within Nuke Studio
 """
 from PySide import QtGui
 from PySide.QtWebKit import QWebView
-from PySide.QtCore import Qt, QUrl, QRegExp, QSize
+from PySide.QtCore import Qt, QUrl, QRegExp, QSize, Slot
 from frameio_exporter.core import frameio
 from frameio_exporter.ui import createMenuAction
 from frameio_exporter.core.paths import gIconPath
@@ -346,8 +346,17 @@ class FnFrameioDialog(QtGui.QDialog):
         else:
             self.close()
 
+    def showPasswordField(self):
+        self.passwordLineEdit.setVisible(True)
+
+    def hidePasswordField():
+        self.passwordLineEdit.setVisible(False)
+
     def currentEmailText(self):
         return self.emailLineEdit.text()
+
+    def currentPasswordText(self):
+        return self.passwordLineEdit.text()
 
     def _refreshProjectList(self):
         # Refreshes the user data
@@ -383,11 +392,8 @@ class FnFrameioDialog(QtGui.QDialog):
             print "Email type is OAuth"
             return
 
-        if email_type == auth.AUTH_MODE_EMAIL:
-            self.passwordLineEdit.setVisible(True)
-
         if self.passwordLineEdit.isVisible():
-            passwordText = self.passwordLineEdit.text()
+            self.password = self.passwordLineEdit.text()
         res = self.nameval.validate(emailText, 0)
 
         if res[0] != QtGui.QValidator.State.Acceptable:

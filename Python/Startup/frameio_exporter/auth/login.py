@@ -32,26 +32,36 @@ class FrameIOLoginHandler(QObject):
 
 
 class BasicLoginHandler(FrameIOLoginHandler):
+    
+    # Signal to notify UI that a Password needs to be supplied
+    passwordRequiredSignal = Signal()
+
     def __init__(self, email):
         """
         A Frame.io login handled via username and password method.
         """
         super(FrameIOLoginHandler, self).__init__()
         self.frameio_password = ""
+        self.frameio_email = email
 
     def login(self):
         """
         Log in via Username-Password method. 
         Returns True if login successful, False otherwise.
         """
+        print "Attempting login with password: " + str(self.frameio_password)
         if not self.frameio_email or not self.frameio_password:
             print "Both Email and password must be specified"
-            return False
+            self.passwordRequiredSignal.emit()
+            return
 
-        logging.info('Logging in as ' + username )
+        logging.info('Logging in as ' + self.frameio_email )
         values = {'a' : self.frameio_email , 'b' : self.frameio_password}
         request = Request('https://api.frame.io/login', data=json.dumps(values), headers=jsonheader())
         response_body = urlopen(request).read()
+
+        print response_body
+
         logindata = json.loads(response_body)
         if logindata.has_key("errors"):
             logging.error("login: %s"%(logindata["errors"]))
@@ -69,7 +79,11 @@ class BasicLoginHandler(FrameIOLoginHandler):
         # Store the useful bits for obtaining data (user_id + token)
         self.frameio_user_id = logindata['x']
         self.frameio_token = logindata['y']
-        return True
+
+        # Emit a Logged in Signal, passing x-y frame.io creds
+        self.loggedInSignal.emit({'user_id': self.frameio_user_id,
+                                  'token'  : self.frameio_token}
+                                )
 
 
 class OAuthWebWidget(QWebView):
@@ -87,8 +101,6 @@ class OAuthWebWidget(QWebView):
 
         QWebView.__init__(self)
         self.URL = QUrl.fromPercentEncoding(str(authorize_url))
-
-        print "Setting url to be:" + str(self.URL)
         self.setUrl(self.URL)
 
         self.titleChanged.connect(self.handleTitleChange)

@@ -70,6 +70,12 @@ class FrameioDelegate(object):
         self.frameioSession.sessionHasValidCredentials = True
         self.frameioMainViewController.showUploadView()
 
+    @Slot(dict)
+    def on_password_required(self):
+        print "No password. Show password"
+        self.frameioSession.sessionHasValidCredentials = True
+        self.frameioMainViewController.showPasswordField()
+
     def attemptLogin(self, email = ''):
         """
         Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable
@@ -93,30 +99,26 @@ class FrameioDelegate(object):
 
         if self.frameioSession.email_type == AUTH_MODE_EMAIL:
             self.frameioSession.loginHandler = BasicLoginHandler(email)
+            password = self.frameioMainViewController.currentPasswordText()
+            if not password or len(password)<6: 
+                self.frameioSession.loginHandler.passwordRequiredSignal.connect(self.on_password_required)
+            else:
+                self.frameioSession.loginHandler.frameio_password = password
 
         elif self.frameioSession.email_type == AUTH_MODE_OAUTH:
             self.frameioSession.loginHandler = OAuthLoginHandler(email)
-            self.frameioSession.loginHandler.loggedInSignal.connect(self.on_frameio_credentials_received)
         else:
             logging.error("Unable to determine email type")
             return
+
+        # Connect loginHandler up to handle login success
+        if self.frameiosession.loginHandler:
+            self.frameioSession.loginHandler.loggedInSignal.connect(self.on_frameio_credentials_received)
 
         logging.info('self.email_type: ', self.frameioSession.email_type)
 
         self.frameioSession.loginHandler.login()
 
-        # We failed to get a response
-        # if None in response:
-        #     self.frameioMainViewController.setStatus(str(response[1][0]))
-        #     return
-
-        # events.sendEvent("kFrameioConnectionChanged", None)
-
-        # if self.frameioSession.sessionHasValidCredentials:
-        #     self.setUserName(username)
-        #     self.frameioMainViewController.showUploadView()
-
-        # return True
 
     def getLatestFileReferenceIDForProjectItem(self, item):
         """
