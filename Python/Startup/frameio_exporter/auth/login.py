@@ -1,6 +1,6 @@
 # auth.login - objects for handling authentication with frame.io
 from PySide.QtWebKit import QWebView
-from PySide.QtCore import QObject, QUrl, Signal, Slot
+from PySide.QtCore import Qt, QObject, QUrl, Signal, Slot
 import urllib2
 import json
 from urllib2 import Request, urlopen
@@ -106,6 +106,8 @@ class OAuthWebWidget(QWebView):
         self.titleChanged.connect(self.handleTitleChange)
 
         self.load(self.URL)
+
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Popup)
 
     def handleTitleChange(self, title):
         # The code We want to generate an oauth2 access token is contained in the title of the HTML page.

@@ -11,21 +11,53 @@ import json, os, mimetypes, urllib, logging
 from urllib2 import Request, urlopen, HTTPError, URLError
 from frameio_exporter.auth import check_email_type, AUTH_MODE_EMAIL, AUTH_MODE_OAUTH, BasicLoginHandler, OAuthLoginHandler
 
-class Session:
+class UserSession:
     """Defines an established frame.io API User Session."""
     
     def __init__(self, email):
-        """A Frame.io session object, constructed via an email address"""
+        """
+        A Frame.io User Session object, constructed via an email address.
+        A UserSession has a LoginHandler object, to handle authentication
+        """
+
+        # A UserSession is initialised with an Email address
+        self.email = email
 
         # This is either a Basic or OAuth type of Login handler.
         self.loginHandler = None
         self.sessionHasValidCredentials = False
-        self.userdata = {}
-        self.teams = []
-        self.sharedProjects = []
-        self.projectid = ""
+
+        # The Email type is either google or non-google, determines which LoginHandler to use
         self.email_type = None
-        self.email = email
+        
+
+        # This is a Dictionary of userdata,
+        #Request('https://api.frame.io/users/user_id/data', data=values, headers=headers)
+        self.userdata = {}
+
+        # This needs to be refactored - a User can access multiple Projects
+        self.projectid = ""
+
+        # Data pertaining to the User
+        self.name = ""
+        self.first_name = ""
+        self.last_name = ""
+        self.link = ""
+        self.location = ""
+        self.bio = ""
+        self.profile_image = ""
+        self.role = ""
+
+        # A user owns at least one team. 
+        # Each team owns 0 or more projects. 
+        # From either a user or project or team object you can always retrieve it´s relationship. 
+        # The most interesting attributes in the teams array are: 
+        #   members - Get basic data of all users that participate in the team.
+        #   projects- Contains the root_folder_key required for uploads to the top level folder.
+        #   account - Compare the plan_data with the usage_data to check if a exceeds the account limits.
+        self.teams = {}
+        self.shared_projects = {}
+
         
     def __str__(self):
         return json.dumps(self.userdata , indent=4, separators=(',', ': ') )
@@ -34,15 +66,19 @@ class Session:
         """Returns the user user name. """
         return self.email
         
-    def getUserid(self):
-        """Returns the user user id. """
+    def get_user_id(self):
+        """
+        Gets the current user id from the loginHandler.
+        """
         return self.loginHandler.frameio_user_id
         
-    def getToken(self):
-        """Returns the user token. """
+    def get_token(self):
+        """
+        Gets the current user token from the loginHandler. 
+        """
         return self.loginHandler.frameio_token
         
-    def getRootfolderkey(self, projectid = ''):
+    def get_root_folder_key(self, projectid = ''):
         """Returns the root folder key for the given projectid or the current project of the session. """
         if projectid == '':
             projectid = self.projectid
@@ -50,7 +86,7 @@ class Session:
             if p['id'] == projectid:
                 return p['root_folder_key']
     
-    def getProjectname(self):
+    def get_project_name(self):
         """Returns the current project name. """
         return self.projectdict()[self.projectid]
 
@@ -61,7 +97,7 @@ class Session:
         members = self.userdata['user']['teams'][teamindex][members]
         return members
     
-    def getProjectid(self):
+    def get_project_id(self):
         """Returns the current project id. """
         return self.projectid
     
@@ -122,7 +158,7 @@ class Session:
             list: Dataobjects of the folders created
         """
         if folderid == '':
-            folderid = self.getRootfolderkey()
+            folderid = self.get_root_folder_key()
         folders = {}
         i = 0
         for name in namelist:
@@ -151,58 +187,58 @@ class Session:
             subfolders[folder['id']] = folder['name']
         return subfolders
 
-    def getFilereference(self, filereferenceid):
-        """Returns data for the given filereferenceid"""
-        filereference = Filereference(filereferenceid,self)
-        return filereference
+    def getFileReference(self, FileReferenceID):
+        """Returns data for the given FileReferenceID"""
+        FileReference = FileReference(FileReferenceID,self)
+        return FileReference
      
-class Filereference:
-    """Represents an Filereference data object within an established frame.io session"""
+class FileReference:
+    """Represents an FileReference data object within an established frame.io session"""
 
-    def __init__(self, filereferenceid, frameiosession):
+    def __init__(self, FileReferenceID, frameiosession):
         """Loads the data for the given id and session on construction. """
-        self.filereferenceid = filereferenceid
-        self.loginHandler.frameio_user_id = frameiosession.getUserid()
-        self.loginHandler.frameio_token = frameiosession.getToken()
-        self.projectid = frameiosession.getProjectid()
-        self.filereferencedata = {}
+        self.FileReferenceID = FileReferenceID
+        self.user_id = frameiosession.get_user_id()
+        self.token = frameiosession.get_token()
+        self.projectid = frameiosession.get_project_id()
+        self.FileReferencedata = {}
         self.userdict = {}
-        self.userdict[frameiosession.getUserid()] = frameiosession.getUsername()
+        self.userdict[frameiosession.get_user_id()] = frameiosession.getUsername()
         self.messages = []
         self.errors = []
         self.loadData()
         
     def __str__(self):
-        return json.dumps(self.filereferencedata, indent=4, separators=(',', ': ') )
+        return json.dumps(self.FileReferencedata, indent=4, separators=(',', ': ') )
     
     def loadData(self):
         """Load data for the reference from the server. """
-        logging.info( 'Sending request: https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.filereferenceid , self.loginHandler.frameio_user_id , self.loginHandler.frameio_token , self.projectid ) ) 
-        request = Request('https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.filereferenceid , self.loginHandler.frameio_user_id , self.loginHandler.frameio_token , self.projectid ))
+        logging.info( 'Sending request: https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.FileReferenceID , self.user_id, self.token, self.projectid ) ) 
+        request = Request('https://api.frame.io/file_references/%s?mid=%s&t=%s&aid=%s' % (self.FileReferenceID , self.user_id, self.token, self.projectid ))
         response_body = urlopen(request).read()
-        filereferencedata = json.loads(response_body)
-        self.filereferencedata = filereferencedata.get('file_reference', {})
-        if 'messages' in filereferencedata.keys():
-            self.messages = filereferencedata['messages']
-        if 'errors' in filereferencedata.keys():
-            self.errors = filereferencedata['errors']
+        FileReferencedata = json.loads(response_body)
+        self.FileReferencedata = FileReferencedata.get('file_reference', {})
+        if 'messages' in FileReferencedata.keys():
+            self.messages = FileReferencedata['messages']
+        if 'errors' in FileReferencedata.keys():
+            self.errors = FileReferencedata['errors']
 
     def getData(self):
-        """Returns the data for the filereference """
-        return self.filereferencedata
+        """Returns the data for the FileReference """
+        return self.FileReferencedata
     
     def getSize(self):
-        """Returns the size stored in the filereferencedata """
-        return int(self.filereferencedata['filesize'].split('.')[0])
+        """Returns the size stored in the FileReferencedata """
+        return int(self.FileReferencedata['filesize'].split('.')[0])
     
     def exists(self):
-        """Returns True if the filereference exists on the server"""
-        return self.filereferencedata != {}
+        """Returns True if the FileReference exists on the server"""
+        return self.FileReferencedata != {}
     
     def identifyUsername(self, userid):
         """Returns the username for the given userid """
         if not userid in self.userdict.keys():
-            values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token }
+            values = { 'mid' : self.user_id, 't' :  self.token }
             request = Request('https://api.frame.io/projects/%s/collaborators' % self.projectid , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             userdata = json.loads(response_body)
@@ -216,7 +252,7 @@ class Filereference:
         commentdict = {}
         if self.errors != []:
             return False
-        comments = self.filereferencedata['comments']
+        comments = self.FileReferencedata['comments']
         for comment in comments:
             timestamp = float(comment['timestamp'])
             username = self.identifyUsername( comment['master_key'] )
@@ -254,14 +290,14 @@ class Upload:
         self.filepaths = filepaths
 
         logging.info("Upload: Got filepaths: %s" % self.filepaths)
-        self.projectid = frameiosession.getProjectid()
+        self.projectid = frameiosession.get_project_id()
         if folderid == '':
-            self.folderid = frameiosession.getRootfolderkey()
+            self.folderid = frameiosession.get_root_folder_key()
         else:
             self.folderid = folderid
-        self.loginHandler.frameio_user_id = frameiosession.getUserid()
-        self.loginHandler.frameio_token = frameiosession.getToken()
-        self.filereferenceid = {}
+        self.user_id = frameiosession.get_user_id()
+        self.token = frameiosession.get_token()
+        self.FileReferenceID = {}
         self.multipart_urls = {}
         self.filedata = {}
         
@@ -271,7 +307,7 @@ class Upload:
     def upload(self):
         """Invokes all steps to upload all the files given at construction """
         self.inspectfiles()
-        self.filereference()
+        self.FileReference()
         for path in self.multipart_urls.keys():
             for i in xrange( self.getPartcount(path) ):
                 self.uploadpart(path,i)
@@ -282,9 +318,9 @@ class Upload:
         """Returns the count of the uploadparts for the given file """
         return self.filedata[path]['parts']
     
-    def getFilereferenceid(self, path):
-        """Returns the count of the filereferenceid for the given file """
-        return self.filereferenceid[path]
+    def getFileReferenceID(self, path):
+        """Returns the count of the FileReferenceID for the given file """
+        return self.FileReferenceID[path]
 
     def chunksize(self):
         """Returns the chunksize for multipart upload """
@@ -317,9 +353,9 @@ class Upload:
         for path in self.filepaths:
             self.inspectfile(path)
         
-    def filereference(self):
-        """Creates the filereferences on the server for all the files to upload.
-        Returns a filereference dictionary, e.g. {'/path/to/movie.mov': u'TiEXNSDx'}
+    def FileReference(self):
+        """Creates the FileReferences on the server for all the files to upload.
+        Returns a FileReference dictionary, e.g. {'/path/to/movie.mov': u'TiEXNSDx'}
         """
         file_references = {}
         index = {}
@@ -328,19 +364,19 @@ class Upload:
             file_references[str(i)] = self.filedata[path]
             index[path] = i
             i+=1
-        values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid , 'file_references' : file_references  }
+        values = { 'mid' : self.user_id , 't' :  self.token , 'aid' : self.projectid , 'file_references' : file_references  }
         request = Request('https://api.frame.io/folders/%s/file_references' % self.folderid, data=json.dumps(values), headers=jsonheader())
         response_body = urlopen(request).read()
         uploaddata = json.loads(response_body)
         logging.info(uploaddata.get('messages' , [''])[0])
         for path in self.filedata.keys():
             self.multipart_urls[path] = uploaddata['file_references'][ index[path] ]['multipart_urls']
-            self.filereferenceid[path] = uploaddata['file_references'][ index[path] ]['id']
+            self.FileReferenceID[path] = uploaddata['file_references'][ index[path] ]['id']
 
-        # Til's code originally returned the uploaddata but we're more interested in returnin the filereference 
+        # Til's code originally returned the uploaddata but we're more interested in returnin the FileReference 
         #return uploaddata
 
-        return self.filereferenceid
+        return self.FileReferenceID
         
     def uploadpart(self, path, partindex):
         """Uploads the given part of the given file. """
@@ -350,10 +386,10 @@ class Upload:
         in_file.seek(offset)
         datachunk = in_file.read( self.chunksize() )
         in_file.close()
-        values = { 'part_num' : partindex , 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid  }
+        values = { 'part_num' : partindex , 'mid' : self.user_id , 't' :  self.frameio_token , 'aid' : self.projectid  }
         try:
             urllib2put.put(urllib.unquote( url ), datachunk, self.filedata[path]['filetype'])
-            request = Request('https://api.frame.io/file_references/%s/part_complete' %  self.filereferenceid[path], data=json.dumps(values), headers=jsonheader())
+            request = Request('https://api.frame.io/file_references/%s/part_complete' %  self.FileReferenceID[path], data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             responsedata = json.loads(response_body)
             logging.info(responsedata.get('messages' , [''])[0])
@@ -361,22 +397,22 @@ class Upload:
             return True
         except (URLError, KeyError) as c:
             logging.info('upload failed for ' + path + ': ' + url)
-            logging.info('https://api.frame.io/file_references/%s/part_complete' %  self.filereferenceid[path] )
+            logging.info('https://api.frame.io/file_references/%s/part_complete' %  self.FileReferenceID[path] )
             logging.info(json.dumps(values , indent=4, separators=(',', ': ') ))
             logging.info(self.filedata[path]['filetype'] + ' ' + urllib.unquote( url ))
             logging.info(c)
-            self.filereferenceid.pop(path)
+            self.FileReferenceID.pop(path)
             return False
             
     def mergeparts(self, path):
         """Merges all the parts for a given file. """
-        if not path in self.filereferenceid.keys():
+        if not path in self.FileReferenceID.keys():
             print "mergeparts returning False"
             return False
         else:
             logging.info( 'Merging parts' ) 
-            values = { 'num_parts' : 'dummy' , 'upload_id' : 'dummy' , 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid }
-            request = Request('https://api.frame.io/file_references/%s/merge_parts' % self.filereferenceid[path] , data=json.dumps(values), headers=jsonheader())
+            values = { 'num_parts' : 'dummy' , 'upload_id' : 'dummy' , 'mid' : self.user_id , 't' :  self.token , 'aid' : self.projectid }
+            request = Request('https://api.frame.io/file_references/%s/merge_parts' % self.FileReferenceID[path] , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             responsedata = json.loads(response_body)
             logging.info(responsedata.get('messages' , [''])[0])
@@ -384,12 +420,12 @@ class Upload:
         
     def workerthread(self, path):
         """Starts the worker thread for the given file """
-        if not path in self.filereferenceid.keys():
+        if not path in self.FileReferenceID.keys():
             print "workerthread returning False"
             return False
         else:
             logging.info( 'Starting worker thread' ) 
-            values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid , 'process' : 'new-upload' , 'file_reference_id' : self.filereferenceid[path]  }
+            values = { 'mid' : self.user_id , 't' :  self.token , 'aid' : self.projectid , 'process' : 'new-upload' , 'file_reference_id' : self.FileReferenceID[path]  }
             request = Request('https://api.frame.io/worker/create_job' , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             responsedata = json.loads(response_body)
@@ -398,12 +434,12 @@ class Upload:
         
     def cancel(self, path):
         """Cancels the upload for the given file. """
-        if not path in self.filereferenceid.keys():
+        if not path in self.FileReferenceID.keys():
             print "cancel returning False"
             return False
         else:
-            file_references = {'0' : { 'id' : self.filereferenceid[path] }}
-            values = { 'mid' : self.loginHandler.frameio_user_id , 't' :  self.loginHandler.frameio_token , 'aid' : self.projectid , 'file_references' : file_references }
+            file_references = {'0' : { 'id' : self.FileReferenceID[path] }}
+            values = { 'mid' : self.user_id , 't' :  self.token , 'aid' : self.projectid , 'file_references' : file_references }
             request = Request('https://api.frame.io/folders/%s/file_references/delete' % self.folderid , data=json.dumps(values), headers=jsonheader())
             response_body = urlopen(request).read()
             responsedata = json.loads(response_body)
@@ -421,7 +457,8 @@ def uploadlist(path):
         uploadlist.append(os.path.abspath(l))
 
     return uploadlist
-     
+
+# ANT: Command line mode will now not work as we can't do OAuth Login from command-line
 if __name__=="__main__":
     import argparse
     p=argparse.ArgumentParser()
@@ -434,7 +471,7 @@ if __name__=="__main__":
     p.add_argument("-upload",action="store",
                     help=u"uploadlist as file in txt format")
     p.add_argument("-comments",action="store",
-                    help=u"print comments for given filereferenceid")
+                    help=u"print comments for given FileReferenceID")
     p.add_argument("-csv",action="store",
                     help=u"store comments in given csv file")
     p.add_argument("--log",action="store_true",
@@ -455,7 +492,7 @@ if __name__=="__main__":
     pw = args.pw
     project = args.p 
 
-    frameiosession = Session(user , pw)
+    frameiosession = UserSession(email)
     frameiosession.setProjectid(project)
     
     if args.upload != None:
@@ -463,9 +500,9 @@ if __name__=="__main__":
         upload = Upload( uploads , frameiosession )
         upload.upload()
     if args.comments != None:
-        filereferenceid = args.comments
-        filereference = frameiosession.getFilereference(filereferenceid)
+        FileReferenceID = args.comments
+        FileReference = frameiosession.getFileReference(FileReferenceID)
         if args.csv != None:
-            filereference.writeCommentcsv(args.csv)
+            FileReference.writeCommentcsv(args.csv)
         else:
-            print filereference.getComments()
+            print FileReference.getComments()

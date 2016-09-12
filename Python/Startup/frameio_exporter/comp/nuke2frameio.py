@@ -42,7 +42,7 @@ def login(username = '', project = ''):
     if result:
         user = p.value('Username')
         pw = p.value('Password')
-        frameiosession = frameio.Session(user,pw)
+        frameiosession = frameio.UserSession(user,pw)
         if frameiosession.getEligibility() == 'user-non-google':
             if project:
                 frameiosession.setProject(project)

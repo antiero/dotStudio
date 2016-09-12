@@ -3,7 +3,7 @@ UI elements for interaction with Frame.io from within Nuke Studio
 """
 from PySide import QtGui
 from PySide.QtWebKit import QWebView
-from PySide.QtCore import Qt, QUrl, QRegExp, QSize, Slot
+from PySide.QtCore import Qt, QUrl, QRegExp, QSize, Signal, Slot
 from frameio_exporter.core import frameio
 from frameio_exporter.ui import createMenuAction
 from frameio_exporter.core.paths import gIconPath
@@ -25,12 +25,15 @@ class FnFrameioDialog(QtGui.QDialog):
     A shared Frame.io dialog for handling authentication and interaction with Frame.io
     """
 
+    userLoggedOutSignal = Signal()
+
     eStatusCheckEmail = "Checking E-mail."
     eStatusCheckCredentials = "Checking user login credentials."
     eStatusEmailInvalid = "Not a valid E-mail."
     eStatusGmailUnsupported =  "Google Accounts not currently supported."
     eStatusPasswordInvalid =  "Please enter a valid password."
     eStatusLoggingIn = "Logging in..."
+    eStatusLoggedIn = "Logged In"
     eConnectionError = "Connection error. Check internet access!"
 
     def __init__(self, email=None, usingExportDialog=False):
@@ -166,37 +169,41 @@ class FnFrameioDialog(QtGui.QDialog):
         self.stackView.addWidget(self.loginView)
 
         ### TO-DO - handle uploading of Clips via drag-drop into a dropzone
-        # self.uploadDropzoneView = QtGui.QWidget()
-        # self.uploadDropzoneView.setAcceptDrops(True) # Not hooked up.
+        self.uploadFilesView = QtGui.QWidget()
+        self.uploadFilesView.setAcceptDrops(True) # Not hooked up.
 
-        # self.uploadDropzoneLayout = QtGui.QVBoxLayout(self)
-        # self.uploadDropzoneLayout.setAlignment(Qt.AlignCenter)
+        self.uploadDropzoneLayout = QtGui.QVBoxLayout(self)
+        self.uploadDropzoneLayout.setAlignment(Qt.AlignCenter)
 
-        # pixmap = QtGui.QPixmap(os.path.join(gIconPath, "uploadDropzone-64px.png"))
-        # uploadIcon = QtGui.QLabel("")
-        # uploadIcon.setPixmap(pixmap)
-        # uploadIcon.setAlignment(Qt.AlignCenter)
-        # self.uploadDropzoneLayout.addWidget(uploadIcon)
+        pixmap = QtGui.QPixmap(os.path.join(gIconPath, "uploadDropzone-64px.png"))
+        uploadIcon = QtGui.QLabel("")
+        uploadIcon.setPixmap(pixmap)
+        uploadIcon.setAlignment(Qt.AlignCenter)
+        self.uploadDropzoneLayout.addWidget(uploadIcon)
 
-        # self.uploadDropzoneLabel1 = QtGui.QLabel("Upload your files")
-        # self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
-        # self.uploadDropzoneLabel1.setFont(font)
-        # self.uploadDropzoneLabel2 = QtGui.QLabel("Drag 'n Drop your files or Clips/Sequences here.")
-        # self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
-        # self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel1)
-        # font.setPointSize(16)
-        # self.uploadDropzoneLabel2.setFont(font)
-        # self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel2)
+        self.uploadDropzoneLabel1 = QtGui.QLabel("Upload your files")
+        self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
+        self.uploadDropzoneLabel1.setFont(font)
+        self.uploadDropzoneLabel2 = QtGui.QLabel("Or choose files from picker...")
+        self.uploadDropzoneLabel1.setAlignment(Qt.AlignCenter)
+        self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel1)
+        font.setPointSize(16)
+        self.uploadDropzoneLabel2.setFont(font)
+        self.uploadDropzoneLayout.addWidget(self.uploadDropzoneLabel2)
 
-        # self.uploadDropzoneView.setLayout(self.uploadDropzoneLayout)
-        # self.stackView.addWidget(self.uploadDropzoneView)
+        self.selectFilesButton = QtGui.QPushButton("Choose Files...")
+        self.selectFilesButton.clicked.connect(self.showFilePicker)
+        self.uploadDropzoneLayout.addWidget(self.selectFilesButton)
 
-        ### View to handle uploading of Clips and Timelines View
-        self.uploadView = QtGui.QWidget()
-        self.uploadView.setStyleSheet('QPushButton {width: 100px; height: 100px; border-width: 0px; border-radius: 50px; border-style: solid; background-color: #9974BA; color: white;}')
+        self.uploadFilesView.setLayout(self.uploadDropzoneLayout)
+        self.stackView.addWidget(self.uploadFilesView)
 
-        self.uploadViewLayout = QtGui.QVBoxLayout(self)
-        self.uploadViewLayout.setAlignment(Qt.AlignCenter)
+        ### View to handle uploading into a Project
+        self.projectUploadView = QtGui.QWidget()
+        self.projectUploadView.setStyleSheet('QPushButton {width: 100px; height: 100px; border-width: 0px; border-radius: 50px; border-style: solid; background-color: #9974BA; color: white;}')
+
+        self.projectUploadViewLayout = QtGui.QVBoxLayout(self)
+        self.projectUploadViewLayout.setAlignment(Qt.AlignCenter)
 
         self.uploadTopButtonWidget = QtGui.QWidget()
         self.uploadTopButtonLayout = QtGui.QHBoxLayout(self)
@@ -244,15 +251,16 @@ class FnFrameioDialog(QtGui.QDialog):
         self.projectRefreshButton.setStyleSheet('QPushButton {width: 50px; height: 50px; border-width: 0px; border-radius: 25px; border-style: solid; background-color: #767C8E; color: white;}')
         self.projectRefreshButton.clicked.connect(self._refreshProjectList)
         self.projectWidgetLayout.addWidget(self.projectDropdown)
-        self.projectWidgetLayout.addWidget(self.projectRefreshButton)
+
+        #self.projectWidgetLayout.addWidget(self.projectRefreshButton)
         self.projectWidget.setLayout(self.projectWidgetLayout)
 
-        self.uploadViewLayout.addWidget(self.projectWidget)
-        self.uploadViewLayout.addWidget(self.uploadBottomButtonWidget)
+        self.projectUploadViewLayout.addWidget(self.projectWidget)
+        self.projectUploadViewLayout.addWidget(self.uploadBottomButtonWidget)
 
-        self.uploadView.setLayout(self.uploadViewLayout)
+        self.projectUploadView.setLayout(self.projectUploadViewLayout)
 
-        self.stackView.addWidget(self.uploadView)
+        self.stackView.addWidget(self.projectUploadView)
 
         sizeGrip = QtGui.QSizeGrip(self)
         sizeGrip.setStyleSheet("QSizeGrip { height:12px; }")
@@ -263,12 +271,23 @@ class FnFrameioDialog(QtGui.QDialog):
         self.setLayout(layout)
         self.emailLineEdit.setFocus()
 
+    def showFilePicker(self):
+        """
+        Presents the File Chooser for Uploads
+        """
+        #fname, _ = QtGui.QFileDialog.getOpenFileName(self.toolBar, 'Choose Files for Upload', '/')
+        self.fileOpenDialog = QtGui.QFileDialog(self)
+        self.fileOpenDialog.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Popup)
+        #(fileNames, selectedFilter) = self.fileOpenDialog.getOpenFileName(caption="Choose Files for Upload")
+        if self.fileOpenDialog.exec_():
+            fileNames = self.fileOpenDialog.selectedFiles()
+            print "Got Files: " + str(fileNames)
+
     def updateConnectionIndicator(self):
         """Updates the frame.io session authenticated indicator label"""
 
         if nuke.frameioDelegate.frameioSession.sessionHasValidCredentials:
-            print "Frame.io session connected!"
-            self.connectionIndicatorLabel.setText('Connected (%s)' % nuke.frameioDelegate.username )
+            self.connectionIndicatorLabel.setText('Connected (%s)' % nuke.frameioDelegate.frameioSession.email )
             self.logoutToolBarAction.setVisible(True)
         else:
             print "Frame.io session unconnected!"
@@ -286,10 +305,10 @@ class FnFrameioDialog(QtGui.QDialog):
         return super(FnFrameioDialog, self).show()
 
     def logoutPressed(self):
-        try: 
-            nuke.frameioDelegate.disconnectCurrentSession()
-        except:
-            pass
+        print "logoutPressed"
+        self.userLoggedOutSignal.emit()
+        nuke.frameioDelegate.resetSession()
+        self.showLoginView()
 
     def keyPressEvent(self, e):
         """Close the popover if Escape is pressed"""
@@ -331,25 +350,27 @@ class FnFrameioDialog(QtGui.QDialog):
     def showLoginView(self):
         # Sets the stackView to show the Login View
         self.stackView.setCurrentWidget(self.loginView)
+        self.hidePasswordField()
 
-    # def showDropzoneUploadView(self):
-    #     # Sets the stackView to show the Dropzone Upload View
-    #     self.stackView.setCurrentWidget(self.uploadDropzoneView)
 
-    def showUploadView(self):
-        # Sets the stackView to show the Upload View
-        self._updateProjectsList()
+    def showUploadFilesView(self):
+        # Sets the stackView to show the Upload Files view
 
         # If the dialog is launched from the Export dialog don't progress to the next screen, just exit.
         if not self.usingExportDialog:
-            self.stackView.setCurrentWidget(self.uploadView)
+            self.stackView.setCurrentWidget(self.uploadFilesView)
         else:
             self.close()
+
+    def showProjectUploadView(self):
+        # Sets the stackView to show the Project Picker View, allowing upload process
+        self._updateProjectsList()
+        self.stackView.setCurrentWidget(self.projectUploadView)
 
     def showPasswordField(self):
         self.passwordLineEdit.setVisible(True)
 
-    def hidePasswordField():
+    def hidePasswordField(self):
         self.passwordLineEdit.setVisible(False)
 
     def currentEmailText(self):

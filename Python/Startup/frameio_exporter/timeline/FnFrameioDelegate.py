@@ -2,7 +2,7 @@
 
 
 """
-Interaction with frame.io from within Nuke Studio
+Interaction with frame.io from via PySide
 
 Usage:
 
@@ -10,40 +10,41 @@ nuke2frameio by Til Strobl, www.movingmedia.de
 """
 from frameio_exporter.core import frameio
 from frameio_exporter.ui import FnFrameioUI
-import hiero.core
 import threading
-from hiero.core import ApplicationSettings
-import nuke
-from PySide.QtCore import QCoreApplication, Slot
+from PySide.QtCore import QCoreApplication, Signal, Slot
 import os, logging
 import webbrowser
 from frameio_exporter.exporters.FnFrameioTranscodeExporter import NukeFrameioFileReferenceTask
-from hiero.core import events
 from frameio_exporter.auth import check_email_type, AUTH_MODE_EMAIL, AUTH_MODE_OAUTH, BasicLoginHandler, OAuthLoginHandler
-
-# This will be used to communicate when a connection change event has occurred.
-events.registerEventType("kFrameioConnectionChanged")
 
 class FrameioDelegate(object):
     """Delegate for handling the Frame.io session and communicating with UI"""
+
+    FrameioConnectionChanged = Signal()
+
     def __init__(self, *args, **kwargs):
 
-        self.frameioSession = frameio.Session("") 
-        self.appSettings = ApplicationSettings()
+        self.frameioSession = frameio.UserSession("")
+
+        # To-do: User QSettings Object for storing uistate.ini data.
+        #self.appSettings = QSettings()
 
         self.email = kwargs.get("username", None)
         self.project = None # Populate with the last 
 
         # See if username exists already in uistate.ini
         if not self.email:
-            savedUserPreference = self.appSettings.value("FrameioUsername")
+            savedUserPreference = None #self.appSettings.value("FrameioUsername")
             if savedUserPreference:
                 self.email = savedUserPreference
 
         self.frameioMainViewController = FnFrameioUI.FnFrameioDialog(email = self.email)
 
-        # This tells the authentication indicator to update when the status changes
-        hiero.core.events.registerInterest("kFrameioConnectionChanged", self.handleConnectionStatusChangeEvent)
+    def resetSession(self):
+        """
+        Resets the current Frame.io UserSession
+        """
+        self.frameioSession = frameio.UserSession("") 
 
     def showFrameioDialogWithSelection(self, selection):
         """Shows the dialog from the Bin View"""
@@ -55,20 +56,26 @@ class FrameioDelegate(object):
         if not self.frameioSession.sessionHasValidCredentials:
             self.frameioMainViewController.showLoginView()
         else:
-            self.frameioMainViewController.showUploadView()
+            self.frameioMainViewController.showUploadFilesView()
 
         self.frameioMainViewController.move(QCoreApplication.instance().desktop().screen().rect().center() - self.frameioMainViewController.rect().center())
 
     def setUserName(self, username):
         """Saves the Username to the uistate.ini"""
-        self.email = username
-        self.appSettings.setValue("FrameioUsername", self.email)
+        print "TODO: Save Username to QSettings"
+        # ToDo
+        #self.email = username
+        #self.appSettings.setValue("FrameioUsername", self.email)
 
     @Slot(dict)
     def on_frameio_credentials_received(self, credentialsDict):
-        print "GOT CREDS: " + str(credentialsDict)
+        logging.info("Credentials received: " + str(credentialsDict))
         self.frameioSession.sessionHasValidCredentials = True
-        self.frameioMainViewController.showUploadView()
+        self.frameioMainViewController.showUploadFilesView()
+        self.frameioMainViewController.topLabel.setText("Select a Project")
+        self.frameioMainViewController.setStatus(self.frameioMainViewController.eStatusLoggedIn)
+        self.frameioMainViewController.updateConnectionIndicator()
+
 
     @Slot(dict)
     def on_password_required(self):
@@ -76,19 +83,24 @@ class FrameioDelegate(object):
         self.frameioSession.sessionHasValidCredentials = True
         self.frameioMainViewController.showPasswordField()
 
+    @Slot()
+    def logout_requested(self):
+        print "Logout Requested"
+        self.showLoginView()
+
     def attemptLogin(self, email = ''):
         """
         Triggered when Login button pressed. Attempts to Login to frame.io and store the session in global variable
         """
         print "Attempting login..."
-        self.frameioMainViewController.statusLabel.setText(self.frameioMainViewController.eStatusLoggingIn)
+        self.frameioMainViewController.setStatus(self.frameioMainViewController.eStatusLoggingIn)
 
         if not email:
             logging.error("No email address was specified. Please try again with an email.")
             return
 
         # inialise a new Frame.io Session, based on email address
-        self.frameioSession = frameio.Session(email)
+        self.frameioSession = frameio.UserSession(email)
 
         # A Frame.io Session is constructed via an email address.
         # The loginHandler object of the Session handles the login process.
@@ -162,18 +174,11 @@ class FrameioDelegate(object):
 
     def disconnectCurrentSession(self):
         """
-        Disconnects the current session if authenticated]
+        Disconnects the current session.
         """
-        if self.frameioSession.sessionHasValidCredentials:
-            self.frameioSession.logout()
-            events.sendEvent("kFrameioConnectionChanged", None)
+        self.frameioSession = None
+        self.userLoggedOutSignal.emit()
 
-    def handleConnectionStatusChangeEvent(self, event):
-        """Called when a change in the session authentication occurs"""
-        self.frameioMainViewController.updateConnectionIndicator()
-        if not self.frameioSession.sessionHasValidCredentials:
-            self.frameioMainViewController.showLoginView()
-   
 
     def uploadFile(self, filePath, project, fileReferenceID = None):
         """Starts upload task for a given filePath. Returns a frame.io file reference"""
