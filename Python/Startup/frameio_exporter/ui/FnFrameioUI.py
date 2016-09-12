@@ -10,15 +10,11 @@ from frameio_exporter.core.paths import gIconPath
 from frameio_exporter import auth
 import os
 import json
-import nuke
 import urllib2
 import json
 from urllib2 import Request, urlopen
 from oauth2client.client import flow_from_clientsecrets
 import httplib2
-
-
-gGoogleAccountsEnabled = True # until we get oauth2 login figured out
 
 class FnFrameioDialog(QtGui.QDialog):
     """
@@ -36,15 +32,19 @@ class FnFrameioDialog(QtGui.QDialog):
     eStatusLoggedIn = "Logged In"
     eConnectionError = "Connection error. Check internet access!"
 
-    def __init__(self, email=None, usingExportDialog=False):
+    def __init__(self, delegate, usingExportDialog=False):
         QtGui.QDialog.__init__(self)
         self._clips = []
         self._sequences = []
+        self.filePathsForUpload = []
+
+        # The Main FrameIOPySide AppDelegate
+        self.delegate = delegate
 
         # The Dialog can work in two modes, as a popover from the Bin View or via the main App Export window
         self.usingExportDialog = usingExportDialog
 
-        self.email = email
+        self.email = ""
 
         # setGeometry(x_pos, y_pos, width, height)
         self.setGeometry(240, 160, 726, 552)
@@ -99,7 +99,7 @@ class FnFrameioDialog(QtGui.QDialog):
 
         font = QtGui.QFont()
         font.setPointSize(20)
-        self.topLabel = QtGui.QLabel("Sign In")
+        self.topLabel = QtGui.QLabel("Login")
         self.topLabel.setFont(font)
         self.topLabel.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.topLabel)
@@ -283,11 +283,17 @@ class FnFrameioDialog(QtGui.QDialog):
             fileNames = self.fileOpenDialog.selectedFiles()
             print "Got Files: " + str(fileNames)
 
+            # Store File Paths
+            self.filePathsForUpload = fileNames
+
+            self.showProjectUploadView()
+            #self.delegate.uploadFile(fileNames[0])
+
     def updateConnectionIndicator(self):
         """Updates the frame.io session authenticated indicator label"""
 
-        if nuke.frameioDelegate.frameioSession.sessionHasValidCredentials:
-            self.connectionIndicatorLabel.setText('Connected (%s)' % nuke.frameioDelegate.frameioSession.email )
+        if self.delegate.frameioSession.sessionHasValidCredentials:
+            self.connectionIndicatorLabel.setText('Connected (%s)' % self.delegate.frameioSession.email )
             self.logoutToolBarAction.setVisible(True)
         else:
             print "Frame.io session unconnected!"
@@ -307,7 +313,7 @@ class FnFrameioDialog(QtGui.QDialog):
     def logoutPressed(self):
         print "logoutPressed"
         self.userLoggedOutSignal.emit()
-        nuke.frameioDelegate.resetSession()
+        self.delegate.resetSession()
         self.showLoginView()
 
     def keyPressEvent(self, e):
@@ -345,7 +351,9 @@ class FnFrameioDialog(QtGui.QDialog):
 
     def _uploadButtonPushed(self):
         # Not currently implemented
-        print "uploadPushed"
+        print "uploadPushed, trying to upload: " + str(self.filePathsForUpload[0])
+        self.delegate.uploadFile(self.filePathsForUpload[0])
+
  
     def showLoginView(self):
         # Sets the stackView to show the Login View
@@ -381,13 +389,13 @@ class FnFrameioDialog(QtGui.QDialog):
 
     def _refreshProjectList(self):
         # Refreshes the user data
-        nuke.frameioDelegate.frameioSession.reloadUserdata()
+        self.delegate.frameioSession.reloadUserdata()
         self._updateProjectsList()
 
     def _updateProjectsList(self):
         #Updates the Project list with list of project strings
         self.projectDropdown.clear()
-        projects = nuke.frameioDelegate.frameioSession.projectdict().values()
+        projects = self.delegate.frameioSession.projectdict().values()
         for project in projects:
             self.projectDropdown.addItem(project)
 
@@ -395,11 +403,11 @@ class FnFrameioDialog(QtGui.QDialog):
         """Called when Submit button is pressed."""
         email = self.currentEmailText()
 
-        nuke.frameioDelegate.attemptLogin(email)
+        self.delegate.attemptLogin(email)
 
         email_type = None
-        if nuke.frameioDelegate.frameioSession.loginHandler:
-            email_type = nuke.frameioDelegate.frameioSession.email_type
+        if self.delegate.frameioSession.loginHandler:
+            email_type = self.delegate.frameioSession.email_type
 
 
         if not email_type:
@@ -431,5 +439,5 @@ class FnFrameioDialog(QtGui.QDialog):
                 self.password = passwordText
 
         if self.email and self.password:
-            nuke.frameioDelegate.attemptLogin()
+            self.delegate.attemptLogin()
 

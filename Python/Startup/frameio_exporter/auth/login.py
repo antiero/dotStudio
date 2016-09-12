@@ -7,7 +7,7 @@ from urllib2 import Request, urlopen
 from oauth2client.client import flow_from_clientsecrets
 import httplib2
 import logging
-from frameio_exporter.auth import jsonheader
+from frameio_exporter.core import jsonheader
 
 class FrameIOLoginHandler(QObject):
 
@@ -49,7 +49,6 @@ class BasicLoginHandler(FrameIOLoginHandler):
         Log in via Username-Password method. 
         Returns True if login successful, False otherwise.
         """
-        print "Attempting login with password: " + str(self.frameio_password)
         if not self.frameio_email or not self.frameio_password:
             print "Both Email and password must be specified"
             self.passwordRequiredSignal.emit()

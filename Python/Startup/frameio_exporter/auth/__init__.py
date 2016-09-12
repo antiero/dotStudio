@@ -1,11 +1,9 @@
 from urllib2 import Request, urlopen
 import json
+from frameio_exporter.core import FIOJsonRequest
 AUTH_MODE_OAUTH = 'user-google'
 AUTH_MODE_EMAIL = 'user-non-google'
 AUTH_MODE_SIGNUP = 'user-eligible'
-
-def jsonheader():
-    return {'Content-Type': 'application/json'}
 
 # Authentication / initial mail check
 def check_email_type(email_address):
@@ -21,7 +19,7 @@ def check_email_type(email_address):
 
     print "Testing for email: " + str(email_address)
     values = {"email": str(email_address)}
-    request = Request('https://api.frame.io/users/check_elegible', data=json.dumps(values), headers=jsonheader())
+    request = FIOJsonRequest('https://api.frame.io/users/check_elegible', data= values)
     response_body = urlopen(request).read()
 
     print "Response body: " + str(response_body)

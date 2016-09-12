@@ -4,6 +4,7 @@ import comp
 import sys
 import os
 import nuke
+import auth
 cwd = os.path.dirname(os.path.realpath(__file__))
 rootDir = os.path.abspath(os.path.join(cwd))
 # Add requests module to sys path 

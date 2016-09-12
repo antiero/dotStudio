@@ -46,7 +46,7 @@ class FnTimelineFrameioMenu(QtGui.QMenu):
         if hasattr(view, 'selection'):
             selection = view.selection()
 
-        nuke.frameioDelegate.showFrameioDialogWithSelection(selection=selection)
+        nuke.frameioDelegate.showFrameioDialog()
 
     def addAnnotationsForSelection(self):
         """
