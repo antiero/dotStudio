@@ -27,7 +27,14 @@ class PSUtilProcessWrapper(object):
   def nukeCPUUsageAsPercentage(self):
     """Returns Nuke's current CPU usage as percentage
     Note: this currently returns the sum of ALL running processes with 'Nuke' in the name"""
-    cpu_percent = sum([proc.cpu_percent() for proc in psutil.process_iter() if "Nuke" in proc.name()])
+    nuke_processes_cpu = []
+    for proc in psutil.process_iter():
+        try:
+            if "Nuke" in proc.name():
+                nuke_processes_cpu.append(proc.cpu_percent())
+        except psutil.AccessDenied:
+            pass
+    cpu_percent = sum(nuke_processes_cpu)
     return cpu_percent
 
   def nukeMemoryUsageInGB(self):
