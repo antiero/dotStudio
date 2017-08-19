@@ -16,3 +16,5 @@ Python/Startup/statusbar/.idea/workspace.xml
 Python/Startup/statusbar/.idea/modules.xml
 
 Python/Startup/statusbar/.idea/misc.xml
+
+*.pyc
