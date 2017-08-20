@@ -11,6 +11,7 @@ import PySide.QtCore
 import PySide.QtGui
 import hiero.ui
 import ThumbnailExportTask
+from hiero.ui.FnTaskUIFormLayout import TaskUIFormLayout
 
 class ThumbnailExportUI(hiero.ui.TaskUIBase):
 
@@ -82,9 +83,9 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
     self._preset.properties()["thumbSize"] = unicode(value)
 
   def populateUI(self, widget, exportTemplate):
-    layout = PySide.QtGui.QFormLayout()
-    layout.setContentsMargins(9, 0, 9, 0)
-    widget.setLayout(layout)
+    layout = widget.layout()
+    formLayout = TaskUIFormLayout()
+    layout.addLayout(formLayout)
 
     # Thumb frame type layout
     thumbFrameLayout = PySide.QtGui.QHBoxLayout()
@@ -165,8 +166,8 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
     self.frameTypeComboBoxChanged(0) # Trigger to make it set the enabled state correctly
     self._customFrameLineEdit.textChanged.connect(self.customOffsetTextChanged)
     
-    layout.addRow("Frame Type:",thumbFrameLayout)
-    layout.addRow("Size:",thumbSizeLayout)
-    layout.addRow("File Type:",self._formatComboBox)    
+    formLayout.addRow("Frame Type:",thumbFrameLayout)
+    formLayout.addRow("Size:",thumbSizeLayout)
+    formLayout.addRow("File Type:",self._formatComboBox)
 
 hiero.ui.taskUIRegistry.registerTaskUI(ThumbnailExportTask.ThumbnailExportPreset, ThumbnailExportUI)
