@@ -10,7 +10,11 @@ from PySide2 import QtCore
 from PySide2 import QtGui
 from PySide2 import QtWidgets
 import hiero.ui
+from hiero.ui.FnTaskUIFormLayout import TaskUIFormLayout
 import ThumbnailExportTask
+import os.path
+
+from PySide2 import QtWidgets
 
 class ThumbnailExportUI(hiero.ui.TaskUIBase):
 
@@ -81,11 +85,24 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
 
     self._preset.properties()["thumbSize"] = unicode(value)
 
-  def populateUI(self, widget, exportTemplate):
-    layout = QtWidgets.QFormLayout()
-    layout.setContentsMargins(9, 0, 9, 0)
-    widget.setLayout(layout)
 
+  def populateUI_work(self, widget, exportTemplate):
+    print "populateUI"
+    layout = widget.layout()
+    info = QtWidgets.QLabel("""<i>Windows Note:</i> Symbolic links will only work in Vista or later.\n
+To link across filesystems the remote file server must also be running Vista or later.\n
+You may also need administrator privileges to create symbolic links on Windows.""")
+    info.setWordWrap(True)
+    layout.addWidget(info) 
+    print "layout.addWidget(%s)" % str(info)
+    print "layout (%s)" % str(layout)
+
+  def populateUI(self, widget, exportTemplate):
+
+    layout = widget.layout()
+    formLayout = TaskUIFormLayout()
+    layout.addLayout(formLayout)    
+    
     # Thumb frame type layout
     thumbFrameLayout = QtWidgets.QHBoxLayout()
     self._frameTypeComboBox = QtWidgets.QComboBox()    
@@ -165,8 +182,8 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
     self.frameTypeComboBoxChanged(0) # Trigger to make it set the enabled state correctly
     self._customFrameLineEdit.textChanged.connect(self.customOffsetTextChanged)
     
-    layout.addRow("Frame Type:",thumbFrameLayout)
-    layout.addRow("Size:",thumbSizeLayout)
-    layout.addRow("File Type:",self._formatComboBox)    
+    formLayout.addRow("Frame Type:",thumbFrameLayout)
+    formLayout.addRow("Size:",thumbSizeLayout)
+    formLayout.addRow("File Type:",self._formatComboBox)    
 
 hiero.ui.taskUIRegistry.registerTaskUI(ThumbnailExportTask.ThumbnailExportPreset, ThumbnailExportUI)

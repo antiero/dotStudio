@@ -11,5 +11,4 @@ import import_helpers
 import info_window
 import longest_shot
 import markers
-import custom_transcode
-import custom_transcode_ui
+import thumbnail_exporter
