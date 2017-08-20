@@ -112,11 +112,11 @@ class ExportersMenu:
     self.registry = hiero.exporters.registry
     self.localPresets = self.registry.localPresets()
 
-    self.rootMenu = QtGui.QMenu("Quick Export")
+    self.rootMenu = QtWidgets.QMenu("Quick Export")
 
-    self.binProcessorsMenu = QtGui.QMenu("Process as Clips")
-    self.timelineProcessorsMenu = QtGui.QMenu("Process as Sequence")
-    self.shotProcessorsMenu = QtGui.QMenu("Process as Shots")
+    self.binProcessorsMenu = QtWidgets.QMenu("Process as Clips")
+    self.timelineProcessorsMenu = QtWidgets.QMenu("Process as Sequence")
+    self.shotProcessorsMenu = QtWidgets.QMenu("Process as Shots")
     self.rootMenu.addMenu(self.timelineProcessorsMenu)
     self.rootMenu.addMenu(self.binProcessorsMenu)
     self.rootMenu.addMenu(self.shotProcessorsMenu)

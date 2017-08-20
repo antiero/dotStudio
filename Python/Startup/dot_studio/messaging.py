@@ -3,7 +3,7 @@
 # Antony Nasce Feb 14th 2014 - http://github.com/antiero
 import hiero.ui
 from hiero.core import log
-from PySide2 import QtCore, QtGui
+from PySide2 import QtCore, QtGui, QtWidgets
 
 def statusBar():
   """Returns an instance of the MainWindow's status bar, displayed at the bottom of the main window()"""
@@ -21,7 +21,7 @@ def showInfo(prompt):
     @return: None
   """
   hiero.core.log.info(prompt)
-  dialog = QtGui.QMessageBox.information( hiero.ui.mainWindow(), "Info", unicode(prompt) )
+  dialog = QtWidgets.QMessageBox.information( hiero.ui.mainWindow(), "Info", unicode(prompt) )
   
 def showWarning(prompt):
   """
@@ -31,7 +31,7 @@ def showWarning(prompt):
     @return: None
   """
   hiero.core.log.info(prompt)
-  dialog = QtGui.QMessageBox.warning( hiero.ui.mainWindow(), "Warning", unicode(prompt))
+  dialog = QtWidgets.QMessageBox.warning( hiero.ui.mainWindow(), "Warning", unicode(prompt))
   
 def showError(prompt):
   """
@@ -41,7 +41,7 @@ def showError(prompt):
     @return: None
   """
   hiero.core.log.error(prompt)
-  dialog = QtGui.QMessageBox.critical( hiero.ui.mainWindow(), "Error", unicode(prompt) )
+  dialog = QtWidgets.QMessageBox.critical( hiero.ui.mainWindow(), "Error", unicode(prompt) )
 
 def clearStatusMessage():
   """

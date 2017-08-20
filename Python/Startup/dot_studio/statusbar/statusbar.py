@@ -1,8 +1,9 @@
 # Modified from hiero.ui.FnStatusBar
 import hiero.ui
 from hiero.ui.nuke_bridge import nukestudio
-from PySide.QtCore import Qt, QTimer, QCoreApplication
-from PySide.QtGui import *
+from PySide2.QtCore import Qt, QTimer, QCoreApplication
+from PySide2.QtGui import QIcon, QPixmap, QMovie
+from PySide2 import QtWidgets
 try:
   import psutil
   gEnableResourceMonitoring = True
@@ -22,7 +23,7 @@ gInitialDelayMS = 3000
 gUpdateIntervalMS = 1000
 
 # Popover Dialog to change settings (UNUSED CURRENTLY)
-class SettingsDialog(QDialog):
+class SettingsDialog(QtWidgets.QDialog):
     def __init__(self, parent = hiero.ui.mainWindow()):
         super(SettingsDialog, self).__init__(parent)
         self.setWindowTitle("Select info to show in info bar")
@@ -211,39 +212,39 @@ class InfoBar(object):
     self.networkReadIconPath = os.path.join(gIconPath, "net_read.png")
 
     # MEMORY SECTION
-    self.memoryImageButton = QPushButton(QPixmap((self.memoryIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
+    self.memoryImageButton = QtWidgets.QPushButton(QPixmap((self.memoryIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
     self.memoryImageButton.setObjectName("show_button_memory")
     self.memoryImageButton.setToolTip("Click to toggle monitoring of 'Real Memory' usage")
-    self.memoryString = QLabel("MEMORY (GB)")
+    self.memoryString = QtWidgets.QLabel("MEMORY (GB)")
     self.memoryString.setToolTip("'Real Memory' usage of this Nuke Session")
     self.memoryImageButton.clicked.connect(lambda: self.show_button_clicked(self.memoryString))
 
     # CPU SECTION
-    self.cpuImageButton = QPushButton(QPixmap((self.cpuIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
+    self.cpuImageButton = QtWidgets.QPushButton(QPixmap((self.cpuIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
     self.cpuImageButton.setObjectName("show_button_cpu")
     self.cpuImageButton.setToolTip("Click to toggle monitoring of CPU usage of this Nuke Session")
-    self.cpuString = QLabel("CPU (%)")
+    self.cpuString = QtWidgets.QLabel("CPU (%)")
     self.cpuString.setToolTip("CPU usage of this Nuke Session")
     self.cpuImageButton.clicked.connect(lambda: self.show_button_clicked(self.cpuString))
 
     # DISK SECTION
-    self.diskImageButton = QPushButton(QPixmap((self.diskReadIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
+    self.diskImageButton = QtWidgets.QPushButton(QPixmap((self.diskReadIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
     self.diskImageButton.setObjectName("show_button_disk")
     self.diskImageButton.setToolTip("Click to toggle monitoring of Disk Read+Write usage for this machine")
-    self.diskString = QLabel("DISK (MB/s)")
+    self.diskString = QtWidgets.QLabel("DISK (MB/s)")
     self.diskImageButton.clicked.connect(lambda: self.show_button_clicked(self.diskString))
     self.diskString.setToolTip("Disk Read+Write usage for this machine")
 
     # NETWORK SECTION
-    self.networkImageButton = QPushButton(QPixmap((self.networkReadIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
+    self.networkImageButton = QtWidgets.QPushButton(QPixmap((self.networkReadIconPath)).scaledToHeight(20, Qt.SmoothTransformation),"")
     self.networkImageButton.setObjectName("show_button_network")
     self.networkImageButton.setToolTip("Click to toggle monitoring of Network Read+Write traffic")
-    self.networkString = QLabel("NETWORK (MB/s)")
+    self.networkString = QtWidgets.QLabel("NETWORK (MB/s)")
     self.networkString.setToolTip("Total Network Read+Write traffic for this machine")
     self.networkImageButton.clicked.connect(lambda: self.show_button_clicked(self.networkString))
 
     # Settings Button - Displays what options should be shown in the Status Bar
-    self.settingsButton = QPushButton()
+    self.settingsButton = QtWidgets.QPushButton()
     self.settingsButton.setIcon(QIcon("icons:Settings.png"))
     self.settingsButton.clicked.connect(self.showSettings)
 
@@ -253,7 +254,7 @@ class InfoBar(object):
     #self.diskWidget.setVisible(self.infoSettings['showDisk'])
     #self.networkWidget.setVisible(self.infoSettings['showNetwork'])
 
-    self.restartServerButton = QPushButton(QPixmap("icons:TransformRotateRight.png").scaledToHeight(20, Qt.SmoothTransformation),"")
+    self.restartServerButton = QtWidgets.QPushButton(QPixmap("icons:TransformRotateRight.png").scaledToHeight(20, Qt.SmoothTransformation),"")
     self.restartServerButton.setFixedHeight(16)    
     self.restartServerButton.clicked.connect(self.restartServer)
     self.restartServerButton.setHidden(True)

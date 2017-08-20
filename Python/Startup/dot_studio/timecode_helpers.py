@@ -2,7 +2,7 @@
 # These methods add some helpers to work with Timecodes, added to the Spreadsheet and Timeline
 import hiero.core
 from hiero.ui import createMenuAction, insertMenuAction
-from PySide2 import QtGui, QtCore
+from PySide2 import QtGui, QtCore, QtWidgets
 
 hiero.core.shotClipboard = []
 
@@ -159,7 +159,7 @@ class PasteShotInfoDialog(QtWidgets.QDialog):
 class TimecodeMenu:
 
   def __init__(self):
-      self._timecodeMenu = QtGui.QMenu("Timecode")
+      self._timecodeMenu = QtWidgets.QMenu("Timecode")
 
       # These actions in the viewer are a special case, because they drill down in to what is currrenly being
       self._copyTCAction = createMenuAction("Copy TC", self.copyTC)

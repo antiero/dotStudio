@@ -16,12 +16,12 @@ import os
 import nuke
 from frameio_exporter.core.paths import gIconPath
 
-class FnTimelineFrameioMenu(QtGui.QMenu):
+class FnTimelineFrameioMenu(QtWidgets.QMenu):
     def __init__(self):
         """
         A right-click menu that is added to the Hiero/Studio right-click menu
         """
-        QtGui.QMenu.__init__(self, "Frame.io", None)
+        QtWidgets.QMenu.__init__(self, "Frame.io", None)
         hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
         hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
         hiero.core.events.registerInterest("kShowContextMenu/kSpreadsheet", self.eventHandler)

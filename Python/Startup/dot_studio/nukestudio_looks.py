@@ -1,7 +1,7 @@
 # Look Maker - Conveniently allow grade node presets 
 # Allow Effects to be saved/restored within a Studio Project
 # Right-click Effect > Save Look 
-from PySide.QtGui import *
+from PySide2 import QtGui, QtWidgets
 import hiero.core
 import hiero.ui
 import nuke
@@ -10,20 +10,20 @@ import uuid
 import ast
 import glob
 
-class LookNameDialog(QDialog):
+class LookNameDialog(QtWidgets.QDialog):
   def __init__(self):
-    QDialog.__init__(self, parent=hiero.ui.mainWindow())
+    QtWidgets.QDialog.__init__(self, parent=hiero.ui.mainWindow())
 
     self.setWindowTitle("Set Look Name")
-    layout = QFormLayout()
+    layout = QtWidgets.QFormLayout()
 
-    self._lookNameTextEdit = QLineEdit()
+    self._lookNameTextEdit = QtWidgets.QLineEdit()
     self._lookNameTextEdit.setText("Grade")
     self._lookNameTextEdit.setToolTip('Enter name for Look.')
     layout.addRow("Enter Look Name: ", self._lookNameTextEdit)
 
-    self._buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-    self._buttonbox.button(QDialogButtonBox.Ok).setText("Save")
+    self._buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+    self._buttonbox.button(QtWidgets.QDialogButtonBox.Ok).setText("Save")
     self._buttonbox.accepted.connect(self.accept)
     self._buttonbox.rejected.connect(self.reject)
     layout.addRow("",self._buttonbox)
@@ -75,8 +75,8 @@ class LooksMenu(object):
 
   # This is just a convenience method for returning QActions with a title, triggered method and icon.
   def makeAction(self,title, method, icon = None):
-    action = QAction( title, None )
-    action.setIcon(QIcon(icon))
+    action = QtWidgets.QAction( title, None )
+    action.setIcon(QtGui.QIcon(icon))
     
     # We do this magic, so that the title string from the action is used as the Tag to restore
     def methodWrapper():
@@ -88,8 +88,8 @@ class LooksMenu(object):
   def _buildLookMenu(self):
     """Builds a list of looks that can be restored, based on the 'Looks' Bin in the tags Project"""
     # Locate the 'Looks' tag Bin
-    self._looksMainMenu = QMenu("Looks")
-    self._restoreLookSubMenu = QMenu("Restore")
+    self._looksMainMenu = QtWidgets.QMenu("Looks")
+    self._restoreLookSubMenu = QtWidgets.QMenu("Restore")
     project = self.getActiveProject()
     looksTagBin = self.getLooksTagBinForProject(project)    
     tags = looksTagBin.items()

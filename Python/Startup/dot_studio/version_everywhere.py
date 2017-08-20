@@ -7,7 +7,8 @@
 # 3) Set Version for all Shots > OPTION to update the version in all shots where the Clip is used in the Project.
 
 import hiero.core
-from PySide.QtGui import QAction, QMenu, QMessageBox, QIcon
+from PySide2.QtWidgets import QAction, QMenu, QMessageBox
+from PySide2.QtGui import QIcon
 
 def whereAmI(self, searchType='TrackItem'):
   """returns a list of TrackItem or Sequnece objects in the Project which contain this Clip. 

@@ -3,7 +3,7 @@ import nuke
 import os
 import re
 import foundry.ui
-from PySide.QtGui import *
+from PySide2 import QtWidgets
 
 # Helper methods
 def pathContainsDigits(d):
@@ -48,7 +48,7 @@ def currentCompIsReadyForStudio():
   ready = currentCompIsSaved() and currentCompContainsValidWriteNodes()
   return ready
 
-class SetupCompDialog(QDialog):
+class SetupCompDialog(QtWidgets.QDialog):
   """ Dialog for selecting a project shot preset. """
 
   @staticmethod
@@ -74,10 +74,10 @@ class SetupCompDialog(QDialog):
     self._resolver.addResolver("{shot}", "Name of the Shot being processed", lambda keyword, task: task.name())
     self._resolver.addResolver("{version}", "Source filename of the TrackItem", lambda keyword, task: task.source().mediaSource().filename())    
 
-    layout = QFormLayout()
+    layout = QtWidgets.QFormLayout()
     self.setLayout(layout)
 
-    label = QLabel(text)
+    label = QtWidgets.QLabel(text)
     layout.addWidget(label)
 
     self.projectRootPicker = foundry.ui.FnFilenameField("Select Project Root")
@@ -95,11 +95,11 @@ class SetupCompDialog(QDialog):
     self.projectRootPicker.setFilename(projectRoot)
     layout.addRow("Project Root", self.projectRootPicker)
 
-    self.shotNameLineEdit = QLineEdit()
+    self.shotNameLineEdit = QtWidgets.QLineEdit()
     self.shotNameLineEdit.setText("Shot0010")
     layout.addRow("Shot Name", self.shotNameLineEdit)
 
-    self.shotPresetCombo = QComboBox()
+    self.shotPresetCombo = QtWidgets.QComboBox()
     layout.addRow("Preset", self.shotPresetCombo)
     self.shotPresetCombo.currentIndexChanged.connect(self.shotPresetChanged)    
 
@@ -113,7 +113,7 @@ class SetupCompDialog(QDialog):
     for preset in hiero.core.taskRegistry.nukeShotExportPresets(project):
       self.shotPresetCombo.addItem(preset.name(), preset)
 
-    buttonBox = QDialogButtonBox( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+    buttonBox = QtWidgets.QDialogButtonBox( QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel )
     buttonBox.accepted.connect( self.accept )
     buttonBox.rejected.connect( self.reject )
     layout.addWidget( buttonBox )

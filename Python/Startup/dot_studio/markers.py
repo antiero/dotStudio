@@ -404,7 +404,7 @@ class MarkerTableView(QtWidgets.QTableView):
         '''Handle context menu for each cell'''
         handled = False
         index = self.indexAt(event.pos())
-        menu = QtGui.QMenu()
+        menu = QtWidgets.QMenu()
         #an action for everyone
         every = hiero.ui.createMenuAction("For All", hiero.core.getPluginPath)
         if index.column() == 3:  #treat the Nth column special row...

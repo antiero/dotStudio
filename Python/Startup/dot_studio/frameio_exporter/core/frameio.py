@@ -10,7 +10,7 @@ import urllib2put
 import json, os, mimetypes, urllib, logging
 from urllib2 import Request, urlopen, HTTPError, URLError
 from frameio_exporter.auth import check_email_type, AUTH_MODE_EMAIL, AUTH_MODE_OAUTH, BasicLoginHandler, OAuthLoginHandler
-from frameio_exporter.core import FIOJsonRequest
+from frameio_exporter.core.json_helpers import FIOJsonRequest
 
 class UserSession:
     """Defines an established frame.io API User Session."""

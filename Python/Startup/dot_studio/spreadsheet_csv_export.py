@@ -6,8 +6,9 @@
 import hiero.core.events
 import hiero.ui
 import os, csv
-from PySide.QtGui import *
-from PySide.QtCore import *
+from PySide2 import QtWidgets
+from PySide2 import QtGui
+from PySide2 import QtCore
 
 ### Magic Widget Finding Methods - This stuff crawls all the PySide widgets, looking for an answer 
 def findWidget(w):
@@ -23,7 +24,7 @@ def getFoundryWidgetsWithClassName(filter=None):
   global foundryWidgets
   foundryWidgets = []
   widgets = []
-  app = QApplication.instance()
+  app = QtWidgets.QApplication.instance()
   for w in app.topLevelWidgets():
     findWidget(w)
 
@@ -48,13 +49,13 @@ def activeSpreadsheetTreeView():
   return None
 
 #### Adds "Export .CSV" action to the Spreadsheet Context menu ####
-class SpreadsheetExportCSVAction(QAction):
+class SpreadsheetExportCSVAction(QtWidgets.QAction):
 
   def __init__(self):
-    QAction.__init__(self, "Export as .CSV", None)
+    QtWidgets.QAction.__init__(self, "Export as .CSV", None)
     self.triggered.connect(self.exportCSVFromActiveSpreadsheetView)
     hiero.core.events.registerInterest("kShowContextMenu/kSpreadsheet", self.eventHandler)
-    self.setIcon(QIcon("icons:FBGridView.png"))
+    self.setIcon(QtGui.QIcon("icons:FBGridView.png"))
 
   def eventHandler(self, event):
     # Insert the action to the Export CSV menu
@@ -76,8 +77,8 @@ class SpreadsheetExportCSVAction(QAction):
     # The data model of the QTreeView
     model = spreadsheetTreeView.model()
 
-    csvSavePath = os.path.join(QDir.homePath(),'Desktop',seq.name()+'.csv')
-    savePath,filter = QFileDialog.getSaveFileName(None,caption="Export Spreadsheet to .CSV as...",dir = csvSavePath, filter = "*.csv")
+    csvSavePath = os.path.join(QtCore.QDir.homePath(),'Desktop',seq.name()+'.csv')
+    savePath,filter = QtWidgets.QFileDialog.getSaveFileName(None,caption="Export Spreadsheet to .CSV as...",dir = csvSavePath, filter = "*.csv")
     print 'Saving To: ' + str(savePath)
 
     # Saving was cancelled...
@@ -93,7 +94,7 @@ class SpreadsheetExportCSVAction(QAction):
 
     for col in range(0,model.columnCount()):
       if not spreadsheetTreeView.isColumnHidden(col):
-        csvHeader+=[model.headerData(col,Qt.Horizontal)]
+        csvHeader+=[model.headerData(col,QtCore.Qt.Horizontal)]
 
     # Write the Header row to the CSV file
     csvWriter.writerow(csvHeader)
@@ -103,14 +104,14 @@ class SpreadsheetExportCSVAction(QAction):
       row_data = []
       for col in range(model.columnCount()):
         if not spreadsheetTreeView.isColumnHidden(col):
-          row_data.append(model.index( row, col, QModelIndex() ).data( Qt.DisplayRole ))
+          row_data.append(model.index( row, col, QtCore.QModelIndex() ).data( QtCore.Qt.DisplayRole ))
       
       # Write row to CSV file...  
       csvWriter.writerow(row_data)
 
     f.close()
     # Conveniently show the CSV file in the native file browser...
-    QDesktopServices.openUrl(QUrl('file:///%s' % (os.path.dirname(savePath))))  
+    QtGui.QDesktopServices.openUrl(QUrl('file:///%s' % (os.path.dirname(savePath))))  
 
 # Add the action...
 csvActions = SpreadsheetExportCSVAction()

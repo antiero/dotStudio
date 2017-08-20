@@ -9,7 +9,7 @@
 # This can be set dynamically in the Script editor via: hiero.plugins.selection_helpers.SelectedShotAction.kAlwaysReturnActiveItem = False
 import hiero.core
 import hiero.ui
-from PySide.QtGui import QAction, QApplication
+from PySide2.QtWidgets import QApplication, QAction
 
 class SelectedShotAction(QAction):
   kAlwaysReturnActiveItem = True # Change me to False if you want BinItems rather than Clips/Sequences in the BinView

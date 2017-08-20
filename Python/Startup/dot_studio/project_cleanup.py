@@ -1,6 +1,7 @@
 import hiero.core
 from hiero.ui import createMenuAction
-from PySide.QtGui import QIcon, QMenu, QMessageBox
+from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import QMenu, QMessageBox
 
 # This is a Custom Menu that will get added to the Bin View.
 class CleanupProjectHelper(object):

@@ -1,7 +1,7 @@
 import hiero.ui
-from FnCutDetector import FnCutDetectorPanel
+from CutDetector import CutDetectorPanel
 
-cutDetector = FnCutDetectorPanel()
+cutDetector = CutDetectorPanel()
 
 hiero.ui.registerPanel( "uk.co.thefoundry.cutdetector", cutDetector )
 

@@ -1,7 +1,9 @@
 # Adds Set Poster frame action to the Viewer menu
 import hiero.core
 from hiero.ui import activeSequence, currentViewer, findMenuAction, insertMenuAction, registerAction
-from PySide.QtGui import QAction, QFocusEvent
+from PySide2.QtWidgets import QAction
+from PySide2.QtGui import QFocusEvent
+
 
 class SetPosterFrameAction(QAction):
   """Action which sets the Poster frame for the active Clip/Sequence to be the Currently displayed frame"""

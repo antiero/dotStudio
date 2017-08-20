@@ -1,6 +1,6 @@
 from urllib2 import Request, urlopen
 import json
-from frameio_exporter.core import FIOJsonRequest
+from json_helpers import FIOJsonRequest
 
 class FileReference:
     """Represents an FileReference data object within an established frame.io session"""

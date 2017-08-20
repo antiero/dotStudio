@@ -4,8 +4,7 @@
 import hiero.core
 import hiero.ui
 import os.path
-from PySide.QtGui import *
-from PySide.QtCore import *
+from PySide2 import QtWidgets
 import tempfile
 
 def mapRetime(ti, timelineTime):
@@ -31,10 +30,10 @@ def getFrameInfoFromTrackItemAtTime(trackItem,T):
   first_last_frame = int(mapRetime(trackItem,T)+clip.sourceIn())
   return file_knob, first_last_frame, trackItem
 
-class GrabThisFrameAction(QAction):
+class GrabThisFrameAction(QtWidgets.QAction):
 
   def __init__(self):
-      QAction.__init__(self, "Grab still frame Clip", None)
+      QtWidgets.QAction.__init__(self, "Grab still frame Clip", None)
       self.triggered.connect(self.createStillFromCurrentViewerFrame)
       hiero.core.events.registerInterest("kShowContextMenu/kViewer", self.eventHandler)
 
@@ -55,7 +54,7 @@ class GrabThisFrameAction(QAction):
         # Check that Media is Online - we won't add a Tag to Offline Media
         currentShot = visibleShotAtTime(sequence,T)
         if not currentShot:
-          QMessageBox.warning(None, "Grab Frame", "Unable to Grab a Still Frame.", QMessageBox.Ok)
+          QtWidgets.QMessageBox.warning(None, "Grab Frame", "Unable to Grab a Still Frame.", QtWidgets.QMessageBox.Ok)
           return
         else:
           fileKnob,first_last_frame,trackItem = getFrameInfoFromTrackItemAtTime(currentShot,T)

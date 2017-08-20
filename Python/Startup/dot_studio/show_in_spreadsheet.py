@@ -4,8 +4,7 @@
 # -Does not work when text filtering is set in the Spreadsheet search box.
 import hiero.core
 import hiero.ui
-from PySide.QtGui import *
-from PySide.QtCore import *
+from PySide2 import QtWidgets
 
 # Global behaviour for making this action trigger with a Selection Change event. 
 # Set to False if you don't want the Spreadsheet to scroll automatically on shot selection change
@@ -25,7 +24,7 @@ def getFoundryWidgetsWithClassName(filter=None):
   global foundryWidgets
   foundryWidgets = []
   widgets = []
-  app = QApplication.instance()
+  app = QtWidgets.QApplication.instance()
   for w in app.topLevelWidgets():
     findWidget(w)
 
@@ -61,7 +60,7 @@ def median(lst):
   return sum(sorted(lst)[half:half + even]) / float(even)
 
 # Main action, added to timeline right-click menu and Timeline Menu on main Menubar.
-class SpreadsheetScrollToAction(QAction):
+class SpreadsheetScrollToAction(QtWidgets.QAction):
   """Action to Scroll Spreadsheet to row where the selected shot is.
   If multiple shots are selected, the median index is treated as the row number."""
 
@@ -71,7 +70,7 @@ class SpreadsheetScrollToAction(QAction):
   enabledOnSelectionChange = gEnabledOnSelectionChange # Set to False if you don't want this to happen on every selection change
 
   def __init__(self):
-    QAction.__init__(self, "Show in Spreadsheet", None)
+    QtWidgets.QAction.__init__(self, "Show in Spreadsheet", None)
     self.triggered.connect(self.showShotSelectionInSpreadsheet)
     hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
     #self.setShortcut("Ctrl+Shift+F")

@@ -2,8 +2,10 @@
 UI elements for interaction with Frame.io from within Nuke Studio
 """
 from PySide2 import QtGui
-from PySide.QtWebKit import QWebView
-from PySide.QtCore import Qt, QUrl, QRegExp, QSize, Signal, Slot
+from PySide2 import QtWidgets
+# QtWebKit missing from Nuke 11?
+from PySide2.QtWebKit import QWebView
+from PySide2.QtCore import Qt, QUrl, QRegExp, QSize, Signal, Slot
 from frameio_exporter.core import frameio
 from frameio_exporter.ui import createMenuAction
 from frameio_exporter.core.paths import gIconPath
@@ -63,17 +65,17 @@ class FnFrameioDialog(QtWidgets.QDialog):
 
         layout.setAlignment(Qt.AlignCenter)
 
-        self.toolBar = QtGui.QToolBar()
+        self.toolBar = QtWidgets.QToolBar()
         self.toolBar.setStyleSheet('QToolBar {background-color: #3B3E4A; border-width: 0px; border-radius: 0px; border-style: none; text-align: center}')
         self.toolBar.setIconSize( QSize(24,24) )
         
         self.closeButton = QtWidgets.QPushButton("")
         self.closeButton.setStyleSheet('QPushButton {border: none;}')
-        iconClose = QtGui.QIcon(os.path.join(gIconPath, "close.png"))
+        iconClose = QtGui.Icon(os.path.join(gIconPath, "close.png"))
         self.closeButton.setIcon(iconClose)
         self.closeButton.clicked.connect(self.close)
       
-        iconLogout = QtGui.QIcon(os.path.join(gIconPath, "logout.png"))
+        iconLogout = QtGui.Icon(os.path.join(gIconPath, "logout.png"))
         self.logoutToolBarAction = createMenuAction("", self.logoutPressed, icon=iconLogout)
         self.logoutToolBarAction.setVisible(False)
         self.logoutToolBarAction.setToolTip("Click here to Log out")
@@ -83,7 +85,7 @@ class FnFrameioDialog(QtWidgets.QDialog):
         self.connectionIndicatorLabel = QtWidgets.QLabel("Unconnected")
 
         spacer = QtWidgets.QWidget()
-        spacer.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
         self.toolBar.addWidget(self.closeButton)
         self.toolBar.addWidget(spacer)
@@ -109,7 +111,7 @@ class FnFrameioDialog(QtWidgets.QDialog):
         layout.addWidget(self.statusLabel)
 
 
-        self.stackView = QtGui.QStackedWidget(self)
+        self.stackView = QtWidgets.QStackedWidget(self)
 
         # Login Screen View
         self.loginView = QtWidgets.QWidget()
@@ -131,7 +133,7 @@ class FnFrameioDialog(QtWidgets.QDialog):
         namerx = QRegExp("\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,4}\\b")
         namerx.setCaseSensitivity(Qt.CaseInsensitive);
         namerx.setPatternSyntax(QRegExp.RegExp);
-        self.nameval = QtGui.QRegExpValidator(namerx, self)
+        self.nameval = QtWidgets.QRegExpValidator(namerx, self)
         self.emailLineEdit.setValidator(self.nameval)
 
         self.loginViewLayout.addWidget(self.emailLineEdit)
@@ -262,7 +264,7 @@ class FnFrameioDialog(QtWidgets.QDialog):
 
         self.stackView.addWidget(self.projectUploadView)
 
-        sizeGrip = QtGui.QSizeGrip(self)
+        sizeGrip = QtWidgets.QSizeGrip(self)
         sizeGrip.setStyleSheet("QSizeGrip { height:12px; }")
 
         layout.addWidget(self.stackView)
@@ -275,8 +277,8 @@ class FnFrameioDialog(QtWidgets.QDialog):
         """
         Presents the File Chooser for Uploads
         """
-        #fname, _ = QtGui.QFileDialog.getOpenFileName(self.toolBar, 'Choose Files for Upload', '/')
-        self.fileOpenDialog = QtGui.QFileDialog(self)
+        #fname, _ = QtWidgets.QFileDialog.getOpenFileName(self.toolBar, 'Choose Files for Upload', '/')
+        self.fileOpenDialog = QtWidgets.QFileDialog(self)
         self.fileOpenDialog.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Popup)
         #(fileNames, selectedFilter) = self.fileOpenDialog.getOpenFileName(caption="Choose Files for Upload")
         if self.fileOpenDialog.exec_():
@@ -425,7 +427,7 @@ class FnFrameioDialog(QtWidgets.QDialog):
             self.password = self.passwordLineEdit.text()
         res = self.nameval.validate(emailText, 0)
 
-        if res[0] != QtGui.QValidator.State.Acceptable:
+        if res[0] != QtWidgets.QValidator.State.Acceptable:
                 self.setStatus(self.eStatusEmailInvalid)
                 self.emailLineEdit.setFocus()
                 return

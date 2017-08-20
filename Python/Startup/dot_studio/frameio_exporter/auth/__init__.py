@@ -1,6 +1,6 @@
 from urllib2 import Request, urlopen
 import json
-from frameio_exporter.core import FIOJsonRequest
+from frameio_exporter.core.json_helpers import FIOJsonRequest
 AUTH_MODE_OAUTH = 'user-google'
 AUTH_MODE_EMAIL = 'user-non-google'
 AUTH_MODE_SIGNUP = 'user-eligible'

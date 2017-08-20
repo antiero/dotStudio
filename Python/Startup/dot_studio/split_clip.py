@@ -4,7 +4,7 @@
 # Right-click on Clips in the Bin that should be Split > Split Clip
 # Result: You should have new Split Clips in the Bin.
 import hiero.core
-from PySide.QtGui import *
+from PySide2 import QtWidgets
 import os, re
 
 #### Clip Helper Methods ####
@@ -33,10 +33,10 @@ def clipInstancesInProject(testClip):
   return occurances
 
 #### Split Clip Main Action ####
-class SplitClipAction(QAction):
+class SplitClipAction(QtWidgets.QAction):
 
   def __init__(self):
-      QAction.__init__(self, "Split Clip", None)
+      QtWidgets.QAction.__init__(self, "Split Clip", None)
       self.triggered.connect(self.splitClipSelection)
       hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
 

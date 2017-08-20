@@ -1,6 +1,6 @@
 import hiero.ui
 import hiero.core
-from PySide2 import QtGui, QtCore
+from PySide2 import QtGui, QtCore, QtWidgets
 import os, urlparse
 import nuke
 
@@ -33,7 +33,7 @@ class MyListView(QtWidgets.QListView):
         # self.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
         # self.setDragDropOverwriteMode(True)
         # self.setDragEnabled(True)
-        self.setSizePolicy(QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
 
         # create table
@@ -74,7 +74,7 @@ class MyListView(QtWidgets.QListView):
         self.lm = MyListModel(images, self)
         self.setModel(self.lm)
 
-class FnCutDetectorPanel(QtWidgets.QWidget):
+class CutDetectorPanel(QtWidgets.QWidget):
 
     def __init__(self):
         QtWidgets.QWidget.__init__( self )
@@ -125,7 +125,7 @@ class FnCutDetectorPanel(QtWidgets.QWidget):
     def initUI(self):
         layout = QtWidgets.QFormLayout(self)
 
-        self.spacingSlider = QtGui.QSlider()
+        self.spacingSlider = QtWidgets.QSlider()
         #self.spacingSlider.valueChanged.connect(self._spacingSliderChanged)
 
         self.mainClipImageLabel = QtWidgets.QLabel()

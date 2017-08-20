@@ -22,7 +22,7 @@ class RenderPreviewDialog(QtWidgets.QWidget):
         self.lbl.setScaledContents(True)
         self.lbl.move(100, 5)       
 
-        self.pbar = QtGui.QProgressBar(self)
+        self.pbar = QtWidgets.QProgressBar(self)
         self.pbar.setGeometry(30, 80, 220, 20)
 
         self.btn = QtWidgets.QPushButton('Cancel', self)
@@ -118,7 +118,7 @@ class MakeGIFAction(QtWidgets.QAction):
     # The GIF will fail to export if these things are not set.
 
     if isinstance(view, hiero.ui.BinView):
-        msgBox = QtGui.QMessageBox()
+        msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Rendering GIFs from the Bin View is not currently supported.\nPlease create a Sequence then repeat from the Timeline or Viewer.")
         msgBox.exec_()
         return
@@ -147,7 +147,7 @@ class MakeGIFAction(QtWidgets.QAction):
         inFrame = sequence.inTime()
         outFrame = sequence.outTime()
       except:
-        msgBox = QtGui.QMessageBox()
+        msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Please set an In and Out point. (Frame Range is limited to 500 frames)")
         msgBox.exec_()
         return

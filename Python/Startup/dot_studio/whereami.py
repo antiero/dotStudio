@@ -1,7 +1,7 @@
 import hiero.core
 import hiero.ui
-from PySide2 import QtGui
-from PySide.QtCore import Qt
+from PySide2.QtCore import Qt
+from PySide2 import QtWidgets
 
 def whereAmI(self, searchType='TrackItem'):
   """returns a list of objects where this Clip is used.
@@ -117,7 +117,7 @@ class WhereAmIMenu(object):
       """
       A Where Am I? Menu to the Bin, Timeline/Spreadsheet views, to show where Clips/TrackItems are found in the projcet
       """
-      self._whereAmIMenu = QtGui.QMenu("Show in Sequence...")
+      self._whereAmIMenu = QtWidgets.QMenu("Show in Sequence...")
 
       # To reduce the right-click show time for large projects, create this menu dynamically when user hovers over menu
       self._whereAmIMenu.aboutToShow.connect(self._createSequenceUsageMenuForActiveView)

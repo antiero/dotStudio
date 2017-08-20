@@ -1,8 +1,7 @@
 import hiero.core
 import nuke
 from hiero.ui import activeView, createMenuAction, menuBar
-from PySide.QtGui import *
-from PySide.QtCore import *
+from PySide2 import QtCore, QtGui, QtWidgets
 
 
 class PowerEditToolAction:
@@ -10,26 +9,26 @@ class PowerEditToolAction:
       self._PowerEditToolShowAction = createMenuAction("Power Edit", self.doit)
       hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
 
-  class PowerEditToolDialog(QDialog):
+  class PowerEditToolDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
       super(PowerEditToolAction.PowerEditToolDialog, self).__init__(parent)
       self.setWindowTitle("Power Edit")
-      layout = QGridLayout()
+      layout = QtWidgets.QGridLayout()
       self.setLayout(layout)
       self.appSettings  = hiero.core.ApplicationSettings()
 
       label = QLabel("What would you like to do?\n")
       layout.addWidget(label, 0,0)
 
-      self._trimExtendButton = QRadioButton("Trim")
+      self._trimExtendButton = QtWidgets.QRadioButton("Trim")
       self._trimExtendButton.setToolTip('Trim/Extend frames off the Head/Tail of a Shot. Positive value trims frames, negative extends.')
       self._trimExtendheadTailDropdown = QComboBox()
       self._trimExtendheadTailDropdown.addItem('Head+Tail')
       self._trimExtendheadTailDropdown.addItem('Head')
       self._trimExtendheadTailDropdown.addItem('Tail')
 
-      self._frameInc = QSpinBox()
+      self._frameInc = QtWidgets.QSpinBox()
       self._frameInc.setMinimum(-1e9)
       self._frameInc.setMaximum(1e9)
       self._frameInc.setValue(int(self.getFrameIncDefault()))
@@ -37,11 +36,11 @@ class PowerEditToolAction:
       layout.addWidget( self._trimExtendButton, 1,0 )
       layout.addWidget( self._trimExtendheadTailDropdown, 1,1 )
 
-      self._moveButton = QRadioButton("Move")
+      self._moveButton = QtWidgets.QRadioButton("Move")
       self._moveButton.setToolTip('Move Shots forwards (+) or backwards (-) by X number of frames.')
       layout.addWidget( self._moveButton, 2,0 )
 
-      self._slipButton = QRadioButton("Slip")
+      self._slipButton = QtWidgets.QRadioButton("Slip")
       self._slipButton.setToolTip('Slip Shots forwards (+) or backwards (-) by X number of frames.')
       layout.addWidget( self._slipButton, 3,0 )
 
@@ -56,7 +55,7 @@ class PowerEditToolAction:
       self._moveButton.clicked.connect(self.radioButtonClicked)
       self._slipButton.clicked.connect(self.radioButtonClicked)
 
-      buttonBox = QDialogButtonBox( QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel )
+      buttonBox = QtWidgets.QDialogButtonBox( QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel )
       buttonBox.accepted.connect( self.accept )
       buttonBox.rejected.connect( self.reject )
       layout.addWidget( buttonBox )
@@ -188,7 +187,7 @@ M = menuBar()
 ToolsMenu = M.addMenu('Tools')
 # Create a new QAction
 showPowerEditToolDialogAction = createMenuAction('Power Edit', a.doitGetSelection)
-showPowerEditToolDialogAction.setShortcut(QKeySequence('Ctrl+Shift+X'))
+showPowerEditToolDialogAction.setShortcut(QtGui.QKeySequence('Ctrl+Shift+X'))
 
 # Add the Action to your Nuke Menu
 ToolsMenu.addAction(showPowerEditToolDialogAction)
