@@ -2,7 +2,7 @@
 # PDF export task which can be used via the Export dialog via Sequence Processor
 import os
 import hiero.core
-from PySide.QtCore import Qt
+from PySide2.QtCore import Qt
 from FnPdfExporter import PDFExporter, printSequenceToPDF
 
 class PdfExportTask(hiero.core.TaskBase):

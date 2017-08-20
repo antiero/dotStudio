@@ -1,7 +1,8 @@
 # PDF Exporter Task UI
 # PDF image export task which can be used via the Export dialog via Sequence Processor
-import PySide.QtCore
-import PySide.QtGui
+import PySide2.QtCore
+import PySide2.QtGui
+import PySide2.QtWidgets
 import hiero.ui
 import FnPdfExportTask
 from FnPdfExporter import PDFExporter

@@ -27,8 +27,8 @@ import time
 import urllib
 import xml.sax.saxutils
 
-from PySide.QtCore import Qt
-from PySide.QtGui import QProgressDialog, QMenu, QDialog, QFormLayout, QComboBox, QDialogButtonBox, QSizePolicy
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import QProgressDialog, QMenu, QDialog, QFormLayout, QComboBox, QDialogButtonBox, QSizePolicy
 
 import hiero.ui
 from foundry.ui import FnFilenameField
