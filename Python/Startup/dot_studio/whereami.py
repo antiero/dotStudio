@@ -184,13 +184,12 @@ class WhereAmIMenu(object):
     # Create a list of actions sorted alphabetically
     for sequenceShotList in sorted( manifest.items(), key = lambda seq: seq[0].name()):
       # 1st element of sequenceShotLost is a Sequence, 2nd is a list of Shots in that Sequence
-      # If the Sequence is the currently active one, don't add it to the list, just show other Sequences
-      if (sequenceShotList[0] != activeSequence) or (not activeSequence):     
-        act = self._createShowSequenceActionForSequenceShotList(sequenceShotList)
-        if act not in hiero.ui.registeredActions():
-          hiero.ui.registerAction(act)
+      # For each Sequence this shot/clip belongs to, add an action to show it in that Sequence
+      act = self._createShowSequenceActionForSequenceShotList(sequenceShotList)
+      if act not in hiero.ui.registeredActions():
+        hiero.ui.registerAction(act)
 
-        self._whereAmIMenu.addAction(act)
+      self._whereAmIMenu.addAction(act)
   
   # This handles events from the Bin and Timeline/Spreadsheet
   def eventHandler(self, event):
