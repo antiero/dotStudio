@@ -592,9 +592,9 @@ class MarkersPanel(QtWidgets.QWidget):
 
   def _updateTableViewEvent(self, event):
     try:
-      self.updateTableView(event.sender.sequence())
+      hiero.core.executeInMainThread(self.updateTableView, event.sender.sequence())
     except AttributeError:
-      self.updateTableView()
+      hiero.core.executeInMainThread(self.updateTableView)
 
   def updateTableView(self, seq=None):
     seq = seq or hiero.ui.currentViewer().player().sequence()
