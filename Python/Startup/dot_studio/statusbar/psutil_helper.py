@@ -15,7 +15,7 @@ def bytesToGB(bytes):
 class PSUtilProcessWrapper(object):
   """This is a wrapper around a psutil.Process object, for the Nuke process"""
   def __init__(self):
-  
+
     # This should be the process of Nuke.
     self.nukeProcess = psutil.Process(os.getpid())
 

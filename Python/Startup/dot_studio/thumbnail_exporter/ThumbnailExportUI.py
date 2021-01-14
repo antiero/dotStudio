@@ -1,7 +1,7 @@
 # Thumbnail Exporter Task UI
 # Thumbnail image export task which can be used via the Export dialog via Shot, Clip or Sequence Processor
 # To install copy the ThumbnailExportTask.py and ThumbnailExportTaskUI.py to your <HIERO_PATH>/Python/Startup directory.
-# Keyword tokens exist for: 
+# Keyword tokens exist for:
 # {frametype} - Position where the thumbnail was taken from (first/middle/last/custom)
 # {srcframe} - The frame number of the original source clip file used for thumbnail
 # {dstframe} - The destination frame (timeline time) number used for the thumbnail
@@ -31,7 +31,7 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
     # Slot to handle change of thumbnail format combo change state
     value = self._formatComboBox.currentText()
     self._preset.properties()["format"] = unicode(value)
-  
+
   def customOffsetTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._customFrameLineEdit.text()
@@ -49,22 +49,22 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
 
   def frameTypeComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
-    
+
     value = self._frameTypeComboBox.currentText()
     if str(value) == self.kCustomFrame:
       self._customFrameLineEdit.setEnabled(True)
       self._preset.properties()["customFrameOffset"] = unicode(self._customFrameLineEdit.text())
     else:
       self._customFrameLineEdit.setEnabled(False)
-    self._preset.properties()["frameType"] = unicode(value)    
+    self._preset.properties()["frameType"] = unicode(value)
 
   def thumbSizeComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
-    
+
     value = self._thumbSizeComboBox.currentText()
     if value == "Default":
       self._widthBox.setEnabled(False)
-      self._wLabel.setEnabled(False)      
+      self._wLabel.setEnabled(False)
       self._heightBox.setEnabled(False)
       self._hLabel.setEnabled(False)
     elif value == "To Box":
@@ -76,7 +76,7 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
       self._widthBox.setEnabled(True)
       self._wLabel.setEnabled(True)
       self._heightBox.setEnabled(False)
-      self._hLabel.setEnabled(False)      
+      self._hLabel.setEnabled(False)
     elif value == "Scaled to Height":
       self._widthBox.setEnabled(False)
       self._wLabel.setEnabled(False)
@@ -93,7 +93,7 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
 To link across filesystems the remote file server must also be running Vista or later.\n
 You may also need administrator privileges to create symbolic links on Windows.""")
     info.setWordWrap(True)
-    layout.addWidget(info) 
+    layout.addWidget(info)
     print "layout.addWidget(%s)" % str(info)
     print "layout (%s)" % str(layout)
 
@@ -101,11 +101,11 @@ You may also need administrator privileges to create symbolic links on Windows."
 
     layout = widget.layout()
     formLayout = TaskUIFormLayout()
-    layout.addLayout(formLayout)    
-    
+    layout.addLayout(formLayout)
+
     # Thumb frame type layout
     thumbFrameLayout = QtWidgets.QHBoxLayout()
-    self._frameTypeComboBox = QtWidgets.QComboBox()    
+    self._frameTypeComboBox = QtWidgets.QComboBox()
     self._frameTypeComboBox.setToolTip("Specify the frame from which to pick the thumbnail.\nCustom allows you to specify a custom frame offset, relative from the first frame.")
 
     thumbFrameTypes = (self.kFirstFrame, self.kMiddleFrame, self.kLastFrame, self.kCustomFrame)
@@ -136,7 +136,7 @@ You may also need administrator privileges to create symbolic links on Windows."
         self._formatComboBox.setCurrentIndex(index)
 
     self._formatComboBox.currentIndexChanged.connect(self.formatComboBoxChanged)
-    
+
 
     # QImage save height
     # Thumb frame type layout
@@ -153,15 +153,15 @@ You may also need administrator privileges to create symbolic links on Windows."
 
     thumbSizeLayout.addWidget(self._thumbSizeComboBox)
     self._wLabel = QtWidgets.QLabel('w:')
-    self._wLabel.setFixedWidth(12)    
+    self._wLabel.setFixedWidth(12)
     thumbSizeLayout.addWidget(self._wLabel,QtCore.Qt.AlignLeft)
     self._widthBox = QtWidgets.QLineEdit()
     self._widthBox.setToolTip("Thumbnail width in pixels")
     self._widthBox.setEnabled(False)
     self._widthBox.setValidator(QtGui.QIntValidator())
     self._widthBox.setMaximumWidth(40)
-    self._widthBox.setText(str(self._preset.properties()["width"]))  
-    self._widthBox.textChanged.connect(self.widthTextChanged)  
+    self._widthBox.setText(str(self._preset.properties()["width"]))
+    self._widthBox.textChanged.connect(self.widthTextChanged)
     thumbSizeLayout.addWidget(self._widthBox,QtCore.Qt.AlignLeft)
 
     self._hLabel = QtWidgets.QLabel('h:')
@@ -173,7 +173,7 @@ You may also need administrator privileges to create symbolic links on Windows."
     self._heightBox.setValidator(QtGui.QIntValidator())
     self._heightBox.setMaximumWidth(40)
     self._heightBox.setText(str(self._preset.properties()["height"]))
-    self._heightBox.textChanged.connect(self.heightTextChanged)    
+    self._heightBox.textChanged.connect(self.heightTextChanged)
     thumbSizeLayout.addWidget(self._heightBox,QtCore.Qt.AlignLeft)
 
     self._thumbSizeComboBox.currentIndexChanged.connect(self.thumbSizeComboBoxChanged)
@@ -181,9 +181,9 @@ You may also need administrator privileges to create symbolic links on Windows."
     self._frameTypeComboBox.currentIndexChanged.connect(self.frameTypeComboBoxChanged)
     self.frameTypeComboBoxChanged(0) # Trigger to make it set the enabled state correctly
     self._customFrameLineEdit.textChanged.connect(self.customOffsetTextChanged)
-    
+
     formLayout.addRow("Frame Type:",thumbFrameLayout)
     formLayout.addRow("Size:",thumbSizeLayout)
-    formLayout.addRow("File Type:",self._formatComboBox)    
+    formLayout.addRow("File Type:",self._formatComboBox)
 
 hiero.ui.taskUIRegistry.registerTaskUI(ThumbnailExportTask.ThumbnailExportPreset, ThumbnailExportUI)
