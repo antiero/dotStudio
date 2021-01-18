@@ -7,11 +7,11 @@ cwd = os.path.dirname(os.path.realpath(__file__))
 # http://www.reportlab.com
 thirdPartyDir = os.path.abspath(os.path.join(cwd, "thirdParty"))
 sys.path.append(thirdPartyDir)
-import FnPdfExporter
+import AnPdfExporter
 
 # Add the right-click action
-action = FnPdfExporter.ExportPdfAction()
+action = AnPdfExporter.ExportPdfAction()
 
 # Add the Export Task for the Export dialog
-import FnPdfExportTask
-import FnPdfExportTaskUI
+import AnPdfExportTask
+import AnPdfExportTaskUI

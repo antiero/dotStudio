@@ -1,7 +1,7 @@
 #------------------------------------------------------------------------------
-# FnPdfExporter.py - Produces PDF contact sheet shot layouts for a sequence
+# AnPdfExporter.py - Produces PDF contact sheet shot layouts for a sequence
 #------------------------------------------------------------------------------
-# v1.0, Antony Nasce, 15/09/15
+# Antony Nasce, v1.1, 18/01/21
 #------------------------------------------------------------------------------
 # PDF Layout by Abo Biglarpour. PDF writing Reportlab: http://www.reportlab.com
 #------------------------------------------------------------------------------
@@ -41,10 +41,10 @@ class PDFExporter(object):
     THUMB_MIDDLE_FRAME = "Middle"
     THUMB_LAST_FRAME = "Last"
     THUMB_FRAME_TYPES = (THUMB_FIRST_FRAME, THUMB_MIDDLE_FRAME, THUMB_LAST_FRAME)
-    PAGE_LAYOUTS_DICT = {"Landscape 1/pg" : [1, 1, "landscape"], 
-                         "Landscape 4/pg": [2, 2, "landscape"], 
-                         "Landscape 9/pg": [3, 3, "landscape"],
-                         "Letter 3/pg": [3, 1, "letter"]}
+    PAGE_LAYOUTS_DICT = {"1 per page" : [1, 1, "landscape"], 
+                         "2 x 2": [2, 2, "landscape"], 
+                         "3 x 3": [3, 3, "landscape"],
+                         "3 x 1": [3, 1, "letter"]}
 
     def __init__(self, shotCutList, outputFilePath = None, 
                  rows = 3, columns = 3, orientation = "landscape", 
@@ -314,8 +314,8 @@ class PDFExporter(object):
         """
         Fetch all the show parameters for pdf template
         """
-        self.companyName            = "The Foundry"
-        self.companyLogoPath        = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images/logo.jpg")
+        self.companyName            = "AwesomeFX"
+        self.companyLogoPath        = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images/company.jpg")
         self.showLogoPath           = os.path.join(os.path.dirname(os.path.realpath(__file__)), "images/show.jpg")
         self.background             = "white"
         self.fontTypePath           = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts/OpenSans-Light.ttf")
@@ -709,7 +709,12 @@ class ExportPdfAction(object):
 
     def printSelectedSequenceToPDF(self):
         """Prints the selected Sequences to PDF and shows them in the browser"""
-        selection = hiero.ui.activeView().selection()
+        view = hiero.ui.activeView()
+        if not view or not hasattr(view, 'selection'):
+            return        
+        selection = view.selection()
+
+        print(selection)
 
         sequences = [item.activeItem() for item in selection if hasattr(item, "activeItem") and isinstance(item.activeItem(), hiero.core.Sequence)]
 

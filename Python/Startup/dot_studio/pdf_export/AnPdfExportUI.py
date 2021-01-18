@@ -5,12 +5,12 @@
 # {frametype} - Position where the thumbnail was taken from (first/middle/last/custom)
 # {srcframe} - The frame number of the original source clip file used for thumbnail
 # {dstframe} - The destination frame (timeline time) number used for the thumbnail
-# Antony Nasce, v1.0, 13/10/13
+# Antony Nasce, v1.1, 18/01/21
 
 import PySide.QtCore
 import PySide.QtGui
 import hiero.ui
-import FnPdfExportTask
+import AnPdfExportTask
 
 class PdfExportUI(hiero.ui.TaskUIBase):
 
@@ -21,7 +21,7 @@ class PdfExportUI(hiero.ui.TaskUIBase):
 
   def __init__(self, preset):
     """Initialize"""
-    hiero.ui.TaskUIBase.__init__(self, FnPdfExportTask.PdfExportTask, preset, "PDF Exporter")
+    hiero.ui.TaskUIBase.__init__(self, AnPdfExportTask.PdfExportTask, preset, "PDF Exporter")
 
   def formatComboBoxChanged(self):
     # Slot to handle change of thumbnail format combo change state
@@ -169,4 +169,4 @@ class PdfExportUI(hiero.ui.TaskUIBase):
     layout.addRow("Size:",thumbSizeLayout)
     layout.addRow("File Type:",self._formatComboBox)    
 
-hiero.ui.taskUIRegistry.registerTaskUI(FnPdfExportTask.PdfExportPreset, PdfExportUI)
+hiero.ui.taskUIRegistry.registerTaskUI(AnPdfExportTask.PdfExportPreset, PdfExportUI)

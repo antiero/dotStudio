@@ -3,7 +3,7 @@
 import os
 import hiero.core
 from PySide2.QtCore import Qt
-from FnPdfExporter import PDFExporter, printSequenceToPDF
+from AnPdfExporter import PDFExporter, printSequenceToPDF
 
 class PdfExportTask(hiero.core.TaskBase):
   def __init__( self, initDict ):

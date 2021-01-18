@@ -1,22 +1,18 @@
 # PDF Exporter Task UI
 # PDF image export task which can be used via the Export dialog via Sequence Processor
-import PySide2.QtCore
-import PySide2.QtGui
-import PySide2.QtWidgets
+from PySide2 import QtCore
+from PySide2 import QtGui
+from PySide2 import QtWidgets
 import hiero.ui
-import FnPdfExportTask
-from FnPdfExporter import PDFExporter
+from hiero.ui.FnTaskUIFormLayout import TaskUIFormLayout
+import AnPdfExportTask
+from AnPdfExporter import PDFExporter
 
 class PdfExportUI(hiero.ui.TaskUIBase):
 
   def __init__(self, preset):
     """Initialize"""
-    hiero.ui.TaskUIBase.__init__(self, FnPdfExportTask.PdfExportTask, preset, "PDF Exporter")
-
-  def formatComboBoxChanged(self):
-    # Slot to handle change of thumbnail format combo change state
-    value = self._formatComboBox.currentText()
-    self._preset.properties()["format"] = unicode(value)
+    hiero.ui.TaskUIBase.__init__(self, AnPdfExportTask.PdfExportTask, preset, "PDF Exporter")
   
   def customOffsetTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
@@ -27,14 +23,6 @@ class PdfExportUI(hiero.ui.TaskUIBase):
     # Slot to handle change of thumbnail format combo change state
     
     value = self._frameTypeComboBox.currentText()
-
-    """ UNUSED for CUSTOM frame
-    if str(value) == self.kCustomFrame:
-      self._customFrameLineEdit.setEnabled(True)
-      self._preset.properties()["customFrameOffset"] = unicode(self._customFrameLineEdit.text())
-    else:
-      self._customFrameLineEdit.setEnabled(False)"""
-
     self._preset.properties()["thumbnailFrameType"] = unicode(value)    
 
   def pageLayoutComboBoxChanged(self, index):
@@ -45,13 +33,14 @@ class PdfExportUI(hiero.ui.TaskUIBase):
     self._preset.properties()["pageLayoutType"] = unicode(value)
 
   def populateUI(self, widget, exportTemplate):
-    layout = PySide.QtWidgets.QFormLayout()
-    layout.setContentsMargins(9, 0, 9, 0)
-    widget.setLayout(layout)
+    layout = widget.layout()
+
+    formLayout = TaskUIFormLayout()
+    layout.addLayout(formLayout)
 
     # Thumb frame type layout
-    thumbFrameLayout = PySide.QtWidgets.QHBoxLayout()
-    self._frameTypeComboBox = PySide.QtWidgets.QComboBox()    
+    thumbFrameLayout = QtWidgets.QHBoxLayout()
+    self._frameTypeComboBox = QtWidgets.QComboBox()    
     self._frameTypeComboBox.setToolTip("Specify the frame from which to pick the thumbnail.")
 
     self._pdfLayouts = PDFExporter.PAGE_LAYOUTS_DICT
@@ -63,19 +52,9 @@ class PdfExportUI(hiero.ui.TaskUIBase):
         self._frameTypeComboBox.setCurrentIndex(index)
 
     self._frameTypeComboBox.setMaximumWidth(80)
+    thumbFrameLayout.addWidget(self._frameTypeComboBox, QtCore.Qt.AlignLeft)
 
-    """self._customFrameLineEdit = PySide.QtWidgets.QLineEdit()
-    self._customFrameLineEdit.setEnabled(False)
-    self._customFrameLineEdit.setToolTip("This is the frame offset from the first frame of the shot/sequence")
-    self._customFrameLineEdit.setValidator(PySide.QtGui.QIntValidator())
-    self._customFrameLineEdit.setMaximumWidth(80)
-
-    self._customFrameLineEdit.setText(str(self._preset.properties()["customFrameOffset"]))"""
-
-    thumbFrameLayout.addWidget(self._frameTypeComboBox, PySide.QtCore.Qt.AlignLeft)
-    #thumbFrameLayout.addWidget(self._customFrameLineEdit, PySide.QtCore.Qt.AlignLeft)
-
-    self._pdfPageLayoutComboBox = PySide.QtWidgets.QComboBox()
+    self._pdfPageLayoutComboBox = QtWidgets.QComboBox()
     self._pdfPageLayoutComboBox.setMaximumWidth(115)
     self._pdfPageLayoutComboBox.setToolTip("This determines the layout of the PDF")
 
@@ -88,10 +67,8 @@ class PdfExportUI(hiero.ui.TaskUIBase):
     self.pageLayoutComboBoxChanged(0)
     self._frameTypeComboBox.currentIndexChanged.connect(self.frameTypeComboBoxChanged)
     self.frameTypeComboBoxChanged(0) # Trigger to make it set the enabled state correctly
-    #self._customFrameLineEdit.textChanged.connect(self.customOffsetTextChanged)
     
-    layout.addRow("Frame Type:",thumbFrameLayout)
-    layout.addRow("Layout:",self._pdfPageLayoutComboBox)
-    layout.addRow("File Type:",self._formatComboBox)    
+    formLayout.addRow("Frame Type:",thumbFrameLayout)
+    formLayout.addRow("Layout:",self._pdfPageLayoutComboBox)  
 
-hiero.ui.taskUIRegistry.registerTaskUI(FnPdfExportTask.PdfExportPreset, PdfExportUI)
+hiero.ui.taskUIRegistry.registerTaskUI(AnPdfExportTask.PdfExportPreset, PdfExportUI)
