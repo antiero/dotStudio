@@ -24,14 +24,14 @@ def whereAmI(self, searchType='TrackItem'):
   proj = self.project()
 
   if ('TrackItem' not in searchType) and ('Sequence' not in searchType):
-    print "searchType argument must be 'TrackItem' or 'Sequence'"
+    print("searchType argument must be 'TrackItem' or 'Sequence'")
     return None
 
   # If user specifies a TrackItem, then it will return 
   searches = hiero.core.findItemsInProject(proj, searchType)
 
   if len(searches)==0:
-    print 'Unable to find %s in any items of type: %s' % (str(self),str(searchType)) 
+    print("Unable to find %s in any items of type: '%s'" % (str(self),str(searchType)))
     return None
   
   # Case 1: Looking for Shots (trackItems)
@@ -46,8 +46,8 @@ def whereAmI(self, searchType='TrackItem'):
           clipUsedIn.append(shot)
 
       # If we throw an exception here its because the Shot did not have a Source Clip in the Bin.
-      except RuntimeError:
-        hiero.core.log.info('Unable to find Parent Clip BinItem for Shot: %s, Source:%s' % (shot, shot.source()))
+      except RuntimeError as e:
+        hiero.core.log.info("Unable to find Parent Clip BinItem for Shot: '%s', Source: '%s'. (%s)" % (shot, shot.source(), e))
         pass
 
   # Case 1: Looking for Shots (trackItems)

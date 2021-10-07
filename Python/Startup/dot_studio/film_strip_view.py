@@ -50,7 +50,6 @@ class MyListView(QtWidgets.QListView):
         seq = hiero.ui.activeSequence()
         trackItems = self.createTrackItemStripForSequence(seq)
         numItems = len(trackItems)
-        #print "Got %i trackItems" % numItems
         images = []
         for i in range(0, numItems):
             try:

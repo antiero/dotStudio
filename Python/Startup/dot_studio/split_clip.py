@@ -56,7 +56,7 @@ class SplitClipAction(QtWidgets.QAction):
     Note: Set 'deleteOriginal' to True if you want to delete the original Clip"""
     mediaSource = clip.mediaSource()
     if mediaSource.singleFile():
-      print 'Clip input is not an image sequence and cannot be split'
+      print("Clip input is not an image sequence and cannot be split")
       return None
 
     fileName = mediaSource.fileinfos()[0].filename()
@@ -88,7 +88,7 @@ class SplitClipAction(QtWidgets.QAction):
         else:
           # It should be a single frame, with no 'first-last' in the media source path
           frame = re.findall(r'\b\d+\b', source)
-          print 'FRAME IS ' + str(frame)
+          print("FRAME IS: " + str(frame))
           if len(frame)>=1:
             # We may have found a funny file name which starts with a number and later has a frame number. We assume the last occuring number is the frame.
             frame = frame[-1]
@@ -98,7 +98,7 @@ class SplitClipAction(QtWidgets.QAction):
               _first = int(frame)
               _last = _first
             except ValueError:
-              print 'Frame numbering for %s was ambiguous and frame value not be not be detected for still frame.' % source
+              print("Frame numbering for %s was ambiguous and frame value not be not be detected for still frame." % source)
               return
 
         clip = hiero.core.Clip(filePathPadded, _first, _last)
@@ -107,7 +107,7 @@ class SplitClipAction(QtWidgets.QAction):
 
         # Only add this new Clip if an identical Clip cannot be found in the Project
         if clipInstancesInProject(clip)==0:
-          print 'Adding new sub-Clip for %s, first=%d, last=%d' % (filePathPadded, _first,_last)
+          print("Adding new sub-Clip for %s, first=%d, last=%d" % (filePathPadded, _first,_last))
           clipBinRoot.addItem(hiero.core.BinItem(clip))
 
     if deleteOriginal:

@@ -76,13 +76,13 @@ class QuickExportAction(QtWidgets.QAction):
 
     # Prepare list of selected items for export
     view = hiero.ui.activeView()
-    print "view is: " + str(view)
+    print("view is: " + str(view))
     if not view or not hasattr(view, 'selection'):
-      print "No selection available"
+      print("No selection available")
       return
 
     selection = [QuickExportAction.CustomItemWrapper(item) for item in view.selection()]
-    print "selection is: " + str(selection)
+    print("selection is: " + str(selection))
 
     if len(selection) > 0:
       # Raise the dialog to set the Export Root:

@@ -27,7 +27,7 @@ There are currently six themes provided:
 
 EXAMPLE USAGE:
     from reportlab.lib import randomtext
-    print randomtext.randomText(randomtext.PYTHON, 10)
+    print(randomtext.randomText(randomtext.PYTHON, 10))
 
     This prints a random number of random sentences (up to a limit
     of ten) using the theme 'PYTHON'.

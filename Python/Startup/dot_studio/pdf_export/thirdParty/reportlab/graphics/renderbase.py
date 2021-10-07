@@ -76,8 +76,6 @@ class StateTracker:
             if key == 'transform':  #do cumulative matrix
                 newstate['transform'] = delta['transform']
                 newstate['ctm'] = mmult(self._combined[-1]['ctm'], delta['transform'])
-                #print 'statetracker transform = (%0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f)' % tuple(newstate['transform'])
-                #print 'statetracker ctm = (%0.2f, %0.2f, %0.2f, %0.2f, %0.2f, %0.2f)' % tuple(newstate['ctm'])
 
             else:  #just overwrite it
                 newstate[key] = value
@@ -96,12 +94,9 @@ class StateTracker:
         del  self._deltas[-1]
         #need to diff this against the last one in the state
         reverseDelta = {}
-        #print 'pop()...'
         for key, curValue in lastDelta.items():
-            #print '   key=%s, value=%s' % (key, curValue)
             prevValue = newState[key]
             if prevValue != curValue:
-                #print '    state popping "%s"="%s"' % (key, curValue)
                 if key == 'transform':
                     reverseDelta[key] = inverse(lastDelta['transform'])
                 else:  #just return to previous state
@@ -233,9 +228,7 @@ class Renderer:
         for key, value in node.__dict__.items():
             if isinstance(value, DerivedValue):
                 #just replace with default for key?
-                #print '    fillDerivedValues(%s)' % key
                 newValue = value.getValue(self, key)
-                #print '   got value of %s' % newValue
                 node.__dict__[key] = newValue
 
     def drawNodeDispatcher(self, node):
@@ -313,7 +306,6 @@ class Renderer:
 
     def drawWedge(self, wedge):
         # by default ask the wedge to make a polygon of itself and draw that!
-        #print "drawWedge"
         P = wedge.asPolygon()
         if isinstance(P,Path):
             self.drawPath(P)

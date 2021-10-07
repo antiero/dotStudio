@@ -30,22 +30,22 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
   def formatComboBoxChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._formatComboBox.currentText()
-    self._preset.properties()["format"] = unicode(value)
+    self._preset.properties()["format"] = str(value)
 
   def customOffsetTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._customFrameLineEdit.text()
-    self._preset.properties()["customFrameOffset"] = unicode(value)
+    self._preset.properties()["customFrameOffset"] = str(value)
 
   def widthTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._widthBox.text()
-    self._preset.properties()["width"] = unicode(value)
+    self._preset.properties()["width"] = str(value)
 
   def heightTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._heightBox.text()
-    self._preset.properties()["height"] = unicode(value)
+    self._preset.properties()["height"] = str(value)
 
   def frameTypeComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
@@ -53,10 +53,10 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
     value = self._frameTypeComboBox.currentText()
     if str(value) == self.kCustomFrame:
       self._customFrameLineEdit.setEnabled(True)
-      self._preset.properties()["customFrameOffset"] = unicode(self._customFrameLineEdit.text())
+      self._preset.properties()["customFrameOffset"] = str(self._customFrameLineEdit.text())
     else:
       self._customFrameLineEdit.setEnabled(False)
-    self._preset.properties()["frameType"] = unicode(value)
+    self._preset.properties()["frameType"] = str(value)
 
   def thumbSizeComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
@@ -83,19 +83,16 @@ class ThumbnailExportUI(hiero.ui.TaskUIBase):
       self._heightBox.setEnabled(True)
       self._hLabel.setEnabled(True)
 
-    self._preset.properties()["thumbSize"] = unicode(value)
+    self._preset.properties()["thumbSize"] = str(value)
 
 
   def populateUI_work(self, widget, exportTemplate):
-    print "populateUI"
     layout = widget.layout()
     info = QtWidgets.QLabel("""<i>Windows Note:</i> Symbolic links will only work in Vista or later.\n
 To link across filesystems the remote file server must also be running Vista or later.\n
 You may also need administrator privileges to create symbolic links on Windows.""")
     info.setWordWrap(True)
     layout.addWidget(info)
-    print "layout.addWidget(%s)" % str(info)
-    print "layout (%s)" % str(layout)
 
   def populateUI(self, widget, exportTemplate):
 

@@ -1,5 +1,5 @@
 import hiero.ui
-from CutDetector import CutDetectorPanel
+from .CutDetector import CutDetectorPanel
 
 cutDetector = CutDetectorPanel()
 

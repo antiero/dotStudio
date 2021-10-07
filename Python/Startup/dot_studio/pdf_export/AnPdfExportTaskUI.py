@@ -17,20 +17,20 @@ class PdfExportUI(hiero.ui.TaskUIBase):
   def customOffsetTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._customFrameLineEdit.text()
-    self._preset.properties()["customFrameOffset"] = unicode(value)
+    self._preset.properties()["customFrameOffset"] = str(value)
 
   def frameTypeComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
     
     value = self._frameTypeComboBox.currentText()
-    self._preset.properties()["thumbnailFrameType"] = unicode(value)    
+    self._preset.properties()["thumbnailFrameType"] = str(value)    
 
   def pageLayoutComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
     
     value = self._pdfPageLayoutComboBox.currentText()
 
-    self._preset.properties()["pageLayoutType"] = unicode(value)
+    self._preset.properties()["pageLayoutType"] = str(value)
 
   def populateUI(self, widget, exportTemplate):
     layout = widget.layout()

@@ -125,7 +125,7 @@ class SetupCompDialog(QtWidgets.QDialog):
       if isinstance(taskPreset, hiero.exporters.FnExternalRender.NukeRenderPreset):
         writeNode = nuke.nodes.Write()
         properties = taskPreset.properties()
-        print "Unresolved Path is: %s" % path
+        print("Unresolved Path is: %s" % path)
         file_type = properties["file_type"]
         writeNode["file_type"].setValue(str(file_type))
 
@@ -148,7 +148,7 @@ class SetupCompDialog(QtWidgets.QDialog):
         # Now we need to prepend the project Root to the path...
         path = os.path.join(self.currentProjectRoot(), path)
 
-        print "Resolved Path is: %s" % path
+        print("Resolved Path is: %s" % path)
         writeNode["file"].setValue(path)
 
         if "channels" in properties:
@@ -177,11 +177,11 @@ class SetupCompDialog(QtWidgets.QDialog):
 
   def currentShotName(self):
     """Returns the current shot name from the dialog"""
-    return unicode(self.shotNameLineEdit.text())
+    return str(self.shotNameLineEdit.text())
 
   def currentProjectRoot(self):
     """Returns the current shot name from the dialog"""
-    return unicode(self.projectRootPicker.filename())    
+    return str(self.projectRootPicker.filename())    
 
   def resolvedVersionStringFromPreset(self, preset):
     versionIndex = self.versionIndexFromPreset(preset)
@@ -207,7 +207,7 @@ class SetupCompDialog(QtWidgets.QDialog):
 
         writeNodeOutputTasks+=[{"path" : path, "file_type":file_type, "channels": channels}]
 
-    print "Got Possible Nuke Write nodes Tasks %s" % writeNodeOutputTasks
+    print("Got Possible Nuke Write nodes Tasks %s" % writeNodeOutputTasks)
     return writeNodeOutputTasks
 
   def getNukeScriptSaveTasksFromPreset(self, preset):
@@ -217,7 +217,7 @@ class SetupCompDialog(QtWidgets.QDialog):
         
         nkScriptTasks+=[{"preset":taskPreset, "path": path}]
 
-    print "Got Possible Nuke Script Save Tasks: %s" % nkScriptTasks
+    print("Got Possible Nuke Script Save Tasks: %s" % nkScriptTasks)
     return nkScriptTasks
 
   def shotPresetChanged(self, index):
@@ -275,7 +275,7 @@ def sendCompToStudioProject():
   else:
     presetDialog = SetupCompDialog(project, "")
     nuke.currentPreset = presetDialog.getPresetFromDialog(project, "Setup Comp")
-    print "nuke.currentPreset is: %s" % str(nuke.currentPreset)
+    print("nuke.currentPreset is: %s" % str(nuke.currentPreset))
     writeNode = presetDialog.createWriteNodeFromPreset(nuke.currentPreset)
     outputNode = selectedNodes[-1]
     writeNode.setInput(0, outputNode)

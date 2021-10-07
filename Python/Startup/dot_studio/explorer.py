@@ -1,3 +1,4 @@
+# TODO: FIXME
 # INCOMPLETE: Get drag-drop from listview into Bin
 import sys
 import hiero.ui
@@ -27,7 +28,7 @@ class ThumbListWidget(QtWidgets.QListWidget):
             super(ThumbListWidget, self).dragLeaveEvent(event)            
 
     def dragMoveEvent(self, event):
-        print "Drag Move Event, event is:" + str(event)
+        print("Drag Move Event, event is:" + str(event))
         if event.mimeData().hasUrls():
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
@@ -35,7 +36,7 @@ class ThumbListWidget(QtWidgets.QListWidget):
             super(ThumbListWidget, self).dragMoveEvent(event)
 
     def dropEvent(self, event):
-        print 'dropEvent', event
+        print('dropEvent', event)
         if event.mimeData().hasUrls():
             event.setDropAction(QtCore.Qt.CopyAction)
             event.accept()
@@ -72,6 +73,7 @@ class Explorer(QtWidgets.QWidget):
         self.fileBrowserWidget = QtWidgets.QWidget(self)
 
         self.dirmodel = QtWidgets.QFileSystemModel()
+        
         # Don't show files, just folders
         self.dirmodel.setFilter(QtCore.QDir.NoDotAndDotDot | QtCore.QDir.AllDirs)
 
@@ -87,11 +89,10 @@ class Explorer(QtWidgets.QWidget):
         self.folder_view.hideColumn(1)
         self.folder_view.hideColumn(2)
         self.folder_view.hideColumn(3)
-
-
         self.selectionModel = self.folder_view.selectionModel()
 
         self.filemodel = QtWidgets.QFileSystemModel()
+
         # Don't show folders, just files
         self.filemodel.setFilter(QtCore.QDir.NoDotAndDotDot | QtCore.QDir.Files)
 
@@ -144,7 +145,7 @@ class Explorer(QtWidgets.QWidget):
             self.dirmodel.setRootPath(path)
 
     def items_dropped(self, arg):
-        print 'items_dropped', arg            
+        print('items_dropped %s' % str(arg))
 
     def clicked(self, index):
         # the signal passes the index of the clicked item
@@ -159,7 +160,7 @@ class Explorer(QtWidgets.QWidget):
 hiero.ui.explorer = Explorer()
 hiero.ui.explorer.__doc__ = "The File Explorer panel object."
 hiero.ui.explorer.set_path('/')
-hiero.ui.registerPanel( "uk.co.thefoundry.explorer", hiero.ui.explorer )
+hiero.ui.registerPanel( "com.antiero.explorer", hiero.ui.explorer )
 wm = hiero.ui.windowManager()
 wm.addWindow( hiero.ui.explorer )
 
@@ -178,40 +179,31 @@ class BinViewDropHandler:
   def dropHandler(self, event):
     
     # get the mime data
-    print "mimeData: ", event.mimeData
-
-    # fast/easy way to get at text data
-    #if event.mimeData.hasText():
-    #  print event.mimeData.text()
+    print("mimeData: %s" % event.mimeData)
       
-    # more complicated way
+    # Get Text Data
     if event.mimeData.hasFormat(BinViewDropHandler.kTextMimeType):
       byteArray = event.mimeData.data(BinViewDropHandler.kTextMimeType)
-      print byteArray.data()
         
       # signal that we've handled the event here
       event.dropEvent.accept()
 
     # get custom hiero objects if drag from one view to another (only present if the drop was from one hiero view to another)
     if hasattr(event, "items"):
-      print "hasItems"
-      print event.items
+      print("hasItems")
+      print(str(event.items))
     
     # figure out which item it was dropped onto
-    print "dropItem: ", event.dropItem
+    print("dropItem: %s" % str(event.dropItem))
     
     # get the widget that the drop happened in
-    print "dropWidget: ", event.dropWidget
+    print("dropWidget: %s" % str(event.dropWidget))
     
     # get the higher level container widget (for the Bin View, this will be the Bin View widget)
-    print "containerWidget: ", event.containerWidget
+    print("containerWidget: %s" % str(event.containerWidget))
     
     # can also get the sender
-    print "eventSender: ", event.sender
-      
-  #def unregister(self):
-  #  unregisterInterest((EventType.kDrop, EventType.kBin), self.dropHandler)
-  #  hiero.ui.unregisterBinViewCustomMimeDataType(BinViewDropHandler.kTextMimeType)
+    print("eventSender: %s" % event.sender)
 
 # Instantiate the handler to get it to register itself.
 dropHandler = BinViewDropHandler()

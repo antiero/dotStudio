@@ -168,8 +168,8 @@ class ThumbnailExportTask(hiero.core.TaskBase):
             thumb = thumb.scaledToHeight(h, mode = Qt.SmoothTransformation)
 
         thumb.save(self._thumbFile)
-      except:
-        print 'Unable to save thumbnail for %s' % str(self._item)
+      except Exception as e:
+        print("Unable to save thumbnail for '%s' - (%s)" % (str(self._item), e))
 
     self._finished = True
     

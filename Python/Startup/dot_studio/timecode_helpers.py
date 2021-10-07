@@ -70,7 +70,7 @@ class TrackItemTCObject(object):
     Returns True if mode supplied was valid, False otherwise
     """
     if mode not in (hiero.core.Timecode.kDisplayTimecode, hiero.core.Timecode.kDisplayTimecode, hiero.core.Timecode.kDisplayFrames):
-      print "Please supply a valid Timecode display mode (kDisplayTimecode, kDisplayFrames, kDisplayDropFrameTimecode)"
+      print("Please supply a valid Timecode display mode (kDisplayTimecode, kDisplayFrames, kDisplayDropFrameTimecode)")
       return False
 
     self._timecodeDisplayMode = mode
@@ -149,7 +149,7 @@ class PasteShotInfoDialog(QtWidgets.QDialog):
 
   def getCopiedShot(self):
     """Just returns the shot stored in hiero.core.shotClipboard, None if multiple shots exist"""
-    print "getCopiedShot: hiero.core.shotClipboard is %s" % str(hiero.core.shotClipboard)
+    print("getCopiedShot: hiero.core.shotClipboard is %s" % str(hiero.core.shotClipboard))
     if len(hiero.core.shotClipboard) != 1:
       return None
     else:
@@ -195,11 +195,11 @@ class TimecodeMenu:
         shot.setSourceIn(clipSourceIn)
         shot.setSourceOut(clipSourceIn + (shot.duration()-1))
 
-        print "original src In is %i, will be changed to %i" % (originalSrcIn, clipSourceIn)
+        print("original src In is '%i', will be changed to '%i'" % (originalSrcIn, clipSourceIn))
         try:
           shot.setSourceIn(clipSourceIn)
-        except:
-          print "Could not set 'foundry.edl.srcIn'"       
+        except Exception as e:
+          print("Could not set 'foundry.edl.srcIn' - (%s)" % (str(e)))       
 
   def setSrcInToFirstFrameOfClip(self):
     """Sets the Shot's srcIn to be the first available frame of the Clip"""
@@ -216,8 +216,8 @@ class TimecodeMenu:
         clipSourceIn = sourceClip.sourceIn() - sourceClip.timelineOffset()
         shot.setSourceIn(clipSourceIn)
         shot.setSourceOut(clipSourceIn + (shot.duration()-1))
-      except:
-        print "Unable to adjust source in timecode for %s" % str(shot)
+      except Exception as e:
+        print("Unable to adjust source in timecode for %s - (%s)" % (str(shot), str(e)))
 
   def copyTC(self):
     """'Copies' the shot selection to the 'Clipboard', storing it in hiero.core.shotClipboard"""
@@ -229,7 +229,7 @@ class TimecodeMenu:
     selection = view.selection()    
     shotSelection = self.getShotSelectionForActiveView()
     hiero.core.shotClipboard = shotSelection
-    print "Copied to hiero.core.shotClipboard: %s" % str(hiero.core.shotClipboard)
+    print("Copied to hiero.core.shotClipboard: %s" % str(hiero.core.shotClipboard))
 
   def getShotSelectionForActiveView(self):
     view = hiero.ui.activeView()
@@ -251,7 +251,7 @@ class TimecodeMenu:
 
     # If there's more than one shot in the Clipboard, bail out and Warn
     if len(hiero.core.shotClipboard) != 1:
-      print "[Paste TC Error] : you can only paste shot info from a single shot.\n  -Current Shot clipboard contains multiple shots: %s" % str(hiero.core.shotClipboard)
+      print("[Paste TC Error] : you can only paste shot info from a single shot.\n  -Current Shot clipboard contains multiple shots: %s" % str(hiero.core.shotClipboard))
       return
 
     copiedShot = hiero.core.shotClipboard[0]
@@ -274,8 +274,8 @@ class TimecodeMenu:
         seq.editFinished()
         destShot.setSourceOut(srcOut)
         seq.editFinished()
-      except: 
-        print "[Paste TC Error: Unable to paste TC info from %s to %s.\nCheck timecodes do not cause overlap conflicts." % (str(copiedShot), str(destShot))    
+      except Exception as e: 
+        print("[Paste TC Error: Unable to paste TC info from %s to %s.\nCheck timecodes do not cause overlap conflicts - (%s)" % (str(copiedShot), str(destShot), e))
 
   def pasteTCSpecial(self):
     selectedShots = self.getShotSelectionForActiveView()
@@ -305,29 +305,29 @@ class TimecodeMenu:
           try:
             shot.setTimelineIn(dstIn)
             seq.editFinished()
-          except:
-            print "Unable to set dstIn"
+          except Exception as e:
+            print("Unable to set dstIn - (%s)" % (str(e)))
 
         if pasteDstOut:
           try:
             shot.setTimelineOut(dstOut)
             seq.editFinished()
-          except:
-            print "Unable to set dstOut"
+          except Exception as e:
+            print("Unable to set dstOut - (%s)" % (str(e)))
 
         if pasteSrcIn:
           try:
             shot.setSourceIn(srcIn)
             seq.editFinished()
-          except:
-            print "Unable to set srcIn"
+          except Exception as e:
+            print("Unable to set srcIn - (%s)" % (str(e)))
 
         if pasteSrcOut:
           try:
             shot.setSourceOut(srcOut)
             seq.editFinished()
-          except:
-            print "Unable to set srcOut"
+          except Exception as e:
+            print("Unable to set srcOut - (%s)" % (str(e)))
 
   # This handles events from the Project Bin View
   def eventHandler(self, event):

@@ -192,7 +192,7 @@ class LooksMenu(object):
     try:
       tag = looksBin[tagName]
     except:
-      print "Unable to find Tag with name: %s. Was it deleted?" % tagName
+      print("Unable to find Tag with name: %s. Was it deleted?" % tagName)
       return tag
 
     return tag    
@@ -221,7 +221,7 @@ class LooksMenu(object):
       try:
         os.remove(f)
       except:
-        print "Unable to remove file %s f"
+        print("Unable to remove file %s f")
 
   def addTagToProjectLooksBin(self, tag, project):
     looksBin = self.getLooksTagBinForProject(project)

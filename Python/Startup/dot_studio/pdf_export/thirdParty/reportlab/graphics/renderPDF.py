@@ -41,7 +41,6 @@ class _PDFRenderer(Renderer):
     def drawNode(self, node):
         """This is the recursive method called for each node
         in the tree"""
-        #print "pdf:drawNode", self
         #if node.__class__ is Wedge: stop
         if not (isinstance(node, Path) and node.isClipPath):
             self._canvas.saveState()
@@ -327,8 +326,7 @@ def test(outDir='pdfout',shout=False):
     c.setFont(_baseGFontName, 36)
     c.drawString(80, 750, 'Graphics Test')
 
-    # print all drawings and their doc strings from the test
-    # file
+    #print all drawings and their doc strings from the test file
 
     #grab all drawings from the test module
     from reportlab.graphics import testshapes
@@ -367,32 +365,6 @@ def test(outDir='pdfout',shout=False):
     if shout or verbose>2:
         print('saved %s' % ascii(fn))
 
-##def testFlowable():
-##    """Makes a platypus document"""
-##    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-##    from reportlab.lib.styles import getSampleStyleSheet
-##    styles = getSampleStyleSheet()
-##    styNormal = styles['Normal']
-##
-##    doc = SimpleDocTemplate('test_flowable.pdf')
-##    story = []
-##    story.append(Paragraph("This sees is a drawing can work as a flowable", styNormal))
-##
-##    import testdrawings
-##    drawings = []
-##
-##    for funcname in dir(testdrawings):
-##        if funcname[0:10] == 'getDrawing':
-##            drawing = eval('testdrawings.' + funcname + '()')  #execute it
-##            docstring = eval('testdrawings.' + funcname + '.__doc__')
-##            story.append(Paragraph(docstring, styNormal))
-##            story.append(Spacer(18,18))
-##            story.append(drawing)
-##            story.append(Spacer(36,36))
-##
-##    doc.build(story)
-##    print 'saves test_flowable.pdf'
-
 if __name__=='__main__':
     test(shout=True)
     import sys
@@ -401,4 +373,3 @@ if __name__=='__main__':
     else:
         outdir = 'pdfout'
     test(outdir,shout=True)
-    #testFlowable()

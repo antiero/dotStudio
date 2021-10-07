@@ -71,7 +71,7 @@ class SpreadsheetExportCSVAction(QtWidgets.QAction):
       return 'Unable to detect the active TreeView.'
     seq = hiero.ui.activeView().sequence()
     if not seq:
-      print 'Unable to detect the active Sequence from the activeView.'
+      print("Unable to detect the active Sequence from the activeView.")
       return
 
     # The data model of the QTreeView
@@ -79,7 +79,7 @@ class SpreadsheetExportCSVAction(QtWidgets.QAction):
 
     csvSavePath = os.path.join(QtCore.QDir.homePath(),'Desktop',seq.name()+'.csv')
     savePath,filter = QtWidgets.QFileDialog.getSaveFileName(None,caption="Export Spreadsheet to .CSV as...",dir = csvSavePath, filter = "*.csv")
-    print 'Saving To: ' + str(savePath)
+    print("Saving To: " + str(savePath))
 
     # Saving was cancelled...
     if len(savePath)==0:

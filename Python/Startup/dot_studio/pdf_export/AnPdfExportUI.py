@@ -26,22 +26,22 @@ class PdfExportUI(hiero.ui.TaskUIBase):
   def formatComboBoxChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._formatComboBox.currentText()
-    self._preset.properties()["format"] = unicode(value)
+    self._preset.properties()["format"] = str(value)
   
   def customOffsetTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._customFrameLineEdit.text()
-    self._preset.properties()["customFrameOffset"] = unicode(value)
+    self._preset.properties()["customFrameOffset"] = str(value)
 
   def widthTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._widthBox.text()
-    self._preset.properties()["width"] = unicode(value)
+    self._preset.properties()["width"] = str(value)
 
   def heightTextChanged(self):
     # Slot to handle change of thumbnail format combo change state
     value = self._heightBox.text()
-    self._preset.properties()["height"] = unicode(value)
+    self._preset.properties()["height"] = str(value)
 
   def frameTypeComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
@@ -49,10 +49,10 @@ class PdfExportUI(hiero.ui.TaskUIBase):
     value = self._frameTypeComboBox.currentText()
     if str(value) == self.kCustomFrame:
       self._customFrameLineEdit.setEnabled(True)
-      self._preset.properties()["customFrameOffset"] = unicode(self._customFrameLineEdit.text())
+      self._preset.properties()["customFrameOffset"] = str(self._customFrameLineEdit.text())
     else:
       self._customFrameLineEdit.setEnabled(False)
-    self._preset.properties()["frameType"] = unicode(value)    
+    self._preset.properties()["frameType"] = str(value)    
 
   def thumbSizeComboBoxChanged(self, index):
     # Slot to handle change of thumbnail format combo change state
@@ -79,7 +79,7 @@ class PdfExportUI(hiero.ui.TaskUIBase):
       self._heightBox.setEnabled(True)
       self._hLabel.setEnabled(True)
 
-    self._preset.properties()["thumbSize"] = unicode(value)
+    self._preset.properties()["thumbSize"] = str(value)
 
   def populateUI(self, widget, exportTemplate):
     layout = PySide.QtWidgets.QFormLayout()

@@ -32,7 +32,7 @@ def find_soft_effects():
     return effectDict
 
 class NodeModel(QAbstractListModel):
-    def __init__(self, mlist, num_items = 5, filtertext = ""):
+    def __init__(self, mlist, num_items = 12, filtertext = ""):
         super(NodeModel, self).__init__()
 
         self.num_items = num_items
@@ -291,7 +291,6 @@ class TabTabTabWidget(QDialog):
 
 
         if activeSelection:
-            print("Got an active Selection in the Timeline editor, will add a %s effect.." % effect)
             for item in activeSelection:
                 hiero.core.log.info("Adding to item: %s" % str(item))
                 tIn = item.timelineIn()

@@ -58,15 +58,12 @@ class RemoveGapsAction(QtWidgets.QAction):
 
         project = sequence.project()
 
-        #seqBI = sequence.binItem()
-        #seqBI.addSnapshot(sequence, "Pre-gap removal")
-
         for track in tracksToInclude:
-            print str(track)
+            print(str(track))
             lastItem = None
             lastOut = 0
             for item in track:
-                print str(track)
+                print(str(track))
                 outTime = item.timelineOut()+1
                 if lastItem != None:
 
@@ -100,10 +97,6 @@ class RemoveGapsAction(QtWidgets.QAction):
 
                 lastItem = item
                 lastTime = outTime
-
-        #sequence.editFinished()
-        #seqBI.addSnapshot(sequence, "Post-Gap removal")
-
 
     def eventHandler(self, event):
         hiero.ui.insertMenuAction( self, event.menu )

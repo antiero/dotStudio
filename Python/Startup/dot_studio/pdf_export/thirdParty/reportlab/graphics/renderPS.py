@@ -362,7 +362,6 @@ class PSCanvas:
         start with 0 to the right (+x) and increase counter-clockwise.
         These should have x1<x2 and y1<y2."""
         #calculate centre of ellipse
-        #print "x1,y1,x2,y2,startAng,extent,fromcenter", x1,y1,x2,y2,startAng,extent,fromcenter
         cx, cy = (x1+x2)/2.0, (y1+y2)/2.0
         rx, ry = (x2-x1)/2.0, (y2-y1)/2.0
 
@@ -547,7 +546,6 @@ class PSCanvas:
             y2 = y1 + imgheight
         drawwidth = x2 - x1
         drawheight = y2 - y1
-        #print 'Image size (%d, %d); Draw size (%d, %d)' % (imgwidth, imgheight, drawwidth, drawheight)
         # now I need to tell postscript how big image is
 
         # "image operators assume that they receive sample data from

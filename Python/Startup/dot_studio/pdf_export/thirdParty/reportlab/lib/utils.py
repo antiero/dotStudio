@@ -173,7 +173,7 @@ else:
         return v if isinstance(v,unicode) else v.decode(enc)
 
     def asUnicodeEx(v,enc='utf8'):
-        return v if isinstance(v,unicode) else v.decode(enc) if isinstance(v,str) else  unicode(v)
+        return v if isinstance(v,unicode) else v.decode(enc) if isinstance(v,str) else  str(v)
 
     def isClass(v):
         return isinstance(v,(types.ClassType,type))

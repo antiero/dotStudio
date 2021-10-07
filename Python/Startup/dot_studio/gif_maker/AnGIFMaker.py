@@ -1,12 +1,18 @@
 # Adds action to export an animated GIF from a Sequence
 # Either seleect a range of TrackItems or set in an out points on the Sequence.
 import sys, os
-from images2gif import writeGif
-from PIL import Image
-import os, cStringIO, time
+import sys 
+# NOTE: Set this path to your PIL imaging library, install PIL via: pip install pillow
+sys.path.append("/Library/Frameworks/Python.framework/Versions/3.7/lib/python3.7/site-packages")
+try:
+    from PIL import Image
+except:
+    print("WARNING: Python Imaging Library not imported. Please install via pip install pillow and append install path to sys.path.")
+import os, time
 import hiero.core
 import hiero.ui
 from PySide2 import QtGui, QtCore, QtWidgets
+from io import BytesIO
 
 class RenderPreviewDialog(QtWidgets.QWidget):
     """A render preview dialog of the GIF being rendered"""
@@ -45,22 +51,21 @@ class MakeGIFAction(QtWidgets.QAction):
       self.renderPreview = RenderPreviewDialog()
 
       self.triggered.connect(self.doit)
-      hiero.core.events.registerInterest("kShowContextMenu/kBin", self.eventHandler)
       hiero.core.events.registerInterest("kShowContextMenu/kTimeline", self.eventHandler)
       hiero.core.events.registerInterest("kShowContextMenu/kViewer", self.eventHandler)
 
 
-  def exportGIFFromSequence(self, sequence, inFrame, outFrame, outputFilePath=None, dt = 1.0/24.0):
+  def exportGIFFromSequence(self, sequence, inFrame, outFrame, outputFilePath=None, fps = 24.0):
     """
     Exports a Sequence to a GIF over a range of in-outFrame. 
     If no outputFilePath is specified, the GIF is written to the Desktop.
-    dt sets the time between rendered frames
+    duration sets the time between rendered frames
     """
 
     duration = outFrame - inFrame
 
     if duration > 500:
-      print "The mighty GIF cannot handle your duration of 500+ frames! Rendering only the first 500 frames"
+      print("The mighty GIF cannot handle your duration of 500+ frames! Rendering only the first 500 frames")
       outFrame = inFrame+499
 
     # Images for GIF...
@@ -76,7 +81,7 @@ class MakeGIFAction(QtWidgets.QAction):
         buffer.open(QtCore.QIODevice.ReadWrite)
         thumb.save(buffer, "PNG")
 
-        strio = cStringIO.StringIO()
+        strio = BytesIO()
         strio.write(buffer.data())
         buffer.close()
         strio.seek(0)
@@ -92,7 +97,7 @@ class MakeGIFAction(QtWidgets.QAction):
         count+=1
 
         if not self.renderPreview.renderingEnabled:
-          print 'Rendering Cancelled'
+          print("Rendering Cancelled")
           self.renderPreview.hide()
           self.renderPreview.renderingEnabled = True
           return
@@ -103,25 +108,17 @@ class MakeGIFAction(QtWidgets.QAction):
       except:
         from os.path import expanduser
         outputFilePath = os.path.join(expanduser('~'),'Desktop',('myGif_%i.gif' % time.time()))
-    writeGif(outputFilePath, images, duration=dt)
 
+    images[0].save(outputFilePath, save_all=True, append_images=images[1:], optimize=True, duration=(len(images)/fps))
     self.renderPreview.hide()
     hiero.ui.openInOSShell(outputFilePath)    
 
   def doit(self):
     # remove any non-trackitem entries (ie transitions)
-
     view = hiero.ui.activeView()
-
     # If the active view is a timeline or a viewer, we favour rendering a GIF over the range of selected trackItems.
     # If there are no selected TrackItems, then we try in and out frames, (limited to 500 frames).
     # The GIF will fail to export if these things are not set.
-
-    if isinstance(view, hiero.ui.BinView):
-        msgBox = QtWidgets.QMessageBox()
-        msgBox.setText("Rendering GIFs from the Bin View is not currently supported.\nPlease create a Sequence then repeat from the Timeline or Viewer.")
-        msgBox.exec_()
-        return
 
     if isinstance(view, hiero.ui.TimelineEditor):
       sequence = view.sequence()

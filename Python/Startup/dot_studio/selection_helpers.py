@@ -26,7 +26,7 @@ class SelectedShotAction(QAction):
     """Get the Python selection and stuff it in: hiero.selectedItems"""
     self.updateActiveViewSelection()
     
-    print "Selection copied to 'hiero.selectedItems':\n", self._selection
+    print("Selection copied to 'hiero.selectedItems':\n", self._selection)
     clipboard = QApplication.clipboard()
     clipboard.setText("hiero.selectedItems")
     hiero.selectedItems = self._selection
@@ -102,7 +102,7 @@ class CopyPathToClipBoardAction(QAction):
       hiero.selectedClipPaths = selection
       clipboard = QApplication.clipboard()
       clipboard.setText(str(hiero.selectedClipPaths))
-      print "Clip media path selection copied to Clipboard and stored in: hiero.selectedClipPaths:\n", selection      
+      print("Clip media path selection copied to Clipboard and stored in: hiero.selectedClipPaths:\n", selection)
   
   def getClipPathsForActiveView(self):
     view = hiero.ui.activeView()

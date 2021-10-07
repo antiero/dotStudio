@@ -86,7 +86,7 @@ class ClipInfoWindow(QtWidgets.QWidget):
         hiero.core.events.registerInterest("kPlaybackStopped", self.clipChanged)
 
     def clipChanged(self, event):
-    	self.updateTableView()
+        self.updateTableView()
 
     def showAt(self, pos):
         # BUILD DATA WHEN SHOWN - is this the best time to do this?
@@ -100,18 +100,18 @@ class ClipInfoWindow(QtWidgets.QWidget):
             self.close()
 
     def updateTableView(self):
-    	self.__buildDataForCurrentClip()
+        self.__buildDataForCurrentClip()
         self.table_model = MyTableModel(self, self.infoDict)
         self.table_view.setModel(self.table_model)
         self.table_view.resizeColumnsToContents()
 
     def formatStringFromSeq(self, seq):
-    	seq = seq.format()
-    	height = seq.height()
-    	width = seq.width()
-    	pixel_aspect = seq.pixelAspect()
-    	formatString = "%i x %i, %f" % (width, height, pixel_aspect)
-    	return formatString
+        seq = seq.format()
+        height = seq.height()
+        width = seq.width()
+        pixel_aspect = seq.pixelAspect()
+        formatString = "%i x %i, %f" % (width, height, pixel_aspect)
+        return formatString
 
     def __buildDataForCurrentClip(self):
         cv = hiero.ui.currentViewer()
@@ -126,17 +126,16 @@ class ClipInfoWindow(QtWidgets.QWidget):
             self.infoDict += [{"label": "fps", "value": str(seq.framerate()), "enabled":True}]
             self.infoDict += [{"label": "filename", "value": seq.mediaSource().fileinfos()[0].filename(), "enabled":True}]
         elif isinstance(seq, hiero.core.Sequence):
-			currentShot = visibleShotAtTime(seq, cv.time())
-			self.infoDict += [{"label": "name", "value": seq.name(), "enabled":True}]
-			self.infoDict += [{"label": "shot", "value": currentShot.name(), "enabled":True}]
-			self.infoDict += [{"label": "fps", "value": str(seq.framerate()), "enabled":True}]
-			self.infoDict += [{"label": "duration", "value": seq.duration(), "enabled":True}]
+            currentShot = visibleShotAtTime(seq, cv.time())
+            self.infoDict += [{"label": "name", "value": seq.name(), "enabled":True}]
+            self.infoDict += [{"label": "shot", "value": currentShot.name(), "enabled":True}]
+            self.infoDict += [{"label": "fps", "value": str(seq.framerate()), "enabled":True}]
+            self.infoDict += [{"label": "duration", "value": seq.duration(), "enabled":True}]
 
     def paintEvent(self, event):
         # get current window size
         s = self.size()
         qp = QtGui.QPainter()
-        #qp.setRenderHint(QPainter.Antialiasing, True)
         qp.begin(self)
         qp.setBrush( self.palette().window() )
         qp.setPen(QtCore.Qt.black)
@@ -150,6 +149,7 @@ class ClipInfoWindow(QtWidgets.QWidget):
         super(ClipInfoWindow, self).mousePressEvent(event)
  
     def mouseMoveEvent(self, event):
+        print("MouseMove")
         if self.draggable and event.buttons() & QtCore.Qt.LeftButton:
             globalPos = event.globalPos()
             moved = globalPos - self.__mousePressPos

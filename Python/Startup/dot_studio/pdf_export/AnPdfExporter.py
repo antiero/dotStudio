@@ -7,8 +7,9 @@
 #------------------------------------------------------------------------------
 try:
     from reportlab.platypus import Paragraph, Table, TableStyle
-except:
-    print "Unable to import reportlab. Check that reportlab is in your sys.path!"
+except Exception as e:
+    print(e)
+    print("Unable to import reportlab. Check that reportlab is in your sys.path!")
 
 import reportlab.lib.pagesizes
 import reportlab.pdfgen.canvas
@@ -89,7 +90,7 @@ class PDFExporter(object):
         # prep show logo for potential usage
         self.getShowLogo()
 
-        fontColorImport = __import__("reportlab.lib.colors", globals(), locals(), [self.textColor], -1)
+        fontColorImport = __import__("reportlab.lib.colors", globals(), locals(), [self.textColor], 0)
         self.fontColor = getattr(fontColorImport, self.textColor)
 
         today = datetime.datetime.now()
@@ -215,7 +216,7 @@ class PDFExporter(object):
             except:
                 pass
         if error:
-            print error
+            print(error)
 
     def showPDF(self):
         if os.path.isfile(self.outputFilePath):
@@ -236,7 +237,7 @@ class PDFExporter(object):
         return infoString
 
     def validString(self, stringToValidate):
-        string = xml.sax.saxutils.unescape(unicode(urllib.unquote_plus(stringToValidate).decode('utf8')))
+        string = xml.sax.saxutils.unescape(str(urllib.parse.unquote_plus(stringToValidate)))
         if len(string)>50:
             string = string[0:49]
 
@@ -330,7 +331,7 @@ class PDFExporter(object):
         get the background, either get color object or ImageReader for image
         If color is darker than RGB(65, 65, 65) the text color will switch to white
         """
-        bgColorImport = __import__("reportlab.lib.colors", globals(), locals(), [self.background], -1)
+        bgColorImport = __import__("reportlab.lib.colors", globals(), locals(), [self.background], 0)
         self.backgroundColor = getattr(bgColorImport, self.background)
         if self.backgroundColor.int_rgb() < 4276545:
             self.textColor = 'white'
@@ -379,15 +380,16 @@ class PDFExporter(object):
         self.fontType = 'customFont'
         try:
             pdfmetrics.registerFont(TTFont(self.fontType, self.fontTypePath))
-        except TTFError, e:
-            raise "Incorrect PDF font type path %s"% self.fontTypePath
+        except Exception as e:
+            print(e)
+            print("Incorrect PDF font type path %s" % self.fontTypePath)
 
     def getPageSize(self):
         """
         get the page width and height based on the layout of the page
         :return: width and height
         """
-        tmpImport = __import__("reportlab.lib.pagesizes", globals(), locals(), ['letter'], -1)
+        tmpImport = __import__("reportlab.lib.pagesizes", globals(), locals(), ['letter'], 0)
         if self.pageOrientation  == "landscape":
             letter = getattr(tmpImport, 'letter')
             self.pageSize = getattr(tmpImport, self.pageOrientation)(letter)

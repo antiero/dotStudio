@@ -1,3 +1,4 @@
+# TODO: FIXME
 # Adds a Markers panel for viewing Timeline Tags and Annotations in a Panel
 import operator
 from itertools import chain
@@ -250,7 +251,7 @@ class UpdateMarkerDialog(QtWidgets.QDialog):
   # This returns a hiero.core.Tag object, currently described by the UpdateMarkerDialog 
   def getTagNote(self):
     # This gets the contents of the Note field
-    tagNote = unicode(self._noteEdit.toPlainText())
+    tagNote = str(self._noteEdit.toPlainText())
     return tagNote
 
   def getTagIcon(self):
@@ -530,13 +531,13 @@ class MarkersPanel(QtWidgets.QWidget):
           try:
             sequence.removeTag(data['Item'])
           except:
-            print "Unable to remove Tag - was the item locked?"
+            print("Unable to remove Tag - was the item locked?")
         elif isinstance(item, hiero.core.Annotation):
           try:
             track = item.parentTrack()
             track.removeSubTrackItem(item)
           except:
-            print "Unable to remove Annotation - was the track locked?"
+            print("Unable to remove Annotation - was the track locked?")
 
     self.updateTableView()
 
@@ -625,10 +626,18 @@ class MarkersPanel(QtWidgets.QWidget):
     timecodeStart = seq.timecodeStart()
 
     # We need to get Tags which are NOT applied to the whole Clip/Sequence...
-    tags = [tag for tag in list(seq.tags()) if int(tag.metadata().value('tag.applieswhole')) == 0]
+    shotTags = []
+
+    tracks = seq.items()
+    for track in tracks:
+      shots = track.items()
+      for shot in shots:
+        tags = shot.tags()
+        if len(tags)>0:
+          shotTags.extend(list(tags))
 
     fps = seq.framerate()
-    sortedTags = sorted(tags, key=lambda k: k.inTime())
+    sortedTags = sorted(shotTags, key=lambda k: k.inTime())
     tagDict = []
     for tag in sortedTags:
       tagMeta = tag.metadata()
@@ -657,6 +666,8 @@ class MarkersPanel(QtWidgets.QWidget):
                          "Icon": str(tag.icon()),
                          "Sequence": seq,
                          }]
+
+    print(str(tagDict))
     return tagDict
 
   def __getAnnotationsDictListData(self, seq):

@@ -26,13 +26,8 @@ class MyListView(QtWidgets.QListView):
         super(MyListView, self).__init__()
         # show in Icon Mode
         self.setViewMode(QtWidgets.QListView.IconMode)
-        #self.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
         self.setIconSize(QtCore.QSize(200,200))
         self.setUniformItemSizes(True)
-        # self.setDefaultDropAction(QtCore.Qt.MoveAction)
-        # self.setDragDropMode(QtGui.QAbstractItemView.InternalMove)
-        # self.setDragDropOverwriteMode(True)
-        # self.setDragEnabled(True)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
 
@@ -116,7 +111,7 @@ class CutDetectorPanel(QtWidgets.QWidget):
             DEC = self._decisionValues(self.decisionKnob, self.first, self.last)
             cutPoints = [i for i, x in enumerate(DEC) if x == 1]
 
-        print "Got cut points : %s" % str(cutPoints)
+        print("Got cut points : %s" % str(cutPoints))
         return cutPoints
 
     def _updateViewCallback(self, event):
@@ -159,7 +154,7 @@ class CutDetectorPanel(QtWidgets.QWidget):
         mimeText = event.mimeData().text()
         p = urlparse.urlparse(mimeText)
         finalPath = os.path.abspath(os.path.join(p.netloc, p.path))
-        print "File dropped:\n" + finalPath
+        print("File dropped:\n" + finalPath)
 
         askResult = nuke.ask("Detect cuts for Clip: %s" % finalPath)
         if askResult:

@@ -18,8 +18,8 @@ def _toItem(itemString):
   # Split itemString into Sequence.Track.TrackItem components
   try:
     sequenceName, trackName, trackItemName = itemString.split('.')
-  except ValueError:
-    print "Please supply a string with Sequence.Track.TrackItem syntax"
+  except ValueError as:
+    print("Please supply a string with Sequence.Track.TrackItem syntax")
 
   project = hiero.ui.activeSequence().project()
 
@@ -195,5 +195,5 @@ try:
   hiero.core.Clip.annotations = clip_annotations
   hiero.core.Annotation.notes = annotation_notes
 
-except ImportError:
-  print "Unable to add Nuke Studio extensions"
+except ImportError as e:
+  print("Unable to add Nuke Studio extensions: " + str(e))

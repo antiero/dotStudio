@@ -21,7 +21,7 @@ def showInfo(prompt):
     @return: None
   """
   hiero.core.log.info(prompt)
-  dialog = QtWidgets.QMessageBox.information( hiero.ui.mainWindow(), "Info", unicode(prompt) )
+  dialog = QtWidgets.QMessageBox.information( hiero.ui.mainWindow(), "Info", str(prompt) )
   
 def showWarning(prompt):
   """
@@ -31,7 +31,7 @@ def showWarning(prompt):
     @return: None
   """
   hiero.core.log.info(prompt)
-  dialog = QtWidgets.QMessageBox.warning( hiero.ui.mainWindow(), "Warning", unicode(prompt))
+  dialog = QtWidgets.QMessageBox.warning( hiero.ui.mainWindow(), "Warning", str(prompt))
   
 def showError(prompt):
   """
@@ -41,7 +41,7 @@ def showError(prompt):
     @return: None
   """
   hiero.core.log.error(prompt)
-  dialog = QtWidgets.QMessageBox.critical( hiero.ui.mainWindow(), "Error", unicode(prompt) )
+  dialog = QtWidgets.QMessageBox.critical( hiero.ui.mainWindow(), "Error", str(prompt) )
 
 def clearStatusMessage():
   """
@@ -53,7 +53,7 @@ def statusMessage():
   """
   statusMessage() -> returns the current status message displayed in the Hiero statusbar.
   """
-  return unicode(hiero.ui.statusBar().currentMessage())
+  return str(hiero.ui.statusBar().currentMessage())
 
 def setStatusMessage(message, time = 0, showBarIfHidden = True):
   """

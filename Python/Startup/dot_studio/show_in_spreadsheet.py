@@ -122,7 +122,7 @@ class SpreadsheetScrollToAction(QtWidgets.QAction):
     try:
       qm = model.index(eventNumberIndex-1,0)
     except:
-      print "Could not find an index %i in the model." % eventNumberIndex-1
+      print("Could not find an index %i in the model." % eventNumberIndex-1)
 
     # Gotcha! The Spreadsheet View MIGHT have been sorted by Name/Event number, make the row index a problem...
     # Call sort first, so that rows are numbered Sequentially
@@ -132,7 +132,7 @@ class SpreadsheetScrollToAction(QtWidgets.QAction):
     try:
       spreadsheetTreeView.scrollTo(qm)
     except:
-      print 'Unable to scroll to shot. Was the Spreadsheet being filtered by text in the text field?'
+      print("Unable to scroll to shot. Was the Spreadsheet being filtered by text in the text field?")
 
   def eventHandler(self, event):
 

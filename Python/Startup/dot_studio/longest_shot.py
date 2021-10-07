@@ -27,7 +27,7 @@ class LongestSequenceFromSelectionAction(QAction):
     # We now must determine shots which have the same Source Clip across the selection of Sequences
     clipMatches = {}
     for shot in all_shots:
-      print str(shot)
+      print(str(shot))
       clipName = shot.source().name()
       if clipName in clipMatches.keys():
         clipMatches[clipName]+=[{'trackItem':shot,
@@ -48,7 +48,7 @@ class LongestSequenceFromSelectionAction(QAction):
     hiero.core.clipMatches = clipMatches
     for clipName in clipMatches.keys():
       MAX = max([item['duration'] for item in clipMatches[clipName]])
-      print 'Max duration for Shot: %s is %i' % (str(clipName),MAX)
+      print('Max duration for Shot: %s is %i' % (str(clipName),MAX))
       
       # Now find the dict inside clipMatches which has this duration
       longestShot = [item['trackItem'] for item in clipMatches[clipName] if item['duration']==MAX]

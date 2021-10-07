@@ -2,9 +2,10 @@
 import PySide2.QtCore as QtCore
 import PySide2.QtGui as QtGui
 import PySide2.QtWidgets as QtWidgets
-import hiero.core
+from hiero.core import BinItem, TrackItem, Clip, Sequence
+import hiero.ui
 
-class ThumbnailWidget(QtWidgets.QWidget):
+class ClipScrubberWidget(QtWidgets.QWidget):
     def __init__(self, sourceItem=None):
         """
         A scrubb-able Clip thumbnail view for including in Custom widgets
@@ -13,16 +14,13 @@ class ThumbnailWidget(QtWidgets.QWidget):
 
         QtWidgets.QWidget.__init__(self)
 
-        #self.setParent(hiero.ui.mainWindow())
         # A QWidget for displaying
         self.sourceItem = sourceItem
 
-        self.setGeometry(240, 160, 320, 180)
-
         # In the case a BinItem is passed, take the activeItem
-        if isinstance(sourceItem, hiero.core.BinItem):
+        if isinstance(sourceItem, BinItem):
         	self.sourceItem = sourceItem.activeItem()
-        elif isinstance(sourceItem, hiero.core.TrackItem):
+        elif isinstance(sourceItem, TrackItem):
             self.sourceItem = sourceItem.source()
 
         imageErrorIcon = QtGui.QIcon("icons:MediaOffline.png")
@@ -36,10 +34,6 @@ class ThumbnailWidget(QtWidgets.QWidget):
 
         # To determine if visual cue for Playhead as mouse is dragged is shown
         self.showPlayhead = True
-        self.playheadColor = QtGui.QColor(246,146,30, 255)
-        self.setWindowFlags( QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint )
-        self.setAttribute( QtCore.Qt.WA_TranslucentBackground, True ) 
-        self.mouseInside = False
 
         self.initUI()
 
@@ -56,27 +50,86 @@ class ThumbnailWidget(QtWidgets.QWidget):
             frame = self.currentFrame + 1
             self.updatePosterFrameForFrame(frame)
 
-
-    def enterEvent(self, event):
-        self.mouseInside = True
-
-
     def setPosterFrameForCurrentFrame(self):
         self.sourceItem.setPosterFrame( self.currentFrame )
-
-    def leaveEvent(self, event):
-        self.mouseInside = False
-        #self.setPosterFrameForCurrentFrame()
-        self.close()
 
     def showAt(self, pos):
         self.move(pos.x()-self.width()/2, pos.y()-self.height()/2)
         self.show()
 
+    def paintEvent(self, event):
+        # get current window size
+        s = self.size()
+        qp = QtGui.QPainter()
+        qp.begin(self)
+        qp.setBrush( self.palette().window() )
+        qp.setPen(QtCore.Qt.black)
+        qp.drawRoundedRect(0,0,s.width(), s.height(), 5, 5)
+        qp.end()
+
+    def mousePressEvent(self, event):
+        if self.draggable and event.button() == QtCore.Qt.LeftButton:
+            self.__mousePressPos = event.globalPos()                # global
+            self.__mouseMovePos = event.globalPos() - self.pos()    # local
+        super(ClipScrubberWidget, self).mousePressEvent(event)
+ 
+    def mouseMoveEvent(self, event):
+        if self.draggable and event.buttons() & QtCore.Qt.LeftButton:
+            globalPos = event.globalPos()
+            moved = globalPos - self.__mousePressPos
+            if moved.manhattanLength() > self.dragging_threshould:
+                # move when user drag window more than dragging_threshould
+                diff = globalPos - self.__mouseMovePos
+                self.move(diff)
+                self.__mouseMovePos = globalPos - self.pos()
+
+        # When the mouse moves over the widget it will force an update of the poster frame
+        elif event.buttons() == QtCore.Qt.NoButton:
+            currentPoint = self.thumbGraphicsView.mapFromGlobal(QtGui.QCursor.pos())
+            self.currentXPos = currentPoint.x()
+
+            # Avoid zero division
+            if self.currentXPos<1:
+                self.currentXPos = 1
+
+            mosXposPercentage = float(self.currentXPos)/float(self.thumbGraphicsView.rect().width())
+            self.updatePosterFrameForPlaybackPercentage(mosXposPercentage)
+            self.updateOverlays()
+
+        super(ClipScrubberWidget, self).mouseMoveEvent(event)
+ 
+    def mouseReleaseEvent(self, event):
+        if self.__mousePressPos is not None:
+            if event.button() == QtCore.Qt.LeftButton:
+                moved = event.globalPos() - self.__mousePressPos
+                if moved.manhattanLength() > self.dragging_threshould:
+                    # do not call click event or so on
+                    event.ignore()
+                self.__mousePressPos = None
+        super(ClipScrubberWidget, self).mouseReleaseEvent(event)
+
+
+    # Double-click to set poster frame - stealthy!
+    def mouseDoubleClickEvent(self, event):
+        self.setPosterFrameForCurrentFrame()
+        self.close()
 
     def initUI(self):
         layout = QtWidgets.QGridLayout()
+
+        self.setGeometry(240, 160, 320, 180)
+
+        self.setWindowTitle("Clip Scrubber")
+        self.setAttribute( QtCore.Qt.WA_TranslucentBackground, True )  
+        #self.setWindowFlags( QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint )
+        self.setWindowFlags( QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint )
+        self.setWindowOpacity(0.9)
         self.setMouseTracking(True)
+
+        self.draggable = True
+        self.dragging_threshould = 1
+        self.__mousePressPos = None
+        self.__mouseMovePos = None       
 
         try:
             qImage = self.sourceItem.thumbnail()
@@ -106,6 +159,7 @@ class ThumbnailWidget(QtWidgets.QWidget):
         self.thumbGraphicsView.setFixedWidth(self.rect().width())
 
         self.playheadLine = QtWidgets.QGraphicsLineItem()
+        self.playheadColor = QtGui.QColor(246,146,30, 255)
         self.pen = QtGui.QPen(self.playheadColor, 2)
         self.playheadLine.setPen(self.pen)
         self.playheadLine.setVisible(False)
@@ -146,40 +200,22 @@ class ThumbnailWidget(QtWidgets.QWidget):
     def updatePosterFrameForPlaybackPercentage(self, perc):
         # Sets the thumbnail for the frame at a given playback percentage
 
-        if isinstance(self.sourceItem, hiero.core.Clip):
+        if isinstance(self.sourceItem, Clip):
             sourceIn = self.sourceItem.sourceIn()
             sourceOut = self.sourceItem.sourceOut()
             duration = sourceOut - sourceIn
             self.currentFrame = int(float(sourceIn) + (perc * float(duration)))
-        elif isinstance(self.sourceItem, hiero.core.Sequence):
+        elif isinstance(self.sourceItem, Sequence):
             duration = self.sourceItem.duration()
             self.currentFrame = perc * float(duration)
         try:
             qImage = self.sourceItem.thumbnail(self.currentFrame)
-            posterFramePixmap = QtGui.QPixmap().fromImage(qImage).scaled(self.thumbGraphicsView.size(), aspectRadioMode = QtCore.Qt.KeepAspectRatio, mode = QtCore.Qt.SmoothTransformation)
+            print("PP")
+            posterFramePixmap = QtGui.QPixmap().fromImage(qImage).scaled(self.thumbGraphicsView.size(), aspectRatioMode = QtCore.Qt.KeepAspectRatio, mode = QtCore.Qt.SmoothTransformation)
         except:
             posterFramePixmap = self.imageErrorPixmap
 
         self.thumbGraphicsScenePixMapItem.setPixmap(posterFramePixmap)
-
-
-    def mouseMoveEvent(self, event):
-        # When the mouse moves over the widget it will force an update of the poster frame
-        if event.buttons() == QtCore.Qt.NoButton:
-            currentPoint = self.thumbGraphicsView.mapFromGlobal(QtGui.QCursor.pos())
-            self.currentXPos = currentPoint.x()
-
-            # Avoid zero division
-            if self.currentXPos<1:
-                self.currentXPos = 1
-
-            mosXposPercentage = float(self.currentXPos)/float(self.thumbGraphicsView.rect().width())
-            self.updatePosterFrameForPlaybackPercentage(mosXposPercentage)
-            self.updateOverlays()
-
-
-    def mousePressEvent(self, event):
-        self.setPosterFrameForCurrentFrame()
 
 def showThumbForActiveItem():
     view = hiero.ui.activeView()
@@ -187,15 +223,17 @@ def showThumbForActiveItem():
     if not view or not hasattr(view, 'selection'):
         return
         
-    selection = view.selection()
-    if len(selection) != 1:
+    selection = [item for item in view.selection() if (isinstance(item, TrackItem) or isinstance(item, BinItem))]
+    if len(selection) <= 0:
         return
 
     item = selection[0]
-    T = ThumbnailWidget(item)
+    print("Got item:" + str(item))
+    T = ClipScrubberWidget(item)
     T.showAt(QtGui.QCursor.pos())
+ 
 
-act = hiero.ui.createMenuAction("Clip Thumb", showThumbForActiveItem)
-act.setShortcut("/")
-w = hiero.ui.findMenuAction("Window")
-w.menu().addAction(act)
+action = QtWidgets.QAction("Clip Scrubber", None)
+action.setShortcut(QtGui.QKeySequence("/"))
+action.triggered.connect(showThumbForActiveItem)
+hiero.ui.addMenuAction("Window", action)

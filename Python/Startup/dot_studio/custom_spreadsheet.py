@@ -508,7 +508,7 @@ def _setArtistByName(self,artistName):
 
   artist = self.getArtistFromName(artistName)
   if not artist:
-    print 'Artist name: %s was not found in the gArtistList.' % str(artistName)
+    print('Artist name: %s was not found in the gArtistList.' % str(artistName))
     return
 
   # Do the update.
@@ -520,7 +520,7 @@ def _setArtistByID(self,artistID):
 
   artist = self.getArtistFromID(artistID)
   if not artist:
-    print 'Artist name: %s was not found in the gArtistList.' % str(artistID)
+    print('Artist name: %s was not found in the gArtistList.' % str(artistID))
     return
 
   # Do the update.
@@ -556,7 +556,7 @@ def _setStatus(self, status):
 
   # Get a valid Tag object from the Global list of statuses
   if not status in gStatusTags.keys():
-    print 'Status requested was not a valid Status string.'
+    print('Status requested was not a valid Status string.')
     return 
 
   # A shot should only have one status. Check if one exists and set accordingly 

@@ -1,3 +1,4 @@
+# INCOMPLETE
 from fcpxml_parser import fcpxml_wrapper
 import hiero.ui
 import hiero.core
@@ -37,19 +38,15 @@ class FCPXImporter:
     sequence = hiero.core.Sequence(sequenceName)
     fps = sequenceWrapper.framerate
     sequence.setFramerate(fps)
-    #print "tcStart: " + str(sequenceWrapper.timecode_start)
     frameStart = hiero.core.Timecode().HMSFToFrames(fps, False, 0, 0, sequenceWrapper.timecode_start, 0)
     sequence.setTimecodeStart(frameStart)
 
     sequenceClips = sequenceWrapper.clips
     for seqClip in sequenceClips:
-      #print "Sequence Clip:" + str(seqClip)
       if seqClip.asset:
-        #print "Clip Asset:" + str(seqClip.asset)
-
         sourceClip = self._getSourceClipFromExistingAssetsBin(project, seqClip)
         if not sourceClip:
-          print "Unable to find Clip for asset_id. Should return an empty Clip"
+          print("Unable to find Clip for asset_id. Should return an empty Clip")
           sourceClip = hiero.core.Clip(seqClip.asset.filepath)
 
         trackItems = sequence.addClip(sourceClip, seqClip.timeline_in, videoTrackIndex=seqClip.lane)
@@ -133,7 +130,6 @@ class BinViewDropHandler:
   def dropHandler(self, event):
     
     # get the mime data
-    #print "mimeData: ", dir(event.mimeData)
     urls = [url.toLocalFile() for url in event.mimeData.urls()]
 
     # Build a list of possible XML/EDL files

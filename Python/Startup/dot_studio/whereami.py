@@ -16,7 +16,7 @@ def whereAmI(self, searchType='TrackItem'):
   proj = self.project()
 
   if searchType not in ('TrackItem','Sequence'):
-    print "searchType argument must be 'TrackItem' or 'Sequence'"
+    print("searchType argument must be 'TrackItem' or 'Sequence'")
     return None
 
   # Find items in the project with specified searchType 

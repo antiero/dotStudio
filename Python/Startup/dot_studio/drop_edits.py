@@ -17,7 +17,7 @@ class BinViewDropHandler:
     return f.lower()[-4:] in sequenceExts
 
   def dropHandler(self, event):
-    
+    print("DROPPED")
     # Get the mime data urls
     urls = [url.toLocalFile() for url in event.mimeData.urls()]
 

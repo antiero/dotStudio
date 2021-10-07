@@ -198,7 +198,7 @@ class TagReportWriter(object):
       saveName = "TagReport_%s_%s.csv" % (sequence.name().replace(" ", "_"), currentTimeString)
       csvSavePath = os.path.join(os.getenv('HOME'), 'Desktop', saveName)
       savePath = openFileBrowser(caption="Save Tag Report .CSV as...", initialPath=csvSavePath, mayNotExist=True, forSave=True, pattern="*.csv")
-      print "Save path %s" % savePath
+      print("Save path %s" % savePath)
       # A list is returned here, we SHOULD only get one file name, but force this to be only one, then check for .csv extension.
       if len(savePath)!=1:
         return
@@ -250,7 +250,7 @@ class TagReportWriter(object):
 
     # Be good and close the file
     csvFile.close()
-    print 'CSV Tag Report saved to: ' + str(savePath)
+    print('CSV Tag Report saved to: ' + str(savePath))
 
     # Conveniently show the CSV file in the native file browser...
     QDesktopServices.openUrl(QUrl('file:///%s' % (os.path.dirname(savePath))))    

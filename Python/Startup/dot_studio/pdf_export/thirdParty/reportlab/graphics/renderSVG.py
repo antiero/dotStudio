@@ -843,7 +843,6 @@ class _SVGRenderer(Renderer):
         self._canvas.polygon(_pointsFromList(p.points), closed=1, link_info=self._get_link_info_dict(p))
 
     def drawPath(self, path):
-        # print "### drawPath", path.points
         from reportlab.graphics.shapes import _renderPath
         c = self._canvas
         drawFuncs = (c.moveTo, c.lineTo, c.curveTo, c.closePath)
@@ -890,8 +889,7 @@ class _SVGRenderer(Renderer):
                 self._canvas.setFont(fontname, fontsize)
 
 def test(outDir='out-svg'):
-    # print all drawings and their doc strings from the test
-    # file
+    # print all drawings and their doc strings from the test file
     if not os.path.isdir(outDir):
         os.mkdir(outDir)
     #grab all drawings from the test module
@@ -899,8 +897,6 @@ def test(outDir='out-svg'):
     drawings = []
 
     for funcname in dir(testshapes):
-        #if funcname[0:11] == 'getDrawing2':
-        #    print 'hacked to only show drawing 2'
         if funcname[0:10] == 'getDrawing':
             drawing = eval('testshapes.' + funcname + '()')
             docstring = eval('testshapes.' + funcname + '.__doc__')

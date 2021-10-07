@@ -58,7 +58,6 @@ class GrabThisFrameAction(QtWidgets.QAction):
           return
         else:
           fileKnob,first_last_frame,trackItem = getFrameInfoFromTrackItemAtTime(currentShot,T)
-          print fileKnob,first_last_frame
           clip = hiero.core.Clip(hiero.core.MediaSource(fileKnob),first_last_frame, first_last_frame)
           
       # Create a 'Stills' Bin, and add the Still Frame as a new Clip
@@ -73,8 +72,8 @@ class GrabThisFrameAction(QtWidgets.QAction):
         bi = hiero.core.BinItem(clip)
         clip.setName(bi.name()+'_still')
         b.addItem(bi)
-      except:
-        print 'Unable to create Still frame'
+      except Exception as e:
+        print("Unable to create Still frame: %s" % str(e))
 
   def eventHandler(self, event):
     self.currentClipSequence = None

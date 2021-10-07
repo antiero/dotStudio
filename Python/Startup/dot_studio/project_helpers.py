@@ -134,9 +134,9 @@ class SaveAllProjects(QtWidgets.QAction):
     for proj in allProjects:
       try:
         proj.save()
-        print 'Saved Project: %s to: %s ' % (proj.name(),proj.path())
+        print('Saved Project: %s to: %s ' % (proj.name(),proj.path()))
       except:
-        print 'Unable to save Project: %s to: %s. Check file permissions.' % (proj.name(),proj.path())
+        print('Unable to save Project: %s to: %s. Check file permissions.' % (proj.name(),proj.path()))
 
   def eventHandler(self, event):
     event.menu.addAction( self )
@@ -167,25 +167,25 @@ class SaveNewProjectVersion(QtWidgets.QAction):
       try:
         (prefix,v) = version_get(path,'v')
       except ValueError, msg:
-        print msg
+        print(str(msg))
 
       if (prefix is not None) and (v is not None):
         v = int(v)
         newPath = version_set(path,prefix,v,v+1)
         try:
           proj.saveAs(newPath)
-          print 'Saved new project version: %s to: %s ' % (oldName,newPath)
+          print('Saved new project version: %s to: %s ' % (oldName,newPath))
         except:
-          print 'Unable to save Project: %s. Check file permissions.' % (oldName)
+          print('Unable to save Project: %s. Check file permissions.' % (oldName))
       else:
         newPath = path.replace(".hrox", "_v01.hrox")
         answer = nuke.ask('%s does not contain a version number.\nDo you want to save as %s?' % (proj, newPath))
         if answer:
           try:
             proj.saveAs(newPath)
-            print 'Saved new project version: %s to: %s ' % (oldName, newPath)
+            print('Saved new project version: %s to: %s ' % (oldName, newPath))
           except:
-            print 'Unable to save Project: %s. Check file permissions.' % (oldName)
+            print('Unable to save Project: %s. Check file permissions.' % (oldName))
 
   def eventHandler(self, event):
     self.selectedProjects = []
